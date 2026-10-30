@@ -41,6 +41,12 @@ export function formatarDolar(valor: number | null | undefined, casasMaximas = 4
   }).format(valor);
 }
 
+/** Painéis e totais: "US$ 12,35" a partir de US$ 1 e "US$ 0,5703" abaixo (o custo de uma chamada usa formatarDolar com 6). */
+export function formatarDolarCompacto(valor: number | null | undefined): string {
+  if (valor === null || valor === undefined) return '';
+  return formatarDolar(valor, Math.abs(valor) >= 1 ? 2 : 4);
+}
+
 /** "1.234.567" */
 export function formatarNumero(valor: number | null | undefined): string {
   if (valor === null || valor === undefined) return '';

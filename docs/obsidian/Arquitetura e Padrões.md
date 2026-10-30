@@ -116,4 +116,5 @@ Ver [[Frontend (Angular PWA)]]: Angular standalone + signals, `core/shared/featu
 | Duas leituras do corpo HTTP | `ReadFromJsonAsync` fecha o stream | Ler como texto uma vez e fazer parse |
 | Reembolso/cobrança | Regra de negócio em controller | Regra no handler/domínio, controller só traduz |
 | Teste falhava só quando rodava depois de outro | Um teste editou um dado da carga inicial (preço do Haiku) e outro calculava o custo com ele | Teste que mexe em dado compartilhado (seed) restaura no `finally`; de preferência crie o seu próprio dado |
+| E2E passava com o número errado | `hasText: '5 chamadas'` também casa com "15 chamadas" | Texto com número no E2E: regex ancorada (`/^\s*5 chamadas ·/`) |
 | Toque no lugar errado no celular | Tabela larga (mesmo dentro de `overflow-x: auto`) e `<select>` com opções longas alargavam o layout da página no Chrome mobile | Grid com `minmax(0, 1fr)`; tabela vira cartões em tela estreita (com `role` explícitos); E2E no projeto `celular` |

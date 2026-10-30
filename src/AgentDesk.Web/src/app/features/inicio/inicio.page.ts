@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { AuthStore } from '../../core/auth/auth.store';
 
-/** Tela inicial depois do login: atalhos para as áreas. O painel de consumo chega na Fase 3. */
+/** Tela inicial depois do login: atalhos para as áreas. */
 @Component({
   selector: 'app-inicio',
   imports: [RouterLink],
@@ -15,6 +15,11 @@ import { AuthStore } from '../../core/auth/auth.store';
           <h2>Automações em 1 clique</h2>
           <p class="ui-suave">Relatório executivo, análise de código e resumo de documentos com a Claude.</p>
           <a class="ui-botao ui-botao--primario" routerLink="/automacoes">Abrir Automações</a>
+        </section>
+        <section class="ui-cartao">
+          <h2>Consumo e custo</h2>
+          <p class="ui-suave">Tokens e US$ do dia, do mês e acumulado, gráfico por dia e o histórico de cada chamada.</p>
+          <a class="ui-botao" routerLink="/consumo">Abrir Consumo</a>
         </section>
         <section class="ui-cartao">
           <h2>Chave e limite de gasto</h2>

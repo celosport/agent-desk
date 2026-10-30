@@ -19,6 +19,10 @@
   --ui-marca: #3b5bdb;
   --ui-marca-texto: #ffffff;
   --ui-marca-tinta: var(--ui-marca);
+  /* Gráficos (uma série): validado contra a superfície (contraste ≥ 3:1) — [[Módulo Consumo]] */
+  --ui-grafico: #3b5bdb;
+  --ui-grafico-grade: #e4e6eb;
+  --ui-alerta-fundo: rgb(245 159 0 / 0.18);
 
   --ui-verde: #18794e;
   --ui-verde-fundo: rgb(24 121 78 / 0.1);
@@ -43,6 +47,9 @@
   --ui-marca-texto: #ffffff;
   /* A marca usada como TINTA (texto, borda, foco) precisa clarear no fundo escuro */
   --ui-marca-tinta: color-mix(in srgb, var(--ui-marca) 55%, #ffffff);
+  --ui-grafico: #6f88e6;
+  --ui-grafico-grade: #2c313b;
+  --ui-alerta-fundo: rgb(245 159 0 / 0.16);
 
   --ui-verde: #3dbe7a;
   --ui-verde-fundo: rgb(61 190 122 / 0.12);

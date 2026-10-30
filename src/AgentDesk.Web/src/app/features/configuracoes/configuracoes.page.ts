@@ -165,12 +165,12 @@ export class ConfiguracoesPage {
       return;
     }
     this.salvandoChave.set(true);
+    this.resultadoTeste.set(null); // antes do await: um "Testar" clicado enquanto salva não pode ter o resultado apagado depois
     const erro = await this.store.salvarChave(chave);
     this.salvandoChave.set(false);
     this.erroChave.set(erro);
     if (!erro) {
       this.formChave.reset(); // a chave digitada não fica na tela
-      this.resultadoTeste.set(null);
       this.avisos.mostrar('Chave salva.', 'sucesso');
     }
   }

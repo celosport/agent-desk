@@ -29,7 +29,7 @@ tags: [painel]
 | [[Módulo Contas]] | `src/Modules/Contas` | `features/auth` | `usuarios` | 🟢 cadastro, login, `GET /auth/eu` |
 | [[Módulo Configuracoes]] | `src/Modules/Configuracoes` | `features/configuracoes` | `configuracoes_usuario`, `modelos_claude`, `chaves_protecao_dados` | 🟡 Fase 1: API key cifrada, modelo padrão, limite, tabela de preços |
 | [[Módulo Automacoes]] | `src/Modules/Automacoes` | `features/automacoes` | `automacoes` | 🟡 Fase 2: 3 fluxos chamando a Claude, edição pelo ADMIN |
-| [[Módulo Consumo]] | `src/Modules/Consumo` | — (Fase 3) | `consumo_chamadas` | 🟡 Fase 2: log de cada chamada; painel e histórico na Fase 3 |
+| [[Módulo Consumo]] | `src/Modules/Consumo` | `features/consumo` | `consumo_chamadas` | 🟢 Fase 3: painel (polling 10 s), gráfico por dia, ranking e histórico |
 
 > Ao criar um módulo: acrescente uma linha aqui e uma nota a partir de `_Modelos/Modelo - Módulo`.
 
@@ -38,4 +38,5 @@ tags: [painel]
 |---|---|
 | 2026-10-30 | Projeto criado a partir do esqueleto |
 | 2026-10-30 | Perguntas respondidas; ADR-005 a 007; **Fase 1**: módulo Configuracoes + tabela de modelos e preços |
+| 2026-10-30 | **Fase 3**: painel de consumo (hoje, mês, acumulado, gráfico SVG, ranking, limite) e histórico com filtros; contrato `IDiretorioUsuarios` |
 | 2026-10-30 | **Fase 2**: módulos Automacoes e Consumo (registro), fallback de recusa, ADR-008; exemplo Tarefas removido |

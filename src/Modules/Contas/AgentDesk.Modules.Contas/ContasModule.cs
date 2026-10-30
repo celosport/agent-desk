@@ -3,6 +3,7 @@ using AgentDesk.Modules.Contas.Application.Auth;
 using AgentDesk.Modules.Contas.Domain;
 using AgentDesk.Modules.Contas.Infrastructure;
 using AgentDesk.SharedKernel;
+using AgentDesk.SharedKernel.Contratos;
 using AgentDesk.SharedKernel.Messaging;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -17,6 +18,7 @@ public sealed class ContasModule : IModule
     public IServiceCollection RegisterServices(IServiceCollection services, IConfiguration configuration)
     {
         services.AddScoped<IUsuariosRepository, UsuariosRepository>();
+        services.AddScoped<IDiretorioUsuarios, DiretorioUsuarios>(); // contrato para os outros módulos (só nomes)
 
         services.AddScoped<IValidator<CadastrarCommand>, CadastrarValidator>();
         services.AddScoped<IValidator<LoginCommand>, LoginValidator>();

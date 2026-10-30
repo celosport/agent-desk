@@ -1,4 +1,4 @@
-import { formatarData, formatarDataHora, formatarDolar, formatarMoeda, formatarNumero } from './formatos';
+import { formatarData, formatarDataHora, formatarDolar, formatarDolarCompacto, formatarMoeda, formatarNumero } from './formatos';
 
 describe('formatos pt-BR', () => {
   it('datas da API (UTC) aparecem no horário de Brasília', () => {
@@ -18,6 +18,11 @@ describe('formatos pt-BR', () => {
     expect(d(0.00012345)).toBe('US$ 0,0001');
     expect(d(1234.5, 2)).toBe('US$ 1.234,50');
     expect(d(null)).toBe('');
+  });
+
+  it('dólar compacto: 2 casas a partir de US$ 1, 4 abaixo', () => {
+    expect(formatarDolarCompacto(12.3456).replace(/\s/g, ' ')).toBe('US$ 12,35');
+    expect(formatarDolarCompacto(0.570333).replace(/\s/g, ' ')).toBe('US$ 0,5703');
   });
 
   it('números com separador de milhar', () => {

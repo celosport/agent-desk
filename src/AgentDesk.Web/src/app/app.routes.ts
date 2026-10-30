@@ -26,6 +26,16 @@ export const routes: Routes = [
       { path: '', pathMatch: 'full', redirectTo: 'inicio' },
       { path: 'inicio', title: 'Início | Agent Desk', loadComponent: () => import('./features/inicio/inicio.page').then((m) => m.InicioPage) },
       {
+        path: 'consumo',
+        title: 'Consumo | Agent Desk',
+        loadComponent: () => import('./features/consumo/painel.page').then((m) => m.PainelPage),
+      },
+      {
+        path: 'consumo/historico',
+        title: 'Histórico de consumo | Agent Desk',
+        loadComponent: () => import('./features/consumo/historico.page').then((m) => m.HistoricoPage),
+      },
+      {
         path: 'configuracoes',
         title: 'Configurações | Agent Desk',
         loadComponent: () => import('./features/configuracoes/configuracoes.page').then((m) => m.ConfiguracoesPage),

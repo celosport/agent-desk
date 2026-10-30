@@ -17,6 +17,8 @@ Rodar uma automação cruza três módulos: a chave, o modelo padrão, o limite 
     modelo padrão, limite, bloquear) e `ObterModeloAsync` (vira `PrecoModelo`, com `CustoDe(UsoTokens)`).
   - `IRegistroConsumo` (Consumo → `Infrastructure/Repositories/RegistroConsumoRepository.cs`): `RegistrarAsync(ChamadaClaude)` e
     `GastoNoPeriodoAsync` (para o limite mensal).
+  - `IDiretorioUsuarios` (Contas → `Infrastructure/DiretorioUsuarios.cs`, Fase 3): só o **nome** dos usuários, para o consumo de
+    "Todos" do ADMIN — o Consumo não lê a tabela `usuarios`.
 - Tipos de troca também no SharedKernel: `UsoTokens`, `PrecoModelo`, `PreferenciasDeUso`, `ChamadaClaude`, `StatusChamada`.
 - O cálculo do custo mora em `PrecoModelo.CustoDe` (uma fonte só; 6 casas). O Automacoes calcula e o Consumo grava o custo e os
   preços usados (congelados — [[ADR-007 - Custo pela Tabela de Preços (Preço Congelado e Limite Mensal)]]).

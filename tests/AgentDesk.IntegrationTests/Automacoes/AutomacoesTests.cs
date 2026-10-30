@@ -11,7 +11,7 @@ public sealed class AutomacoesTests(AgentDeskApiFactory factory)
     private const string Rota = "/api/v1/automacoes";
 
     // Uso fixo do falso (1000 entrada, 500 saída, 200 cache leitura, 100 cache escrita) × preços da carga inicial
-    private const decimal CustoOpus = 0.01454m;       // (1000×4 + 500×20 + 200×0,20 + 100×5) / 1.000.000
+    internal const decimal CustoOpus = 0.01454m;      // (1000×4 + 500×20 + 200×0,20 + 100×5) / 1.000.000
     private const decimal CustoHaiku = 0.000365m;     // (1000×0,10 + 500×0,50 + 200×0,01 + 100×0,125) / 1.000.000 = 0,0003645 → 6 casas
     private const decimal CustoSonnet = 0.00729m;     // (1000×2 + 500×10 + 200×0,20 + 100×2,50) / 1.000.000
     private const decimal CustoRecusaOpus = 0.004m;   // só os 1000 de entrada
@@ -40,22 +40,13 @@ public sealed class AutomacoesTests(AgentDeskApiFactory factory)
     private Task<long> TotalChamadasAsync(Guid usuarioId)
         => factory.ConsultarAsync<long>("SELECT COUNT(*) FROM consumo_chamadas WHERE usuario_id = @UsuarioId", new { UsuarioId = usuarioId });
 
-    private sealed record Usuario(HttpClient Http, Guid Id, string Chave);
+    private Task<AgentDeskApiFactory.UsuarioDeTeste> UsuarioComChaveAsync(string final = "OK01") => factory.UsuarioComChaveAsync(final);
 
-    private async Task<Usuario> UsuarioComChaveAsync(string final = "OK01")
-    {
-        var http = await factory.ClienteNovoUsuarioAsync();
-        var chave = AnthropicFalso.NovaChave(final);
-        (await http.PutAsJsonAsync("/api/v1/configuracoes/chave-api", new { chaveApi = chave })).EnsureSuccessStatusCode();
-        var id = (await (await http.GetAsync("/api/v1/auth/eu")).JsonAsync()).GetProperty("usuarioId").GetGuid();
-        return new Usuario(http, id, chave);
-    }
-
-    private static async Task<Guid> IdAsync(HttpClient http, string codigo)
+    internal static async Task<Guid> IdAsync(HttpClient http, string codigo)
         => (await (await http.GetAsync(Rota)).JsonAsync()).EnumerateArray()
             .Single(a => a.GetProperty("codigo").GetString() == codigo).GetProperty("automacaoId").GetGuid();
 
-    private static async Task<HttpResponseMessage> ExecutarAsync(HttpClient http, string codigo, string entrada, string? modeloId = null,
+    internal static async Task<HttpResponseMessage> ExecutarAsync(HttpClient http, string codigo, string entrada, string? modeloId = null,
         string? nomeArquivo = null)
         => await http.PostAsJsonAsync($"{Rota}/{await IdAsync(http, codigo)}/executar", new { entrada, modeloId, nomeArquivo });
 
@@ -204,7 +195,7 @@ public sealed class AutomacoesTests(AgentDeskApiFactory factory)
     public async Task Sem_chave_responde_422_e_nao_chama_a_anthropic()
     {
         var usuario = await factory.ClienteNovoUsuarioAsync();
-        var id = (await (await usuario.GetAsync("/api/v1/auth/eu")).JsonAsync()).GetProperty("usuarioId").GetGuid();
+        var id = await AgentDeskApiFactory.IdAsync(usuario);
 
         var resposta = await ExecutarAsync(usuario, "resumir-documento", "texto");
 

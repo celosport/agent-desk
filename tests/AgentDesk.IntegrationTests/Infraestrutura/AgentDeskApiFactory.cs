@@ -125,6 +125,21 @@ public sealed class AgentDeskApiFactory : WebApplicationFactory<Program>, IAsync
         return ClienteComToken((await login.JsonAsync()).GetProperty("accessToken").GetString()!);
     }
 
+    /// <summary>Usuário de teste com a API key (falsa) já salva — pronto para rodar automações.</summary>
+    public sealed record UsuarioDeTeste(HttpClient Http, Guid Id, string Chave);
+
+    public async Task<UsuarioDeTeste> UsuarioComChaveAsync(string final = "OK01", HttpClient? http = null)
+    {
+        http ??= await ClienteNovoUsuarioAsync();
+        var chave = AnthropicFalso.NovaChave(final);
+        (await http.PutAsJsonAsync("/api/v1/configuracoes/chave-api", new { chaveApi = chave })).EnsureSuccessStatusCode();
+        return new UsuarioDeTeste(http, await IdAsync(http), chave);
+    }
+
+    /// <summary>Id do usuário do token (GET /auth/eu).</summary>
+    public static async Task<Guid> IdAsync(HttpClient http)
+        => (await (await http.GetAsync("/api/v1/auth/eu")).JsonAsync()).GetProperty("usuarioId").GetGuid();
+
     private HttpClient ClienteComToken(string token)
     {
         var client = CreateClient();

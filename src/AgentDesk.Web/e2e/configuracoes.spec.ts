@@ -33,11 +33,13 @@ test('mostra o erro da API para chave mal formada e para chave recusada', async 
 
   await page.getByLabel('API key').fill('sk-ant-chave-recusada-INVALIDA');
   await page.getByRole('button', { name: 'Salvar chave' }).click();
+  await expect(page.getByTestId('chave-mascarada')).toHaveText('sk-ant-...LIDA');
   await page.getByRole('button', { name: 'Testar chave' }).click();
   await expect(page.getByRole('status').filter({ hasText: 'A Anthropic recusou a chave' })).toBeVisible();
 
   await page.getByLabel('Trocar a API key').fill('sk-ant-anthropic-fora-do-ar-FORA');
   await page.getByRole('button', { name: 'Salvar chave' }).click();
+  await expect(page.getByTestId('chave-mascarada')).toHaveText('sk-ant-...FORA');
   await page.getByRole('button', { name: 'Testar chave' }).click();
   await expect(page.getByRole('status').filter({ hasText: 'A API da Anthropic não respondeu' })).toBeVisible();
 });

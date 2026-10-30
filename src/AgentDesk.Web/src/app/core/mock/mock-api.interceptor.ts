@@ -2,6 +2,7 @@ import { HttpErrorResponse, HttpInterceptorFn, HttpRequest, HttpResponse } from 
 import { Observable, delay, of, throwError } from 'rxjs';
 import { Configuracao, Modelo } from '../../features/configuracoes/data-access/configuracoes.models';
 import { Automacao, Execucao } from '../../features/automacoes/data-access/automacoes.models';
+import { Chamada, StatusChamada } from '../../features/consumo/data-access/consumo.models';
 
 /**
  * API falsa em memória para `npm run start:mock` e para os testes E2E: demonstração, design e testes sem backend.
@@ -12,7 +13,9 @@ import { Automacao, Execucao } from '../../features/automacoes/data-access/autom
  * Ao criar um endpoint novo na API, acrescente a resposta aqui (mesmo contrato JSON e mesmos `code` de erro).
  *
  * Automações: o resultado é um texto falso; "[recusar]" na entrada simula a recusa da Claude, e o custo de cada execução
- * conta para o limite mensal configurado (o mock guarda o gasto do mês na memória).
+ * conta para o limite mensal configurado.
+ * Consumo: começa com chamadas de exemplo nos últimos 20 dias (nenhuma hoje) da Maria e de outra usuária (para o "Todos"
+ * do ADMIN); as execuções da sessão entram por cima. Só as execuções da sessão contam para o limite mensal.
  *
  * API key falsa (Configuracoes): qualquer "sk-ant-..." com 20+ caracteres é aceita; o teste da chave responde pelo final —
  * "...INVALIDA" = Anthropic.ChaveInvalida (422), "...FORA" = Anthropic.Indisponivel (503), outra = válida.
@@ -46,8 +49,169 @@ let automacoes: Automacao[] = [
   automacaoMock('a1e5c1a0-0000-4000-8000-000000000003', 'resumir-documento', 'Resumir Documento',
     'Resume um documento longo em tópicos, com as decisões e os números importantes.', 'claude-haiku-5-5', 4000),
 ];
-/** Gasto do mês no mock (US$), para o limite mensal. */
-let gastoMes = 0;
+// ---- Consumo ----
+interface ChamadaMock extends Chamada {
+  usuarioId: string;
+  resultado?: string;
+  precoEntradaMTok?: number;
+  precoSaidaMTok?: number;
+  /** Exemplo do mock: não conta para o limite mensal (só o que rodar na sessão conta). */
+  exemplo?: boolean;
+}
+
+const OUTRA_USUARIA = { usuarioId: '22222222-2222-2222-2222-222222222222', nome: 'Joana Prado' };
+let chamadas: ChamadaMock[] = chamadasDeExemplo();
+
+function chamadasDeExemplo(): ChamadaMock[] {
+  const fluxos = [
+    { id: 'a1e5c1a0-0000-4000-8000-000000000001', nome: 'Gerar Relatório Executivo', modelo: 'claude-opus-5-5', custo: 0.0312 },
+    { id: 'a1e5c1a0-0000-4000-8000-000000000002', nome: 'Analisar Código', modelo: 'claude-opus-5-5', custo: 0.0451 },
+    { id: 'a1e5c1a0-0000-4000-8000-000000000003', nome: 'Resumir Documento', modelo: 'claude-haiku-5-5', custo: 0.0009 },
+  ];
+  const lista: ChamadaMock[] = [];
+  for (let i = 0; i < 18; i++) {
+    const f = fluxos[i % 3];
+    const dono = i % 6 === 5 ? OUTRA_USUARIA.usuarioId : USUARIOS.usuario.usuarioId;
+    const status: StatusChamada = i === 7 ? 'ERRO' : i === 11 ? 'RECUSADA' : 'SUCESSO';
+    const entrada = 1200 + i * 137;
+    const saida = status === 'SUCESSO' ? 600 + i * 41 : 0;
+    lista.push({
+      chamadaId: `c0000000-0000-4000-8000-${String(i).padStart(12, '0')}`,
+      usuarioId: dono,
+      usuarioNome: dono === OUTRA_USUARIA.usuarioId ? OUTRA_USUARIA.nome : USUARIOS.usuario.nome,
+      iniciadaEm: new Date(agora - (1 + Math.floor(i * 1.1)) * 86_400_000 - i * 3_600_000).toISOString(),
+      automacaoId: f.id,
+      automacaoNome: f.nome,
+      modeloId: f.modelo,
+      modeloUsado: f.modelo,
+      tokens: { entrada, saida, cacheLeitura: 0, cacheEscrita: 0, total: entrada + saida },
+      custoUsd: status === 'ERRO' ? 0 : Math.round(f.custo * (1 + (i % 4) / 3) * 1e6) / 1e6,
+      duracaoMs: 2000 + i * 310,
+      status,
+      erroCodigo: status === 'ERRO' ? 'Anthropic.Indisponivel' : status === 'RECUSADA' ? 'Automacoes.Recusada' : undefined,
+      temResultado: status === 'SUCESSO',
+      resultado: status === 'SUCESSO' ? `# ${f.nome}\n\nResultado de exemplo nº ${i + 1} (modo mock).` : undefined,
+      precoEntradaMTok: f.modelo === 'claude-opus-5-5' ? 4 : 0.1,
+      precoSaidaMTok: f.modelo === 'claude-opus-5-5' ? 20 : 0.5,
+      exemplo: true,
+    });
+  }
+  return lista;
+}
+
+/** "2026-10-30" no fuso de Brasília. */
+function diaLocal(iso: string | number): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(
+    new Date(iso),
+  );
+}
+
+function quem(req: HttpRequest<unknown>): (typeof USUARIOS)[Quem] {
+  return ehAdmin(req) ? USUARIOS.admin : USUARIOS.usuario;
+}
+
+/** Gasto do mês do usuário com o que rodou nesta sessão (os exemplos não contam). */
+function gastoDoMes(usuarioId: string): number {
+  const mes = diaLocal(Date.now()).slice(0, 7);
+  return chamadas
+    .filter((c) => c.usuarioId === usuarioId && !c.exemplo && diaLocal(c.iniciadaEm).startsWith(mes))
+    .reduce((s, c) => s + c.custoUsd, 0);
+}
+
+function totais(lista: ChamadaMock[]) {
+  return {
+    chamadas: lista.length,
+    tokens: lista.reduce((s, c) => s + c.tokens.total, 0),
+    custoUsd: Math.round(lista.reduce((s, c) => s + c.custoUsd, 0) * 1e6) / 1e6,
+  };
+}
+
+/** Sem o campo interno nem o resultado (o resultado só vem no detalhe); nome só no escopo TODOS. */
+function chamadaPublica(c: ChamadaMock, comNome: boolean): Chamada {
+  const { usuarioId: _u, resultado: _r, precoEntradaMTok: _pe, precoSaidaMTok: _ps, exemplo: _e, usuarioNome, ...resto } = c;
+  return comNome ? { ...resto, usuarioNome } : resto;
+}
+
+function consumoDoEscopo(req: HttpRequest<unknown>, url: URL): ChamadaMock[] | Observable<never> {
+  const todos = url.searchParams.get('escopo') === 'TODOS';
+  if (todos && !ehAdmin(req)) return erro(403, 'Consumo.SemPermissao', 'Só administradores veem o consumo de todos.');
+  return todos ? chamadas : chamadas.filter((c) => c.usuarioId === quem(req).usuarioId);
+}
+
+function responderConsumo(req: HttpRequest<unknown>, url: URL, c: string): Observable<HttpResponse<unknown>> | null {
+  if (c === '/api/v1/consumo/resumo' && req.method === 'GET') {
+    const lista = consumoDoEscopo(req, url);
+    if (!Array.isArray(lista)) return lista;
+    const todos = url.searchParams.get('escopo') === 'TODOS';
+    const dias = Math.min(90, Math.max(7, Number(url.searchParams.get('dias') ?? 30)));
+    const hoje = diaLocal(Date.now());
+    const serie = Array.from({ length: dias }, (_, i) => diaLocal(Date.now() - (dias - 1 - i) * 86_400_000));
+    const naJanela = lista.filter((x) => diaLocal(x.iniciadaEm) >= serie[0]);
+    const ranking = new Map<string, ChamadaMock[]>();
+    for (const x of naJanela) ranking.set(x.automacaoId ?? '', [...(ranking.get(x.automacaoId ?? '') ?? []), x]);
+    const mes = totais(lista.filter((x) => diaLocal(x.iniciadaEm).startsWith(hoje.slice(0, 7))));
+    const limite = todos ? undefined : configuracao.limiteMensalUsd;
+    return ok({
+      escopo: todos ? 'TODOS' : 'MEU',
+      hoje: totais(lista.filter((x) => diaLocal(x.iniciadaEm) === hoje)),
+      mes,
+      acumulado: totais(lista),
+      dias,
+      porDia: serie.map((dia) => ({ dia, ...totais(lista.filter((x) => diaLocal(x.iniciadaEm) === dia)) })),
+      ranking: [...ranking.values()]
+        .map((grupo) => ({ automacaoId: grupo[0].automacaoId, nome: grupo[0].automacaoNome ?? 'Sem automação', ...totais(grupo) }))
+        .sort((a, b) => b.custoUsd - a.custoUsd),
+      limiteMensalUsd: limite,
+      percentualLimite: limite ? Math.round((mes.custoUsd / limite) * 1000) / 10 : undefined,
+      atualizadoEm: new Date().toISOString(),
+    });
+  }
+  if (c === '/api/v1/consumo/chamadas' && req.method === 'GET') {
+    const lista = consumoDoEscopo(req, url);
+    if (!Array.isArray(lista)) return lista;
+    const p = url.searchParams;
+    const de = p.get('de');
+    const ate = p.get('ate');
+    if (de && ate && de > ate) return invalido({ de: ['A data inicial precisa ser anterior ou igual à final.'] });
+    const filtradas = lista
+      .filter((x) => (!de || diaLocal(x.iniciadaEm) >= de) && (!ate || diaLocal(x.iniciadaEm) <= ate))
+      .filter((x) => !p.get('automacaoId') || x.automacaoId === p.get('automacaoId'))
+      .filter((x) => !p.get('modeloId') || x.modeloId === p.get('modeloId') || x.modeloUsado === p.get('modeloId'))
+      .filter((x) => !p.get('status') || x.status === p.get('status'))
+      .sort((a, b) => b.iniciadaEm.localeCompare(a.iniciadaEm));
+    const tamanho = Math.min(100, Math.max(1, Number(p.get('tamanho') ?? 20)));
+    const pagina = Math.max(1, Number(p.get('pagina') ?? 1));
+    const todos = p.get('escopo') === 'TODOS';
+    return ok({
+      itens: filtradas.slice((pagina - 1) * tamanho, pagina * tamanho).map((x) => chamadaPublica(x, todos)),
+      total: filtradas.length,
+      pagina,
+      tamanho,
+      totais: totais(filtradas),
+    });
+  }
+  const detalhe = c.match(/^\/api\/v1\/consumo\/chamadas\/([^/]+)$/);
+  if (detalhe && req.method === 'GET') {
+    const x = chamadas.find((y) => y.chamadaId === detalhe[1] && (ehAdmin(req) || y.usuarioId === quem(req).usuarioId));
+    if (!x) return erro(404, 'Consumo.ChamadaNaoEncontrada', 'Chamada não encontrada.');
+    return ok({
+      chamada: chamadaPublica(x, ehAdmin(req)),
+      resultado: x.resultado,
+      precoEntradaMTok: x.precoEntradaMTok,
+      precoSaidaMTok: x.precoSaidaMTok,
+    });
+  }
+  if (c === '/api/v1/consumo/filtros' && req.method === 'GET') {
+    const lista = consumoDoEscopo(req, url);
+    if (!Array.isArray(lista)) return lista;
+    const automacoesUsadas = new Map(lista.filter((x) => x.automacaoId).map((x) => [x.automacaoId!, x.automacaoNome ?? '']));
+    return ok({
+      automacoes: [...automacoesUsadas].map(([automacaoId, nome]) => ({ automacaoId, nome })).sort((a, b) => a.nome.localeCompare(b.nome)),
+      modelos: [...new Set(lista.flatMap((x) => [x.modeloId, x.modeloUsado ?? x.modeloId]))].sort(),
+    });
+  }
+  return null;
+}
 
 function automacaoMock(automacaoId: string, codigo: string, nome: string, descricao: string, modeloId: string, maxTokens: number): Automacao {
   return {
@@ -64,7 +228,9 @@ function automacaoMock(automacaoId: string, codigo: string, nome: string, descri
 }
 
 /** Mesmos tokens fixos do falso dos testes de integração (1000/500/200/100) e o custo pelo preço do modelo. */
-function executarMock(automacao: Automacao, corpo: Record<string, unknown>): Observable<HttpResponse<unknown>> {
+function executarMock(automacao: Automacao, corpo: Record<string, unknown>, req: HttpRequest<unknown>): Observable<HttpResponse<unknown>> {
+  const usuario = quem(req);
+  const gastoMes = gastoDoMes(usuario.usuarioId);
   const entrada = String(corpo['entrada'] ?? '');
   if (!entrada.trim()) return invalido({ entrada: ['Cole um texto ou envie um arquivo .txt/.md.'] });
   const arquivo = corpo['nomeArquivo'] ? String(corpo['nomeArquivo']) : null;
@@ -79,8 +245,11 @@ function executarMock(automacao: Automacao, corpo: Record<string, unknown>): Obs
   if (limite !== undefined && configuracao.bloquearAoAtingirLimite && gastoMes >= limite)
     return erro(422, 'Automacoes.LimiteMensalAtingido',
       `Você atingiu o limite de gasto do mês (US$ ${gastoMes.toFixed(2)} de US$ ${limite.toFixed(2)}). Aumente o limite em Configurações ou espere o próximo mês.`);
-  if (entrada.includes('[recusar]'))
+  if (entrada.includes('[recusar]')) {
+    chamadas = [registroMock(automacao, usuario, modeloId, { entrada: 1000, saida: 0, cacheLeitura: 0, cacheEscrita: 0 },
+      (1000 * modelo.precoEntradaMTok) / 1e6, 'RECUSADA', modelo.precoEntradaMTok, modelo.precoSaidaMTok), ...chamadas];
     return erro(422, 'Automacoes.Recusada', 'A Claude recusou este pedido (filtro de segurança). Os tokens usados foram registrados no consumo.');
+  }
 
   const uso = { entrada: 1000, saida: 500, cacheLeitura: 200, cacheEscrita: 100 };
   const custo =
@@ -90,8 +259,8 @@ function executarMock(automacao: Automacao, corpo: Record<string, unknown>): Obs
         uso.cacheLeitura * (modelo.precoCacheLeituraMTok ?? modelo.precoEntradaMTok) +
         uso.cacheEscrita * (modelo.precoCacheEscritaMTok ?? modelo.precoEntradaMTok)) / 1e6 * 1e6,
     ) / 1e6;
-  gastoMes += custo;
-  const percentual = limite ? Math.round((gastoMes / limite) * 1000) / 10 : 0;
+  const gastoDepois = gastoMes + custo;
+  const percentual = limite ? Math.round((gastoDepois / limite) * 1000) / 10 : 0;
   const execucao: Execucao = {
     chamadaId: crypto.randomUUID(),
     automacaoId: automacao.automacaoId,
@@ -105,10 +274,42 @@ function executarMock(automacao: Automacao, corpo: Record<string, unknown>): Obs
     duracaoMs: 1234,
     iniciadaEm: new Date().toISOString(),
     alertaLimite: limite && percentual >= 80
-      ? { gastoMesUsd: gastoMes, limiteMensalUsd: limite, percentual, atingido: gastoMes >= limite }
+      ? { gastoMesUsd: gastoDepois, limiteMensalUsd: limite, percentual, atingido: gastoDepois >= limite }
       : undefined,
   };
+  const registro = registroMock(automacao, usuario, modeloId, uso, custo, 'SUCESSO', modelo.precoEntradaMTok, modelo.precoSaidaMTok);
+  chamadas = [{ ...registro, chamadaId: execucao.chamadaId, iniciadaEm: execucao.iniciadaEm, resultado: execucao.resultado, temResultado: true }, ...chamadas];
   return ok(execucao).pipe(delay(400)); // a Claude demora: dá tempo de ver o "Executando…"
+}
+
+function registroMock(
+  automacao: Automacao,
+  usuario: (typeof USUARIOS)[Quem],
+  modeloId: string,
+  uso: { entrada: number; saida: number; cacheLeitura: number; cacheEscrita: number },
+  custo: number,
+  status: StatusChamada,
+  precoEntradaMTok: number,
+  precoSaidaMTok: number,
+): ChamadaMock {
+  return {
+    chamadaId: crypto.randomUUID(),
+    usuarioId: usuario.usuarioId,
+    usuarioNome: usuario.nome,
+    iniciadaEm: new Date().toISOString(),
+    automacaoId: automacao.automacaoId,
+    automacaoNome: automacao.nome,
+    modeloId,
+    modeloUsado: modeloId,
+    tokens: { ...uso, total: uso.entrada + uso.saida + uso.cacheLeitura + uso.cacheEscrita },
+    custoUsd: Math.round(custo * 1e6) / 1e6,
+    duracaoMs: 1234,
+    status,
+    erroCodigo: status === 'RECUSADA' ? 'Automacoes.Recusada' : undefined,
+    temResultado: false,
+    precoEntradaMTok,
+    precoSaidaMTok,
+  };
 }
 
 function modeloMock(
@@ -222,7 +423,7 @@ function responder(req: HttpRequest<unknown>, url: URL): Observable<HttpResponse
   if (executarAutomacao && req.method === 'POST') {
     const automacao = automacoes.find((a) => a.automacaoId === executarAutomacao[1] && a.ativa);
     if (!automacao) return erro(404, 'Automacoes.NaoEncontrada', 'Automação não encontrada.');
-    return executarMock(automacao, corpo);
+    return executarMock(automacao, corpo, req);
   }
   const editarAutomacao = c.match(/^\/api\/v1\/automacoes\/([^/]+)$/);
   if (editarAutomacao && req.method === 'PUT') {
@@ -245,6 +446,10 @@ function responder(req: HttpRequest<unknown>, url: URL): Observable<HttpResponse
     automacoes = automacoes.map((a) => (a.automacaoId === atual.automacaoId ? atualizada : a));
     return ok(atualizada);
   }
+
+  // ---- Consumo ----
+  const consumo = responderConsumo(req, url, c);
+  if (consumo) return consumo;
 
   // ---- Configuracoes ----
   if (c === '/api/v1/configuracoes' && req.method === 'GET') return ok(configuracao);

@@ -161,7 +161,7 @@ import { EditarAutomacao } from './editar-automacao.component';
     .falha { display: grid; gap: var(--ui-e1); }
     .acoes { display: flex; gap: var(--ui-e2); }
     .alerta { padding: var(--ui-e2) var(--ui-e3); border-radius: var(--ui-raio-controle);
-      background: color-mix(in srgb, #f59f00 18%, var(--ui-superficie)); font-weight: 600; }
+      background: var(--ui-alerta-fundo); font-weight: 600; }
     .metricas { display: grid; gap: var(--ui-e2); grid-template-columns: repeat(auto-fill, minmax(min(100%, 9rem), 1fr)); margin: 0; }
     .metricas div { padding: var(--ui-e2); border-radius: var(--ui-raio-controle); background: var(--ui-superficie-2); }
     .metricas dt { font-size: var(--ui-t-xs); color: var(--ui-texto-2); }
