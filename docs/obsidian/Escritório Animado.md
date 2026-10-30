@@ -4,7 +4,8 @@ status: pronto
 ---
 # 🏢 Escritório Animado
 
-Cada automação é um robô numa sala em pixel art isométrica: ao receber um pedido, ele anda até a mesa, mostra "pensando…" e, quando
+Duas salas: **Claude Code (ao vivo)** — as suas sessões reais, um robô por sessão e uma sala por projeto ([[Módulo Sessoes]]) — e
+**Automações**, onde cada automação é um robô numa sala em pixel art isométrica: ao receber um pedido, ele anda até a mesa, mostra "pensando…" e, quando
 a Claude responde, um balão com os tokens e o custo. Só app (usa a API do [[Módulo Automacoes]]). Decisão: [[ADR-009 - Escritório em Canvas 2D com Motor Puro]].
 Voltar: [[00 - Dashboard]]
 
@@ -22,7 +23,8 @@ Voltar: [[00 - Dashboard]]
 | **Rel** | Gerar Relatório Executivo (`relatorio-executivo`) | azul |
 | **Bit** | Analisar Código (`analisar-codigo`) | verde |
 | **Sumi** | Resumir Documento (`resumir-documento`) | laranja |
-| Agente | qualquer outro código | cinza |
+| Agente | qualquer outro código | cor pelo hash do código |
+| Ada, Bolt, Cubo… | sessões do Claude Code | apelido e cor pelo id da sessão |
 
 ## Regras
 - Fases: disponível → indo para a mesa → pensando… (mín. 0,7 s) → resultado (9 s) → voltando → disponível.
@@ -34,6 +36,6 @@ Voltar: [[00 - Dashboard]]
 
 ## Pendências
 - [ ] Animar também as execuções disparadas na tela de Automações (ex.: um sinal em `core/` ou polling do histórico).
-- [ ] Sala maior para mais de 4 automações.
+- [x] Sala com até 8 mesas (duas fileiras, corredores livres) — Fase 5.
 
 Criado em 2026-10-30.

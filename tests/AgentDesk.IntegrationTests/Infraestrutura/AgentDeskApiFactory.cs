@@ -55,6 +55,7 @@ public sealed class AgentDeskApiFactory : WebApplicationFactory<Program>, IAsync
         Environment.SetEnvironmentVariable("ConnectionStrings__AgentDeskDb", _connectionString);
         Environment.SetEnvironmentVariable("Jwt__ChaveSecreta", ChaveJwtTeste);
         Environment.SetEnvironmentVariable("RateLimit__AutenticacaoPorMinuto", "1000");
+        Environment.SetEnvironmentVariable("Sessoes__RotinaLimpezaHabilitada", "false"); // rotinas em segundo plano: desligadas nos testes
     }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)

@@ -85,7 +85,7 @@ export function desenharSala(ctx: CanvasRenderingContext2D, agentes: Agente[], p
     itens.push({ z: profundidade(a.posicao) + 0.5, desenhar: () => agente(ctx, a, p, r, a.codigo === selecionado) });
   }
   itens.push({ z: profundidade({ x: 7, y: 7 }), desenhar: () => planta(ctx, { x: 7, y: 7 }, p) });
-  itens.push({ z: profundidade({ x: 0, y: 4 }), desenhar: () => planta(ctx, { x: 0, y: 4 }, p) });
+  itens.push({ z: profundidade({ x: 0, y: 1 }), desenhar: () => planta(ctx, { x: 0, y: 1 }, p) });
   itens.sort((a, b) => a.z - b.z).forEach((i) => i.desenhar());
 }
 

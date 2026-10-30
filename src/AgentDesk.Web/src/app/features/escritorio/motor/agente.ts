@@ -8,7 +8,8 @@ import { Ponto, andar, rota } from './iso';
 export type Fase = 'OCIOSO' | 'INDO' | 'PENSANDO' | 'RESULTADO' | 'VOLTANDO';
 
 export interface Balao {
-  tipo: 'pensando' | 'resultado' | 'erro';
+  /** atividade/alerta: sessões do Claude Code ("📖 Lendo api.ts", "✋ Precisa de você"). */
+  tipo: 'pensando' | 'resultado' | 'erro' | 'atividade' | 'alerta';
   texto: string;
 }
 
@@ -30,6 +31,8 @@ export const VELOCIDADE = 3; // ladrilhos por segundo
 export const PENSANDO_MINIMO_MS = 700; // o balão "pensando…" não pisca e some
 export const RESULTADO_MS = 9000; // quanto tempo o balão do resultado fica
 export const BALAO_PENSANDO: Balao = { tipo: 'pensando', texto: 'pensando…' };
+/** Quanto tempo o balão de "terminou" fica quando uma sessão do Claude Code libera o robô. */
+export const LIBERAR_MS = 4000;
 
 export function novoAgente(codigo: string, canto: Ponto, mesa: Ponto): Agente {
   return { codigo, canto, mesa, posicao: { ...canto }, caminho: [], fase: 'OCIOSO', desde: 0, balao: null, pendente: null };
@@ -81,9 +84,15 @@ export function avancar(a: Agente, agora: number, dtMs: number, reduzido: boolea
   }
 }
 
+/** Termina o trabalho por fora (sessão do Claude Code ficou ociosa): mostra o balão um pouco e volta para o canto. */
+export function liberar(a: Agente, balao: Balao, agora: number): Agente {
+  return { ...a, fase: 'RESULTADO', desde: agora - (RESULTADO_MS - LIBERAR_MS), balao, pendente: null };
+}
+
 function chegar(a: Agente, agora: number): Agente {
   if (a.fase === 'INDO') {
-    return { ...a, posicao: { ...a.mesa }, caminho: [], fase: 'PENSANDO', desde: agora, balao: BALAO_PENSANDO };
+    // Quem já tem um balão (atividade de uma sessão) mantém; as automações chegam e mostram "pensando…"
+    return { ...a, posicao: { ...a.mesa }, caminho: [], fase: 'PENSANDO', desde: agora, balao: a.balao ?? BALAO_PENSANDO };
   }
   return { ...a, posicao: { ...a.canto }, caminho: [], fase: 'OCIOSO', desde: agora, balao: null };
 }

@@ -1,23 +1,36 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { CenaEscritorio, corDoAgente } from './cena-escritorio.component';
 import { EscritorioStore } from './data-access/escritorio.store';
+import { acompanharMovimentoReduzido } from './movimento-reduzido';
+import { SalaClaudeCode } from './sala-claude-code.component';
 
 /**
- * Escritório: cada automação é um robô na sala. Ao disparar um fluxo, o robô anda até a mesa, mostra "pensando…" e, quando a API
+ * Escritório com duas salas: "Claude Code" (as sessões reais do seu Claude Code, ao vivo — [[ADR-010 - Sessões do Claude Code (Hooks e Telemetria)]])
+ * e "Automações" (cada automação é um robô na sala). Ao disparar um fluxo, o robô anda até a mesa, mostra "pensando…" e, quando a API
  * responde, um balão com os tokens e o custo. Respeita prefers-reduced-motion (sem caminhada nem animações). [[Escritório Animado]]
  */
 @Component({
   selector: 'app-escritorio',
-  imports: [ReactiveFormsModule, RouterLink, CenaEscritorio],
+  imports: [ReactiveFormsModule, RouterLink, CenaEscritorio, SalaClaudeCode],
   providers: [EscritorioStore],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <main class="ui-pagina larga">
       <h1 class="ui-titulo-pagina">Escritório</h1>
 
-      @if (store.erro()) {
+      <div class="abas" role="tablist" aria-label="Salas do escritório">
+        <button type="button" role="tab" id="aba-claude" aria-controls="painel-sala" [attr.aria-selected]="aba() === 'claude'"
+                (click)="aba.set('claude')">Claude Code (ao vivo)</button>
+        <button type="button" role="tab" id="aba-automacoes" aria-controls="painel-sala" [attr.aria-selected]="aba() === 'automacoes'"
+                (click)="aba.set('automacoes')">Automações</button>
+      </div>
+
+      <div id="painel-sala" role="tabpanel" [attr.aria-labelledby]="aba() === 'claude' ? 'aba-claude' : 'aba-automacoes'">
+      @if (aba() === 'claude') {
+        <app-sala-claude-code />
+      } @else if (store.erro()) {
         <p class="ui-erro" role="alert">{{ store.erro() }}</p>
         <button type="button" class="ui-botao" (click)="store.carregar()">Tentar de novo</button>
       } @else if (store.carregando() && !store.status().length) {
@@ -25,7 +38,7 @@ import { EscritorioStore } from './data-access/escritorio.store';
       } @else {
         <div class="layout">
           <section class="ui-cartao sala" aria-label="Sala dos agentes">
-            <app-cena-escritorio />
+            <app-cena-escritorio [fonte]="store" [descricao]="store.descricao()" />
             <p class="ui-suave dica">Clique num robô (ou na lista) para escolher quem vai trabalhar.</p>
           </section>
 
@@ -71,10 +84,15 @@ import { EscritorioStore } from './data-access/escritorio.store';
         </div>
         <p class="ui-visualmente-oculto" aria-live="polite">{{ store.anuncio() }}</p>
       }
+      </div>
     </main>
   `,
   styles: `
     .larga { max-width: min(76rem, 100%); }
+    .abas { display: flex; gap: var(--ui-e1); border-bottom: 1px solid var(--ui-linha); margin-bottom: var(--ui-e4); overflow-x: auto; }
+    .abas button { padding: var(--ui-e2) var(--ui-e4); border: 0; border-bottom: 3px solid transparent; background: none; color: var(--ui-texto-2);
+      font: inherit; font-weight: 600; cursor: pointer; white-space: nowrap; }
+    .abas button[aria-selected='true'] { color: var(--ui-texto); border-bottom-color: var(--ui-marca); }
     .layout { display: grid; gap: var(--ui-e4); grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); align-items: start; }
     @media (max-width: 960px) { .layout { grid-template-columns: minmax(0, 1fr); } }
     .sala { display: grid; gap: var(--ui-e2); overflow: hidden; }
@@ -98,15 +116,12 @@ export class EscritorioPage {
   protected readonly store = inject(EscritorioStore);
   protected readonly form = inject(NonNullableFormBuilder).group({ entrada: [''] });
   protected readonly cor = corDoAgente;
+  /** A sala do Claude Code abre primeiro: é onde está o trabalho de verdade. */
+  protected readonly aba = signal<'claude' | 'automacoes'>('claude');
 
   constructor() {
     // Movimento reduzido: o motor não anima a caminhada e o desenho não pisca
-    const midia = typeof matchMedia === 'function' ? matchMedia('(prefers-reduced-motion: reduce)') : null;
-    this.store.reduzido = midia?.matches ?? false;
-    const aoMudar = (e: MediaQueryListEvent) => (this.store.reduzido = e.matches);
-    midia?.addEventListener?.('change', aoMudar);
-    inject(DestroyRef).onDestroy(() => midia?.removeEventListener?.('change', aoMudar));
-
+    acompanharMovimentoReduzido((r) => (this.store.reduzido = r), inject(DestroyRef));
     void this.store.carregar();
   }
 

@@ -164,4 +164,77 @@ BEGIN
     END IF;
 END $$;
 
+-- 8. Sessões do Claude Code (módulo Sessoes) — [[ADR-010 - Sessões do Claude Code (Hooks e Telemetria)]]
+--    Só METADADOS chegam aqui (o coletor filtra no PC): projeto, ferramenta, arquivo/comando resumido, tokens. Sem código, sem prompt.
+
+-- Token de ingestão: o coletor manda no header X-AgentDesk-Token. Guardamos só o hash (SHA-256); o token aparece uma vez na tela.
+CREATE TABLE IF NOT EXISTS tokens_ingestao (
+    token_id       UUID          PRIMARY KEY,
+    usuario_id     UUID          NOT NULL REFERENCES usuarios(usuario_id) ON DELETE CASCADE,
+    nome           VARCHAR(80)   NOT NULL,          -- ex.: "Notebook do trabalho"
+    prefixo        VARCHAR(16)   NOT NULL,          -- "adk_3f9a…" para reconhecer na lista
+    hash_sha256    CHAR(64)      NOT NULL UNIQUE,
+    criado_em      TIMESTAMPTZ   NOT NULL,
+    ultimo_uso_em  TIMESTAMPTZ,
+    revogado_em    TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS ix_tokens_ingestao_usuario ON tokens_ingestao (usuario_id, criado_em DESC);
+
+-- Uma linha por sessão do Claude Code (estado atual, para o Escritório ao vivo)
+CREATE TABLE IF NOT EXISTS cc_sessoes (
+    usuario_id            UUID          NOT NULL REFERENCES usuarios(usuario_id) ON DELETE CASCADE,
+    sessao_id             VARCHAR(100)  NOT NULL,   -- session_id do Claude Code
+    maquina               VARCHAR(80)   NOT NULL,
+    projeto               VARCHAR(120)  NOT NULL,   -- nome da pasta (cwd), nunca o caminho completo
+    projeto_chave         CHAR(12)      NOT NULL,   -- hash do caminho: separa projetos com o mesmo nome de pasta
+    status                VARCHAR(20)   NOT NULL CHECK (status IN ('TRABALHANDO', 'ESPERANDO_VOCE', 'OCIOSA', 'ENCERRADA')),
+    atividade             VARCHAR(200),             -- "Lendo api.ts", "Rodando npm test"...
+    modelo                VARCHAR(80),
+    tokens_entrada        BIGINT        NOT NULL DEFAULT 0,
+    tokens_saida          BIGINT        NOT NULL DEFAULT 0,
+    tokens_cache_leitura  BIGINT        NOT NULL DEFAULT 0,
+    tokens_cache_escrita  BIGINT        NOT NULL DEFAULT 0,
+    custo_usd             NUMERIC(14,6) NOT NULL DEFAULT 0,  -- equivalente na API (a assinatura não cobra por token)
+    pedidos               INTEGER       NOT NULL DEFAULT 0,  -- chamadas ao modelo
+    iniciada_em           TIMESTAMPTZ   NOT NULL,
+    ultima_atividade_em   TIMESTAMPTZ   NOT NULL,
+    encerrada_em          TIMESTAMPTZ,
+    PRIMARY KEY (usuario_id, sessao_id)
+);
+CREATE INDEX IF NOT EXISTS ix_cc_sessoes_atividade ON cc_sessoes (usuario_id, ultima_atividade_em DESC);
+
+-- Linha do tempo de cada sessão (eventos detalhados: guardados 90 dias)
+CREATE TABLE IF NOT EXISTS cc_eventos (
+    evento_id      BIGSERIAL     PRIMARY KEY,
+    usuario_id     UUID          NOT NULL REFERENCES usuarios(usuario_id) ON DELETE CASCADE,
+    sessao_id      VARCHAR(100)  NOT NULL,
+    tipo           VARCHAR(40)   NOT NULL,          -- SessionStart, PreToolUse, Stop... ou api_request (tokens)
+    ferramenta     VARCHAR(80),
+    resumo         VARCHAR(200),
+    modelo         VARCHAR(80),
+    tokens_entrada INTEGER,
+    tokens_saida   INTEGER,
+    tokens_cache_leitura INTEGER,
+    tokens_cache_escrita INTEGER,
+    custo_usd      NUMERIC(14,6),
+    ocorrido_em    TIMESTAMPTZ   NOT NULL
+);
+CREATE INDEX IF NOT EXISTS ix_cc_eventos_sessao ON cc_eventos (usuario_id, sessao_id, ocorrido_em DESC);
+CREATE INDEX IF NOT EXISTS ix_cc_eventos_data ON cc_eventos (ocorrido_em);
+
+-- Totais por dia (Brasília), projeto e modelo: guardados para sempre (a Fase 6 monta o painel em cima disto)
+CREATE TABLE IF NOT EXISTS cc_consumo_diario (
+    usuario_id            UUID          NOT NULL REFERENCES usuarios(usuario_id) ON DELETE CASCADE,
+    dia                   DATE          NOT NULL,
+    projeto               VARCHAR(120)  NOT NULL,
+    modelo                VARCHAR(80)   NOT NULL,
+    pedidos               INTEGER       NOT NULL DEFAULT 0,
+    tokens_entrada        BIGINT        NOT NULL DEFAULT 0,
+    tokens_saida          BIGINT        NOT NULL DEFAULT 0,
+    tokens_cache_leitura  BIGINT        NOT NULL DEFAULT 0,
+    tokens_cache_escrita  BIGINT        NOT NULL DEFAULT 0,
+    custo_usd             NUMERIC(14,6) NOT NULL DEFAULT 0,
+    PRIMARY KEY (usuario_id, dia, projeto, modelo)
+);
+
 COMMIT;

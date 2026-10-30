@@ -47,6 +47,17 @@ export function formatarDolarCompacto(valor: number | null | undefined): string 
   return formatarDolar(valor, Math.abs(valor) >= 1 ? 2 : 4);
 }
 
+/** "agora", "há 3 min", "há 2 h", "há 3 dias" (sem converter fuso: é uma diferença de tempo). */
+export function formatarHaQuanto(iso: string | null | undefined, agora: number = Date.now()): string {
+  if (!iso) return '';
+  const segundos = Math.max(0, Math.round((agora - new Date(iso).getTime()) / 1000));
+  if (segundos < 60) return 'agora';
+  if (segundos < 3600) return `há ${Math.floor(segundos / 60)} min`;
+  if (segundos < 86_400) return `há ${Math.floor(segundos / 3600)} h`;
+  const dias = Math.floor(segundos / 86_400);
+  return `há ${dias} dia${dias === 1 ? '' : 's'}`;
+}
+
 /** "1.234.567" */
 export function formatarNumero(valor: number | null | undefined): string {
   if (valor === null || valor === undefined) return '';

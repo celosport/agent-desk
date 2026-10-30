@@ -42,6 +42,14 @@ Voltar: [[00 - Dashboard]]
 | Integração com a Claude | HttpClient na Infrastructure, contrato no SharedKernel, falso nos testes → [[ADR-006 - Integração com a API da Anthropic]] |
 | Recusa do filtro de segurança | Fallback da Anthropic (`fallbacks: "default"`) ligado por modelo (`fallback_recusa`); recusa final grava RECUSADA com os tokens |
 | Git | `main` + uma branch por fase (`feat/fase-N-...`) |
+| **Modo Claude Code** (pedido em 2026-10-30, inspirado no Habblaud) | Acompanhar as sessões reais do Claude Code (assinatura) no Escritório e no Consumo → [[ADR-010 - Sessões do Claude Code (Hooks e Telemetria)]] |
+| Onde os eventos chegam | No AgentDesk do **Railway** (HTTPS + token de ingestão por usuário); funciona de qualquer máquina |
+| Codex | Fora por agora; formato de evento preparado para incluir depois |
+| O que sai do PC | Só **metadados** (projeto, ferramenta, arquivo/comando resumido, tokens, custo); **sem código e sem texto dos prompts** |
+| Várias máquinas | Sim: cada máquina com um nome, mesmo token |
+| Automações via API | Continuam; o painel separa "Sessões do Claude Code (assinatura)" de "Automações (API)" |
+| Ordem | Fase 5: ingestão + Escritório ao vivo · Fase 6: painel de tokens + dicas · Fase 7: moedas |
+| Retenção | Eventos detalhados 90 dias; totais por dia/projeto/modelo para sempre |
 <!-- RESPOSTAS:FIM -->
 
 ## 1. Produto e negócio

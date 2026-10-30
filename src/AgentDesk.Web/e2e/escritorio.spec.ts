@@ -11,6 +11,7 @@ async function prepararEscritorio(page: Page): Promise<void> {
   await expect(page.getByTestId('chave-mascarada')).toBeVisible();
   await page.getByRole('navigation', { name: 'Principal' }).getByRole('link', { name: 'Escritório' }).click();
   await expect(page.getByRole('heading', { name: 'Escritório', level: 1 })).toBeVisible();
+  await page.getByRole('tab', { name: 'Automações' }).click(); // a sala do Claude Code abre primeiro
 }
 
 const agente = (page: Page, apelido: string) => page.getByRole('list', { name: 'Agentes' }).getByRole('button', { name: new RegExp(apelido) });
@@ -57,6 +58,7 @@ test('com movimento reduzido o robô não anda: aparece pensando na mesa', async
 test('erro aparece no balão do robô e, sem chave, leva para Configurações', async ({ page }) => {
   await entrarComo(page, 'usuario');
   await page.getByRole('navigation', { name: 'Principal' }).getByRole('link', { name: 'Escritório' }).click();
+  await page.getByRole('tab', { name: 'Automações' }).click();
 
   await agente(page, 'Bit').click();
   await page.getByLabel(/Pedido para Bit/).fill('function x() {}');

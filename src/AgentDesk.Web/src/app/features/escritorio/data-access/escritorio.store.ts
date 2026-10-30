@@ -2,6 +2,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { codigoDeErro, mensagemDeErro } from '../../../core/http/problema';
 import { formatarDolarCompacto, formatarNumero } from '../../../shared/util/formatos';
 import { Agente, Balao, avancar, concluirTarefa, descreverFase, iniciarTarefa, novoAgente, ocupado } from '../motor/agente';
+import { FonteCena } from '../motor/fonte-cena';
 import { MAXIMO_AGENTES, lugarDe, personagemDe } from '../motor/personagens';
 import { EscritorioApi } from './escritorio.api';
 import { AutomacaoAgente, ExecucaoResumo } from './escritorio.models';
@@ -28,7 +29,7 @@ export interface StatusAgente {
  * `versao` só muda quando a fase ou o balão de alguém muda — é isso que a parte em HTML (balões, lista, aria-live) escuta.
  */
 @Injectable()
-export class EscritorioStore {
+export class EscritorioStore implements FonteCena {
   private readonly api = inject(EscritorioApi);
 
   /** Relógio da animação (ms). Trocável nos testes. */
@@ -63,6 +64,11 @@ export class EscritorioStore {
     });
   });
 
+  /** Descrição da sala para leitores de tela. */
+  readonly descricao = computed(
+    () => `Escritório em pixel art com ${this.status().length} agentes: ` + this.status().map((s) => `${s.apelido} (${s.automacao}), ${s.status}`).join('; '),
+  );
+
   readonly selecionadoStatus = computed(() => this.status().find((s) => s.codigo === this.selecionado()) ?? null);
 
   async carregar(): Promise<void> {
@@ -82,6 +88,10 @@ export class EscritorioStore {
     } finally {
       this.carregando.set(false);
     }
+  }
+
+  selecionar(codigo: string): void {
+    this.selecionado.set(codigo);
   }
 
   /** Um quadro da animação. */

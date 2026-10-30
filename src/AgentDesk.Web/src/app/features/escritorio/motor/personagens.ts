@@ -51,27 +51,67 @@ export const PERSONAGENS: Record<string, Personagem> = {
   'resumir-documento': { apelido: 'Sumi', paleta: { ...base, a: '#ff8787', b: '#f76707', d: '#fff3bf', f: '#d9480f', g: '#ffe066' } },
 };
 
-const PADRAO: Personagem = { apelido: 'Agente', paleta: { ...base, a: '#ced4da', b: '#868e96', d: '#e9ecef', f: '#495057', g: '#f1f3f5' } };
+/** Cores dos robôs sem visual próprio (sessões do Claude Code, automações novas): escolhidas pelo hash do código. */
+const CORES: [string, string, string, string][] = [
+  // cabeça, corpo, antena/crachá, olhos
+  ['#7950f2', '#5f3dc4', '#ffd43b', '#e5dbff'],
+  ['#1c7ed6', '#1864ab', '#ff922b', '#d0ebff'],
+  ['#e64980', '#a61e4d', '#ffe066', '#ffdeeb'],
+  ['#0ca678', '#087f5b', '#ffd8a8', '#c3fae8'],
+  ['#f59f00', '#e67700', '#748ffc', '#fff3bf'],
+  ['#15aabf', '#0b7285', '#ff8787', '#c5f6fa'],
+  ['#868e96', '#495057', '#ced4da', '#f1f3f5'],
+  ['#d6336c', '#862e9c', '#63e6be', '#fcc2d7'],
+];
 
-export function personagemDe(codigo: string): Personagem {
-  return PERSONAGENS[codigo] ?? PADRAO;
+/** Apelidos para as sessões do Claude Code (estáveis: o mesmo id sempre dá o mesmo robô). */
+const APELIDOS = ['Ada', 'Bolt', 'Cubo', 'Dido', 'Eco', 'Faísca', 'Giro', 'Hertz', 'Íris', 'Jato', 'Kiwi', 'Luma', 'Mola', 'Nina', 'Ohm', 'Pixel'];
+
+export function hashDe(texto: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < texto.length; i++) h = Math.imul(h ^ texto.charCodeAt(i), 16777619);
+  return h >>> 0;
 }
 
-/** Até 3 mesas na fileira de trás; cada agente tem o seu canto na frente da sala (o "lounge"). */
+export function paletaDe(semente: string): Paleta {
+  const [b, f, ag, d] = CORES[hashDe(semente) % CORES.length];
+  return { ...base, a: ag, b, d, f, g: ag };
+}
+
+export function apelidoDeSessao(sessaoId: string): string {
+  return APELIDOS[hashDe(`apelido:${sessaoId}`) % APELIDOS.length];
+}
+
+export function personagemDe(codigo: string): Personagem {
+  return PERSONAGENS[codigo] ?? { apelido: 'Agente', paleta: paletaDe(codigo) };
+}
+
+/**
+ * Até 8 mesas em duas fileiras: a de trás nos x ímpares e a do meio nos x pares, para cada agente ter um corredor livre
+ * até a sua mesa (a rota sobe pela coluna dele). Cada agente tem o seu canto na frente da sala (o "lounge").
+ */
 const MESAS: Ponto[] = [
   { x: 1, y: 2 },
   { x: 3, y: 2 },
   { x: 5, y: 2 },
   { x: 7, y: 2 },
+  { x: 0, y: 4 },
+  { x: 2, y: 4 },
+  { x: 4, y: 4 },
+  { x: 6, y: 4 },
 ];
 const CANTOS: Ponto[] = [
   { x: 5, y: 6 },
   { x: 1, y: 6 },
   { x: 3, y: 7 },
   { x: 7, y: 6 },
+  { x: 6, y: 7 },
+  { x: 0, y: 6 },
+  { x: 2, y: 6 },
+  { x: 4, y: 6 },
 ];
 
-/** Lugar da i-ésima automação (na ordem da API). Mais de 4 automações reaproveitam os lugares. */
+/** Lugar da i-ésima posição da sala. Mais de 8 reaproveitam os lugares (a página mostra só 8 por sala). */
 export function lugarDe(indice: number): { mesa: Ponto; canto: Ponto } {
   return { mesa: MESAS[indice % MESAS.length], canto: CANTOS[indice % CANTOS.length] };
 }

@@ -96,7 +96,7 @@ app.UseHttpsRedirection();
 // Produção (Railway): o mesmo serviço entrega o app Angular de wwwroot — mesma origem, sem CORS.
 // Arquivos com hash no nome (main-AB12CD34.js) ficam em cache por 1 ano; index.html e o service worker, nunca.
 // Em desenvolvimento o app roda no ng serve (http://localhost:4210) via SPA Proxy — [[ADR-003 - Frontend Junto da API (SPA Proxy)]].
-app.UseStaticFiles(new StaticFileOptions { OnPrepareResponse = CacheDoApp.Aplicar });
+app.UseStaticFiles(new StaticFileOptions { OnPrepareResponse = CacheDoApp.Aplicar, ContentTypeProvider = CacheDoApp.TiposDeArquivo });
 
 app.UseAuthentication();
 app.UseAuthorization();
@@ -123,6 +123,16 @@ public partial class Program { }
 /// <summary>Cache do app Angular: arquivo com hash = imutável por 1 ano; o resto (index.html, ngsw.json) sempre revalida.</summary>
 internal static partial class CacheDoApp
 {
+    /// <summary>Tipos padrão + .mjs (o coletor do Claude Code, baixado em /coletor/agentdesk-coletor.mjs).</summary>
+    public static readonly Microsoft.AspNetCore.StaticFiles.FileExtensionContentTypeProvider TiposDeArquivo = CriarTipos();
+
+    private static Microsoft.AspNetCore.StaticFiles.FileExtensionContentTypeProvider CriarTipos()
+    {
+        var tipos = new Microsoft.AspNetCore.StaticFiles.FileExtensionContentTypeProvider();
+        tipos.Mappings[".mjs"] = "text/javascript";
+        return tipos;
+    }
+
     [GeneratedRegex(@"-[A-Za-z0-9_-]{8}\.(js|css)$")]
     private static partial Regex ArquivoComHash();
 

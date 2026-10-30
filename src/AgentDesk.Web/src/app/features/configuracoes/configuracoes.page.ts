@@ -4,6 +4,7 @@ import { AuthStore } from '../../core/auth/auth.store';
 import { Avisos } from '../../core/ui/avisos.service';
 import { formatarDolar } from '../../shared/util/formatos';
 import { ConfiguracoesStore, ResultadoTeste } from './data-access/configuracoes.store';
+import { ConexaoClaude } from './conexao-claude.component';
 import { ModelosPrecos, numero } from './modelos-precos.component';
 
 /**
@@ -12,7 +13,7 @@ import { ModelosPrecos, numero } from './modelos-precos.component';
  */
 @Component({
   selector: 'app-configuracoes',
-  imports: [ReactiveFormsModule, ModelosPrecos],
+  imports: [ReactiveFormsModule, ConexaoClaude, ModelosPrecos],
   providers: [ConfiguracoesStore],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -100,6 +101,8 @@ import { ModelosPrecos, numero } from './modelos-precos.component';
             <p class="ui-erro" role="alert">{{ erroPreferencias() }}</p>
           }
         </section>
+
+        <app-conexao-claude />
 
         @if (ehAdmin()) {
           <app-modelos-precos />

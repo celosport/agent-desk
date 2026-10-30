@@ -1,4 +1,4 @@
-import { formatarData, formatarDataHora, formatarDolar, formatarDolarCompacto, formatarMoeda, formatarNumero } from './formatos';
+import { formatarData, formatarDataHora, formatarDolar, formatarDolarCompacto, formatarHaQuanto, formatarMoeda, formatarNumero } from './formatos';
 
 describe('formatos pt-BR', () => {
   it('datas da API (UTC) aparecem no horário de Brasília', () => {
@@ -23,6 +23,14 @@ describe('formatos pt-BR', () => {
   it('dólar compacto: 2 casas a partir de US$ 1, 4 abaixo', () => {
     expect(formatarDolarCompacto(12.3456).replace(/\s/g, ' ')).toBe('US$ 12,35');
     expect(formatarDolarCompacto(0.570333).replace(/\s/g, ' ')).toBe('US$ 0,5703');
+  });
+
+  it('há quanto tempo', () => {
+    const agora = new Date('2026-10-30T12:00:00Z').getTime();
+    expect(formatarHaQuanto('2026-10-30T11:59:30Z', agora)).toBe('agora');
+    expect(formatarHaQuanto('2026-10-30T11:57:00Z', agora)).toBe('há 3 min');
+    expect(formatarHaQuanto('2026-10-30T09:00:00Z', agora)).toBe('há 3 h');
+    expect(formatarHaQuanto('2026-10-29T12:00:00Z', agora)).toBe('há 1 dia');
   });
 
   it('números com separador de milhar', () => {

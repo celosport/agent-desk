@@ -17,6 +17,9 @@ import { Chamada, StatusChamada } from '../../features/consumo/data-access/consu
  * Consumo: começa com chamadas de exemplo nos últimos 20 dias (nenhuma hoje) da Maria e de outra usuária (para o "Todos"
  * do ADMIN); as execuções da sessão entram por cima. Só as execuções da sessão contam para o limite mensal.
  *
+ * Sessões do Claude Code: duas salas de demonstração ("app-mobile" e "api-pagamentos") com atividades que se revezam a cada
+ * 4 s; uma sessão do app-mobile fica sempre "precisando de você". Tokens de ingestão ficam em memória.
+ *
  * API key falsa (Configuracoes): qualquer "sk-ant-..." com 20+ caracteres é aceita; o teste da chave responde pelo final —
  * "...INVALIDA" = Anthropic.ChaveInvalida (422), "...FORA" = Anthropic.Indisponivel (503), outra = válida.
  */
@@ -49,6 +52,65 @@ let automacoes: Automacao[] = [
   automacaoMock('a1e5c1a0-0000-4000-8000-000000000003', 'resumir-documento', 'Resumir Documento',
     'Resume um documento longo em tópicos, com as decisões e os números importantes.', 'claude-haiku-5-5', 4000),
 ];
+// ---- Sessões do Claude Code (ao vivo, demonstração) ----
+interface TokenMock {
+  tokenId: string;
+  nome: string;
+  prefixo: string;
+  criadoEm: string;
+  revogadoEm?: string;
+}
+let tokensIngestao: TokenMock[] = [];
+
+const ROTEIROS: { projeto: string; chave: string; sessaoId: string; maquina: string; modelo: string; passos: [string, string][] }[] = [
+  {
+    projeto: 'app-mobile', chave: 'a0b1c2d3e4f5', sessaoId: 'demo-sessao-1', maquina: 'Notebook', modelo: 'claude-opus-5-5',
+    passos: [['TRABALHANDO', '📖 Lendo api.ts'], ['TRABALHANDO', '✏️ Editando Profile.tsx'], ['TRABALHANDO', '💻 Rodando npm test'], ['OCIOSA', '✅ Terminou']],
+  },
+  {
+    projeto: 'app-mobile', chave: 'a0b1c2d3e4f5', sessaoId: 'demo-sessao-2', maquina: 'Notebook', modelo: 'claude-sonnet-5-5',
+    passos: [['ESPERANDO_VOCE', '✋ Precisa de você: aprovar permissão']],
+  },
+  {
+    projeto: 'app-mobile', chave: 'a0b1c2d3e4f5', sessaoId: 'demo-sessao-3', maquina: 'Desktop', modelo: 'claude-opus-5-5',
+    passos: [['TRABALHANDO', '🔎 Procurando “SortMenu”'], ['TRABALHANDO', '👥 Chamando subagente Explore'], ['TRABALHANDO', '💭 Pensando…']],
+  },
+  {
+    projeto: 'api-pagamentos', chave: 'f5e4d3c2b1a0', sessaoId: 'demo-sessao-4', maquina: 'Desktop', modelo: 'claude-haiku-5-5',
+    passos: [['TRABALHANDO', '💻 Rodando dotnet test'], ['OCIOSA', '⏳ Esperando o seu próximo pedido']],
+  },
+];
+
+function aoVivoMock() {
+  const passo = Math.floor((Date.now() - agora) / 4000);
+  const sessoes = ROTEIROS.map((r, i) => {
+    const [status, atividade] = r.passos[(passo + i) % r.passos.length];
+    const pedidos = 12 + passo * (i + 1);
+    return {
+      projeto: r.projeto,
+      chave: r.chave,
+      sessao: {
+        sessaoId: r.sessaoId,
+        maquina: r.maquina,
+        status,
+        atividade,
+        modelo: r.modelo,
+        tokens: pedidos * 41_000,
+        tokensCacheLeitura: pedidos * 36_000,
+        custoUsd: Math.round(pedidos * (r.modelo.includes('haiku') ? 0.004 : 0.09) * 1e4) / 1e4,
+        pedidos,
+        iniciadaEm: new Date(agora - (i + 1) * 1_800_000).toISOString(),
+        ultimaAtividadeEm: new Date(Date.now() - 5000).toISOString(),
+      },
+    };
+  });
+  const projetos = [...new Set(sessoes.map((s) => s.chave))].map((chave) => {
+    const daSala = sessoes.filter((s) => s.chave === chave);
+    return { chave, nome: daSala[0].projeto, sessoes: daSala.map((s) => s.sessao) };
+  });
+  return { projetos, atualizadoEm: new Date().toISOString() };
+}
+
 // ---- Consumo ----
 interface ChamadaMock extends Chamada {
   usuarioId: string;
@@ -445,6 +507,27 @@ function responder(req: HttpRequest<unknown>, url: URL): Observable<HttpResponse
     };
     automacoes = automacoes.map((a) => (a.automacaoId === atual.automacaoId ? atualizada : a));
     return ok(atualizada);
+  }
+
+  // ---- Sessões do Claude Code ----
+  if (c === '/api/v1/sessoes/ao-vivo' && req.method === 'GET') return ok(aoVivoMock());
+  if (c === '/api/v1/sessoes/tokens' && req.method === 'GET') return ok(tokensIngestao);
+  if (c === '/api/v1/sessoes/tokens' && req.method === 'POST') {
+    const nome = String(corpo['nome'] ?? '').trim();
+    if (!nome) return invalido({ nome: ['Dê um nome para reconhecer a máquina (ex.: Notebook do trabalho).'] });
+    if (tokensIngestao.filter((t) => !t.revogadoEm).length >= 10)
+      return erro(409, 'Sessoes.LimiteDeTokens', 'Você já tem 10 tokens ativos. Revogue um que não use mais.');
+    const segredo = `adk_mock${crypto.randomUUID().replace(/-/g, '')}`;
+    const token: TokenMock = { tokenId: crypto.randomUUID(), nome, prefixo: segredo.slice(0, 12), criadoEm: new Date().toISOString() };
+    tokensIngestao = [token, ...tokensIngestao];
+    return ok({ token, segredo }, 201);
+  }
+  const revogarToken = c.match(/^\/api\/v1\/sessoes\/tokens\/([^/]+)$/);
+  if (revogarToken && req.method === 'DELETE') {
+    const token = tokensIngestao.find((t) => t.tokenId === revogarToken[1] && !t.revogadoEm);
+    if (!token) return erro(404, 'Sessoes.TokenNaoEncontrado', 'Token não encontrado.');
+    tokensIngestao = tokensIngestao.map((t) => (t === token ? { ...t, revogadoEm: new Date().toISOString() } : t));
+    return ok(null, 204);
   }
 
   // ---- Consumo ----

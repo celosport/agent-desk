@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- MODULO: Sessoes (sessões do Claude Code ao vivo: tokens de ingestão, eventos dos hooks e da telemetria). Módulos NUNCA referenciam outros módulos: comunicação apenas via SharedKernel/contratos. -->
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Dapper" />
+    <PackageReference Include="FluentValidation" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Os testes de integração chamam a rotina de limpeza direto (ela fica desligada no host de testes) -->
+    <InternalsVisibleTo Include="AgentDesk.IntegrationTests" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\BuildingBlocks\AgentDesk.SharedKernel\AgentDesk.SharedKernel.csproj" />
+  </ItemGroup>
+</Project>

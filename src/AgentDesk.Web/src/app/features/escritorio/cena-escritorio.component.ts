@@ -6,12 +6,13 @@ import {
   afterNextRender,
   computed,
   inject,
+  input,
   signal,
   viewChild,
 } from '@angular/core';
 import { TemaApp } from '../../core/tema/tema';
-import { EscritorioStore } from './data-access/escritorio.store';
 import { PALETAS, agenteEm, ancoraDoBalao, desenharSala } from './motor/desenho';
+import { FonteCena } from './motor/fonte-cena';
 import { CENA_A, CENA_L, escalaPara } from './motor/iso';
 import { personagemDe } from './motor/personagens';
 
@@ -19,7 +20,7 @@ import { personagemDe } from './motor/personagens';
  * A sala em pixel art isométrica (Canvas 2D, escala inteira para ficar nítida). O desenho roda em requestAnimationFrame
  * (o navegador já pausa com a aba escondida) e para quando o componente sai da tela. Os balões são HTML por cima do canvas:
  * texto nítido em qualquer escala. O que acontece também é anunciado pela página (aria-live), então o canvas é decorativo
- * para leitores de tela, com uma descrição curta.
+ * para leitores de tela, com uma descrição curta. Serve as duas salas: automações e sessões do Claude Code (via FonteCena).
  */
 @Component({
   selector: 'app-cena-escritorio',
@@ -53,6 +54,9 @@ import { personagemDe } from './motor/personagens';
     .balao.resultado::after { border-color: var(--ui-verde); }
     .balao.erro { border-color: var(--ui-vermelho); box-shadow: 0 2px 0 var(--ui-vermelho); }
     .balao.erro::after { border-color: var(--ui-vermelho); }
+    .balao.atividade { font-weight: 600; }
+    .balao.alerta { border-color: #f08c00; box-shadow: 0 2px 0 #f08c00; background: var(--ui-alerta-fundo); }
+    .balao.alerta::after { border-color: #f08c00; }
     .pontos i { font-style: normal; animation: pulo 1.2s infinite; display: inline-block; }
     .pontos i:nth-child(2) { animation-delay: 0.2s; }
     .pontos i:nth-child(3) { animation-delay: 0.4s; }
@@ -61,7 +65,10 @@ import { personagemDe } from './motor/personagens';
   `,
 })
 export class CenaEscritorio {
-  private readonly store = inject(EscritorioStore);
+  readonly fonte = input.required<FonteCena>();
+  /** Descrição da cena para leitores de tela (quem está na sala e fazendo o quê). */
+  readonly descricao = input('Escritório em pixel art');
+
   private readonly tema = inject(TemaApp);
   private readonly host = inject(ElementRef<HTMLElement>).nativeElement as HTMLElement;
   private readonly tela = viewChild.required<ElementRef<HTMLCanvasElement>>('tela');
@@ -70,20 +77,12 @@ export class CenaEscritorio {
   protected readonly larguraCss = computed(() => CENA_L * this.escala());
   protected readonly alturaCss = computed(() => CENA_A * this.escala());
 
-  protected readonly descricao = computed(
-    () =>
-      `Escritório em pixel art com ${this.store.status().length} agentes: ` +
-      this.store
-        .status()
-        .map((s) => `${s.apelido} (${s.automacao}), ${s.status}`)
-        .join('; '),
-  );
-
   /** Balões só mudam quando muda a fase ou o balão de alguém (store.versao); ficam sobre a cabeça, na mesa. */
   protected readonly baloes = computed(() => {
-    this.store.versao();
+    const fonte = this.fonte();
+    fonte.versao();
     const escala = this.escala();
-    return this.store.agentes
+    return fonte.agentes
       .filter((a) => a.balao && a.fase !== 'INDO' && a.fase !== 'VOLTANDO')
       .map((a) => {
         const p = ancoraDoBalao(a);
@@ -116,8 +115,9 @@ export class CenaEscritorio {
       const desenhar = (agora: number) => {
         const dt = Math.min(100, agora - anterior); // aba que volta do segundo plano não "teleporta" o agente
         anterior = agora;
-        this.store.passo(dt);
-        desenharSala(ctx, this.store.agentes, PALETAS[this.tema.tema()], { agora, reduzido: this.store.reduzido }, this.store.selecionado());
+        const fonte = this.fonte();
+        fonte.passo(dt);
+        desenharSala(ctx, fonte.agentes, PALETAS[this.tema.tema()], { agora, reduzido: fonte.reduzido }, fonte.selecionado());
         quadro = requestAnimationFrame(desenhar);
       };
       quadro = requestAnimationFrame(desenhar);
@@ -133,8 +133,9 @@ export class CenaEscritorio {
   protected clicar(evento: MouseEvent): void {
     const caixa = this.tela().nativeElement.getBoundingClientRect();
     const escala = caixa.width / CENA_L;
-    const agente = agenteEm(this.store.agentes, { x: (evento.clientX - caixa.left) / escala, y: (evento.clientY - caixa.top) / escala });
-    if (agente) this.store.selecionado.set(agente.codigo);
+    const fonte = this.fonte();
+    const agente = agenteEm(fonte.agentes, { x: (evento.clientX - caixa.left) / escala, y: (evento.clientY - caixa.top) / escala });
+    if (agente) fonte.selecionar(agente.codigo);
   }
 }
 
