@@ -1,0 +1,45 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <!-- Host / Composition Root: o único projeto que conhece todos os módulos. [[ADR-001 - Monolito Modular]] -->
+  <PropertyGroup>
+    <RootNamespace>AgentDesk.API</RootNamespace>
+    <UserSecretsId>agentdesk-api-dev</UserSecretsId>
+  </PropertyGroup>
+
+  <!--
+    Subir a API em desenvolvimento (F5 no Visual Studio, "dotnet run", VS Code) também sobe o app Angular:
+    o SPA Proxy roda "npm run start:com-api" em src/AgentDesk.Web (ou reaproveita um que já esteja no ar em :4200) e o
+    navegador é levado para o app. Ativado SÓ pelo perfil de launchSettings.json (ASPNETCORE_HOSTINGSTARTUPASSEMBLIES):
+    produção e testes de integração não são afetados. [[ADR-003 - Frontend Junto da API (SPA Proxy)]]
+    O script scripts/iniciar-com-api.mjs confere a versão do Node e, se algo falhar, deixa a janela aberta com o motivo
+    (o SPA Proxy só registraria "Couldn't start the SPA development server").
+  -->
+  <PropertyGroup>
+    <SpaRoot>..\..\AgentDesk.Web\</SpaRoot>
+    <SpaProxyLaunchCommand>npm run start:com-api</SpaProxyLaunchCommand>
+    <SpaProxyServerUrl>http://localhost:4210</SpaProxyServerUrl>
+    <SpaProxyTimeoutInSeconds>180</SpaProxyTimeoutInSeconds>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Swashbuckle.AspNetCore" />
+    <PackageReference Include="Microsoft.AspNetCore.SpaProxy" />
+  </ItemGroup>
+
+  <!-- 1ª execução (Debug): instala as dependências do app se faltar node_modules. Sem Node.js, só avisa e a API sobe sozinha. -->
+  <Target Name="GarantirDependenciasDoApp" BeforeTargets="Build"
+          Condition=" '$(Configuration)' == 'Debug' And '$(CI)' != 'true' And Exists('$(SpaRoot)package.json') And !Exists('$(SpaRoot)node_modules') ">
+    <Exec Command="node --version" ContinueOnError="true" StandardOutputImportance="low">
+      <Output TaskParameter="ExitCode" PropertyName="CodigoNode" />
+    </Exec>
+    <Warning Condition=" '$(CodigoNode)' != '0' "
+             Text="Node.js não encontrado: a API vai subir, mas o app Angular não. Instale o Node.js 22.22.3+ ou 24.15+ (https://nodejs.org) e execute de novo." />
+    <Message Condition=" '$(CodigoNode)' == '0' " Importance="high" Text="Instalando as dependências do app (npm install). Só na primeira vez; pode levar alguns minutos…" />
+    <Exec Condition=" '$(CodigoNode)' == '0' " WorkingDirectory="$(SpaRoot)" Command="npm install" />
+  </Target>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\BuildingBlocks\AgentDesk.Infrastructure\AgentDesk.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Modules\Contas\AgentDesk.Modules.Contas\AgentDesk.Modules.Contas.csproj" />
+    <ProjectReference Include="..\..\Modules\Tarefas\AgentDesk.Modules.Tarefas\AgentDesk.Modules.Tarefas.csproj" />
+  </ItemGroup>
+</Project>

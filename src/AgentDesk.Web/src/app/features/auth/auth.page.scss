@@ -1,0 +1,35 @@
+:host {
+  display: grid;
+  min-height: 100dvh;
+  place-items: center;
+  padding: calc(var(--ui-e5) + var(--ui-seguro-topo)) var(--ui-e4) var(--ui-e5);
+}
+
+.tema {
+  position: fixed;
+  top: calc(var(--ui-e3) + var(--ui-seguro-topo));
+  right: var(--ui-e3);
+}
+
+.cartao {
+  width: min(100%, 400px);
+  display: grid;
+  gap: var(--ui-e5);
+}
+
+.marca {
+  font-size: var(--ui-t-xl);
+  font-weight: 750;
+  color: var(--ui-marca-tinta);
+}
+
+form {
+  display: grid;
+  gap: var(--ui-e4);
+}
+
+.rodape {
+  text-align: center;
+  font-size: var(--ui-t-sm);
+  color: var(--ui-texto-2);
+}

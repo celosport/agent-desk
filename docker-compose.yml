@@ -1,0 +1,52 @@
+# AgentDesk — ambiente local:  docker compose up -d
+# PostgreSQL → localhost:5434 | pgAdmin → http://localhost:5050 | E-mails (Mailpit) → http://localhost:8025
+# O schema.sql roda só na PRIMEIRA subida (volume vazio). Recriar do zero: docker compose down -v && docker compose up -d
+name: agentdesk
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: agentdesk-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-agentdesk}
+      POSTGRES_USER: ${POSTGRES_USER:-agentdesk}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-agentdesk_dev}
+      PGTZ: UTC                      # TIMESTAMPTZ sempre armazenado/servido em UTC
+    ports:
+      - "${POSTGRES_PORT:-5434}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./database/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  pgadmin:
+    image: dpage/pgadmin4:8
+    container_name: agentdesk-pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@agentdesk.dev}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin}
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
+    ports:
+      - "${PGADMIN_PORT:-5050}:80"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  mailpit:
+    image: axllent/mailpit:v1.21
+    container_name: agentdesk-mailpit
+    restart: unless-stopped
+    ports:
+      - "${MAILPIT_SMTP_PORT:-1025}:1025"
+      - "${MAILPIT_WEB_PORT:-8025}:8025"
+
+volumes:
+  pgdata:

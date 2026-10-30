@@ -1,0 +1,16 @@
+{
+  "newFileLocation": "current",
+  "newLinkFormat": "shortest",
+  "useMarkdownLinks": false,
+  "alwaysUpdateLinks": true,
+  "showUnsupportedFiles": false,
+  "userIgnoreFilters": [
+    "/node_modules/",
+    "/bin/",
+    "/obj/",
+    "/dist/",
+    "/\\.angular/",
+    "/test-results/",
+    "/playwright-report/"
+  ]
+}

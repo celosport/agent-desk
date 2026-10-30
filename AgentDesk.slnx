@@ -1,0 +1,38 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/AgentDesk.Web/" Type="Website" DisplayName="AgentDesk.Web">
+      <BuildType Project="Debug" />
+      <Properties Name="WebsiteProperties">
+        <Property Name="Debug.AspNetCompiler.Debug" Value="&quot;True&quot;" />
+        <Property Name="Debug.AspNetCompiler.FixedNames" Value="&quot;false&quot;" />
+        <Property Name="Debug.AspNetCompiler.ForceOverwrite" Value="&quot;true&quot;" />
+        <Property Name="Debug.AspNetCompiler.PhysicalPath" Value="&quot;src\AgentDesk.Web\&quot;" />
+        <Property Name="Debug.AspNetCompiler.TargetPath" Value="&quot;PrecompiledWeb\localhost_52968\&quot;" />
+        <Property Name="Debug.AspNetCompiler.Updateable" Value="&quot;true&quot;" />
+        <Property Name="Debug.AspNetCompiler.VirtualPath" Value="&quot;/localhost_52968&quot;" />
+        <Property Name="Release.AspNetCompiler.Debug" Value="&quot;False&quot;" />
+        <Property Name="Release.AspNetCompiler.FixedNames" Value="&quot;false&quot;" />
+        <Property Name="Release.AspNetCompiler.ForceOverwrite" Value="&quot;true&quot;" />
+        <Property Name="Release.AspNetCompiler.PhysicalPath" Value="&quot;src\AgentDesk.Web\&quot;" />
+        <Property Name="Release.AspNetCompiler.TargetPath" Value="&quot;PrecompiledWeb\localhost_52968\&quot;" />
+        <Property Name="Release.AspNetCompiler.Updateable" Value="&quot;true&quot;" />
+        <Property Name="Release.AspNetCompiler.VirtualPath" Value="&quot;/localhost_52968&quot;" />
+        <Property Name="VWDPort" Value="&quot;52968&quot;" />
+      </Properties>
+    </Project>
+  </Folder>
+  <Folder Name="/src/BuildingBlocks/">
+    <Project Path="src/BuildingBlocks/AgentDesk.SharedKernel/AgentDesk.SharedKernel.csproj" />
+    <Project Path="src/BuildingBlocks/AgentDesk.Infrastructure/AgentDesk.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/src/Host/">
+    <Project Path="src/Host/AgentDesk.API/AgentDesk.API.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/">
+    <Project Path="src/Modules/Contas/AgentDesk.Modules.Contas/AgentDesk.Modules.Contas.csproj" />
+    <Project Path="src/Modules/Tarefas/AgentDesk.Modules.Tarefas/AgentDesk.Modules.Tarefas.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/AgentDesk.IntegrationTests/AgentDesk.IntegrationTests.csproj" />
+  </Folder>
+</Solution>

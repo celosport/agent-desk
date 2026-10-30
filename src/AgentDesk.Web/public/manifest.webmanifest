@@ -1,0 +1,16 @@
+{
+  "name": "Agent Desk",
+  "short_name": "Agent Desk",
+  "description": "Painel de consumo e automações com a API da Claude, com escritório animado dos agentes",
+  "lang": "pt-BR",
+  "display": "standalone",
+  "scope": "/",
+  "start_url": "/",
+  "theme_color": "#3b5bdb",
+  "background_color": "#f6f7f9",
+  "icons": [
+    { "src": "icons/icon-192x192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512x512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512x512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

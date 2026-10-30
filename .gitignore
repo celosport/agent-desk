@@ -1,0 +1,17 @@
+bin/
+obj/
+.vs/
+.idea/
+*.user
+.env
+TestResults/
+App_Data/
+node_modules/
+dist/
+.angular/
+playwright-report/
+test-results/
+# Obsidian: estado da janela (abas abertas) muda a cada uso
+docs/obsidian/.obsidian/workspace.json
+docs/obsidian/.obsidian/workspaces.json
+docs/obsidian/.trash/

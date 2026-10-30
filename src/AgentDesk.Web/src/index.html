@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <title>Agent Desk</title>
+    <base href="/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <!-- Celular: não transformar datas, números, endereços e e-mails em links -->
+    <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
+    <meta name="theme-color" content="#f6f7f9" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#14161b" media="(prefers-color-scheme: dark)" />
+    <script>
+      // Tema escolhido pelo usuário (core/tema/tema.ts), aplicado antes de o app abrir para não piscar
+      try { var t = localStorage.getItem('agentdesk.tema'); if (t === 'claro' || t === 'escuro') document.documentElement.setAttribute('data-tema', t); } catch (e) {}
+    </script>
+    <meta name="description" content="Painel de consumo e automações com a API da Claude, com escritório animado dos agentes" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Agent Desk" />
+    <meta property="og:title" content="Agent Desk" />
+    <meta property="og:description" content="Painel de consumo e automações com a API da Claude, com escritório animado dos agentes" />
+    <meta property="og:image" content="/icons/icon-512x512.png" />
+    <meta property="og:locale" content="pt_BR" />
+    <link rel="icon" type="image/svg+xml" href="icons/icone.svg" />
+    <link rel="icon" type="image/png" href="icons/icon-192x192.png" />
+    <link rel="apple-touch-icon" href="icons/icon-192x192.png" />
+    <link rel="manifest" href="manifest.webmanifest" />
+  </head>
+  <body>
+    <app-root></app-root>
+    <noscript>Ative o JavaScript para usar o Agent Desk.</noscript>
+  </body>
+</html>

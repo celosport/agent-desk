@@ -1,0 +1,15 @@
+**/bin
+**/obj
+**/node_modules
+**/dist
+**/.angular
+**/playwright-report
+**/test-results
+.git
+.github
+.vs
+tests
+docs
+*.md
+.env
+**/appsettings.Development.json

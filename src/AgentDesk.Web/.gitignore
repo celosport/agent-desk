@@ -1,0 +1,34 @@
+# Build
+/dist
+/tmp
+/out-tsc
+
+# Node
+/node_modules
+npm-debug.log
+
+# IDEs
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# Angular
+/.angular/cache
+/coverage
+__screenshots__/
+
+# Playwright (E2E)
+/playwright-report
+/test-results
+/blob-report
+/playwright/.cache
+
+# Sistema
+.DS_Store
+Thumbs.db
+
+# Gerado pelo Visual Studio ao abrir a pasta como "Web Site" (o app Angular não usa)
+/Web.config

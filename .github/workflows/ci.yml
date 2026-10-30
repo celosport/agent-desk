@@ -1,0 +1,91 @@
+# Integração contínua — [[Deploy (Railway)]] · [[Frontend (Angular PWA)]]
+# Em todo push nas branches de ambiente e em todo pull request. Três jobs em paralelo:
+#   backend  → compila a solução .NET e roda os testes de integração (PostgreSQL via Testcontainers)
+#   frontend → testes unitários (Vitest), tipos dos E2E e build de produção (budgets)
+#   e2e      → Playwright nos fluxos principais (computador + celular), sobre o build com service worker e API mock
+name: CI
+
+on:
+  push:
+    branches: [main, producao, homolog, developer]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  backend:
+    name: Backend (.NET + integração)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      CI: true # não roda o npm install do app no build da API
+    steps:
+      - uses: actions/checkout@v4
+      # .slnx exige SDK ≥ 9.0.200; os projetos têm alvo net8.0 (o runtime 8 roda os testes)
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            9.0.x
+      - uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('Directory.Packages.props', '**/*.csproj') }}
+          restore-keys: nuget-${{ runner.os }}-
+      - run: dotnet restore AgentDesk.slnx
+      - run: dotnet build AgentDesk.slnx --no-restore -c Release
+      - run: dotnet test AgentDesk.slnx --no-build -c Release
+
+  frontend:
+    name: Frontend (unitários + build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: src/AgentDesk.Web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: src/AgentDesk.Web/package-lock.json
+      - run: npm ci
+      - run: npm run test:ci
+      - run: npm run test:scripts
+      - run: npm run e2e:tipos
+      - run: npm run build
+
+  e2e:
+    name: E2E (Playwright)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: src/AgentDesk.Web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: src/AgentDesk.Web/package-lock.json
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: src/AgentDesk.Web/playwright-report
+          retention-days: 7
