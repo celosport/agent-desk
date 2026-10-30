@@ -11,7 +11,7 @@ Documentação = cofre do Obsidian em **`docs/obsidian/`** (entrada: `00 - Dashb
 - Já aplicado pelo script: nome, nome de exibição, descrição, cor (#3b5bdb) e portas.
 - ✅ Perguntas respondidas (2026-10-30) — ver `Perguntas para Novo Projeto.md` e ADR-005 a 007. Perfis: só USUARIO/ADMIN (nada a mudar).
 - Entrega por fases, uma branch cada (`feat/fase-N-...`): ✅ Fase 1 Configuracoes · ✅ Fase 2 Automacoes (+ Tarefas removido) ·
-  ✅ Fase 3 Consumo · ⏳ Fase 4 Escritório.
+  ✅ Fase 3 Consumo · ✅ Fase 4 Escritório.
 - Integração com a Claude: só via `IClienteAnthropic` (SharedKernel); nos testes, `AnthropicFalso` — nunca chamada real nem chave real.
 - Modelos e preços **nunca** no código: tabela `modelos_claude` (ADMIN edita).
 - Contratos entre módulos ficam em `SharedKernel/Contratos` (`IConfiguracoesDeUso`, `IRegistroConsumo`) — [[ADR-008 - Contratos entre Módulos (Automacoes, Configuracoes e Consumo)]].

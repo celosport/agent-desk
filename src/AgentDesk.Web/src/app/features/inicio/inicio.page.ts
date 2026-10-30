@@ -17,6 +17,11 @@ import { AuthStore } from '../../core/auth/auth.store';
           <a class="ui-botao ui-botao--primario" routerLink="/automacoes">Abrir Automações</a>
         </section>
         <section class="ui-cartao">
+          <h2>Escritório dos agentes</h2>
+          <p class="ui-suave">Cada automação é um robô na sala: mande trabalhar e veja ele ir até a mesa, pensar e mostrar o custo.</p>
+          <a class="ui-botao" routerLink="/escritorio">Abrir Escritório</a>
+        </section>
+        <section class="ui-cartao">
           <h2>Consumo e custo</h2>
           <p class="ui-suave">Tokens e US$ do dia, do mês e acumulado, gráfico por dia e o histórico de cada chamada.</p>
           <a class="ui-botao" routerLink="/consumo">Abrir Consumo</a>

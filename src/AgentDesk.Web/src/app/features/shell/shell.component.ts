@@ -60,6 +60,7 @@ export class Shell {
     { rota: '/inicio', rotulo: 'Início' },
     { rota: '/automacoes', rotulo: 'Automações' },
     { rota: '/consumo', rotulo: 'Consumo' },
+    { rota: '/escritorio', rotulo: 'Escritório' },
     { rota: '/configuracoes', rotulo: 'Configurações' },
   ];
 }
