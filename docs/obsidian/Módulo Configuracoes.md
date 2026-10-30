@@ -26,6 +26,7 @@ Voltar: [[00 - Dashboard]] · Receita: [[Receita - Novo Módulo (API + App)]]
   (a regra é aplicada na Fase 2, nas Automações). → [[ADR-007 - Custo pela Tabela de Preços (Preço Congelado e Limite Mensal)]]
 - Tabela de modelos: id = id da API; preços em US$ por **milhão** de tokens (0 a 10.000, até 4 casas). Modelo não se apaga: desativa.
   A carga inicial (Fable 5.1, Opus 5.5, Sonnet 5.5, Haiku 5.5) roda **uma vez** (`migracoes_dados`); depois, vale o que o ADMIN editar.
+- `fallbackRecusa` por modelo: liga o fallback da Anthropic quando o filtro de segurança recusa (Fase 2) — [[ADR-006 - Integração com a API da Anthropic]].
 
 ## Endpoints
 | Método | Rota | Acesso | Resposta / erros (`code`) |
@@ -44,7 +45,7 @@ Voltar: [[00 - Dashboard]] · Receita: [[Receita - Novo Módulo (API + App)]]
 - **Modelos e preços** (mesma tela, só ADMIN): editar na linha, ativar/desativar e adicionar. No celular, cada modelo vira um cartão.
 
 ## Pendências
-- [ ] Fase 2: `IChaveAnthropic` / `ITabelaPrecos` no SharedKernel, implementados aqui, para o módulo Automacoes usar.
+- [x] Fase 2: contrato `IConfiguracoesDeUso` (chave decifrada, preferências, preço) para o Automacoes — [[ADR-008 - Contratos entre Módulos (Automacoes, Configuracoes e Consumo)]].
 - [ ] Preço por faixa (ex.: Haiku 5.5 acima de 100K tokens) não é modelado.
 
 Criado em 2026-10-30.

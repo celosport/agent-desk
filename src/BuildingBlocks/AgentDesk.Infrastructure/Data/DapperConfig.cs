@@ -12,7 +12,7 @@ internal static class DapperConfig
     {
         if (Interlocked.Exchange(ref _configurado, 1) == 1) return;
 
-        // snake_case do PostgreSQL (tarefa_id) ↔ PascalCase do C# (TarefaId) sem precisar de "AS" em todo SELECT
+        // snake_case do PostgreSQL (automacao_id) ↔ PascalCase do C# (AutomacaoId) sem precisar de "AS" em todo SELECT
         DefaultTypeMap.MatchNamesWithUnderscores = true;
 
         SqlMapper.AddTypeHandler(new DateOnlyTypeHandler());

@@ -4,7 +4,7 @@ namespace AgentDesk.SharedKernel.Texto;
 
 /// <summary>
 /// Converte enums C# ↔ texto SNAKE_CASE_UPPER usado no banco e no JSON
-/// (ex.: StatusTarefa.EmAndamento ↔ "EM_ANDAMENTO"). Use nos repositórios Dapper.
+/// (ex.: StatusChamada.Sucesso ↔ "SUCESSO"). Use nos repositórios Dapper.
 /// </summary>
 public static class EnumTexto
 {

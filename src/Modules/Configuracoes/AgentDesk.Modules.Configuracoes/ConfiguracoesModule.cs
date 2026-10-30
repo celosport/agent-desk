@@ -3,6 +3,7 @@ using AgentDesk.Modules.Configuracoes.Application.Configuracoes.RemoverChaveApi;
 using AgentDesk.Modules.Configuracoes.Application.Configuracoes.SalvarChaveApi;
 using AgentDesk.Modules.Configuracoes.Application.Configuracoes.SalvarPreferencias;
 using AgentDesk.Modules.Configuracoes.Application.Configuracoes.TestarChaveApi;
+using AgentDesk.Modules.Configuracoes.Application.Contratos;
 using AgentDesk.Modules.Configuracoes.Application.DTOs;
 using AgentDesk.Modules.Configuracoes.Application.Modelos.AtualizarModelo;
 using AgentDesk.Modules.Configuracoes.Application.Modelos.CriarModelo;
@@ -11,6 +12,7 @@ using AgentDesk.Modules.Configuracoes.Domain;
 using AgentDesk.Modules.Configuracoes.Infrastructure;
 using AgentDesk.Modules.Configuracoes.Infrastructure.Repositories;
 using AgentDesk.SharedKernel;
+using AgentDesk.SharedKernel.Contratos;
 using AgentDesk.SharedKernel.Messaging;
 using FluentValidation;
 using Microsoft.Extensions.Configuration;
@@ -28,6 +30,9 @@ public sealed class ConfiguracoesModule : IModule
         services.AddScoped<IConfiguracoesRepository, ConfiguracoesRepository>();
         services.AddScoped<IModelosRepository, ModelosRepository>();
         services.AddSingleton<ICofreChaves, CofreChaves>();
+
+        // Contrato para os outros módulos (Automacoes): chave decifrada, preferências e preço do modelo
+        services.AddScoped<IConfiguracoesDeUso, ConfiguracoesDeUso>();
 
         services.AddScoped<IValidator<SalvarChaveApiCommand>, SalvarChaveApiValidator>();
         services.AddScoped<IValidator<SalvarPreferenciasCommand>, SalvarPreferenciasValidator>();

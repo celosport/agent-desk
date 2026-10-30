@@ -58,7 +58,7 @@ export class Shell {
 
   protected readonly menu: ItemMenu[] = [
     { rota: '/inicio', rotulo: 'Início' },
-    { rota: '/tarefas', rotulo: 'Tarefas' },
+    { rota: '/automacoes', rotulo: 'Automações' },
     { rota: '/configuracoes', rotulo: 'Configurações' },
   ];
 }

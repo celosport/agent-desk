@@ -3,14 +3,15 @@ tags: [receita]
 ---
 # 🧩 Receita — Novo Módulo (API + App)
 
-Do banco à tela, no mesmo commit. Exemplo de referência: **Tarefas** (API em `src/Modules/Tarefas`, app em `features/tarefas`).
+Do banco à tela, no mesmo commit. Exemplo de referência: **Configuracoes** (API em `src/Modules/Configuracoes`, app em `features/configuracoes`).
+Precisa de dados de outro módulo? Contrato em `SharedKernel/Contratos`, implementado pelo dono — ver [[ADR-008 - Contratos entre Módulos (Automacoes, Configuracoes e Consumo)]].
 Voltar: [[00 - Dashboard]] · Padrões: [[Arquitetura e Padrões]] · [[Frontend (Angular PWA)]]
 
 ## 1. Banco
 - [ ] Tabela em `database/schema.sql` (idempotente: `CREATE TABLE IF NOT EXISTS`, constraints em `DO $$`). Dados de demo em `seed.sql`.
 
 ## 2. API (`src/Modules/<Nome>/AgentDesk.Modules.<Nome>`)
-- [ ] Copie o módulo `Tarefas`, renomeie projeto, namespaces e `<Nome>Module`.
+- [ ] Copie o módulo `Configuracoes`, renomeie projeto, namespaces e `<Nome>Module`.
 - [ ] `Domain/` (agregado `internal sealed record`, `<Nome>Erros` com códigos `"<Nome>.Motivo"`, `I<Nome>Repository`).
 - [ ] `Infrastructure/` (Dapper: SQL em raw string, parâmetros nomeados, `CommandDefinition` com `CancellationToken`).
 - [ ] `Application/` (um slice por caso de uso: Command/Query + Validator + Handler) e `DTOs/` públicos.

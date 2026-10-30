@@ -27,8 +27,8 @@ Testes: `dotnet test` (backend) · `cd src/AgentDesk.Web && npm test && npm run 
 | Npgsql + Dapper + health check + JWT | `src/BuildingBlocks/AgentDesk.Infrastructure` |
 | Host: módulos, rate limit, CORS, Swagger, proxy reverso, schema no deploy sem travar o `/health`, **SPA Proxy** e fallback do app | `src/Host/AgentDesk.API` |
 | Módulo **Contas**: cadastro, login e `GET /auth/eu` | `src/Modules/Contas` |
-| Módulo **Tarefas** (exemplo de CRUD completo): copie para criar o seu | `src/Modules/Tarefas` |
-| **App Angular PWA**: login/cadastro, guards por perfil, tema claro/escuro, aviso de nova versão, mock de API, feature Tarefas | `src/AgentDesk.Web` |
+| Módulos **Configuracoes**, **Automacoes** e **Consumo** (Configuracoes é a referência para copiar) | `src/Modules/*` |
+| **App Angular PWA**: login/cadastro, guards por perfil, tema claro/escuro, aviso de nova versão, mock de API, features Configurações e Automações | `src/AgentDesk.Web` |
 | Testes: integração (API + PostgreSQL reais), Vitest e Playwright | `tests/`, `src/AgentDesk.Web` |
 | Docker (API + app numa imagem), Railway, CI no GitHub Actions | `Dockerfile`, `railway.json`, `.github/workflows/ci.yml` |
 | Cofre Obsidian: Dashboard, padrões, receitas, ADRs, modelos e perguntas-chave | `docs/obsidian` |

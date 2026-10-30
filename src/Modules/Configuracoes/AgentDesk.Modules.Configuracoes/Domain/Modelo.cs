@@ -14,6 +14,7 @@ internal sealed record ModeloClaude(
     decimal? PrecoCacheLeituraMTok,
     decimal? PrecoCacheEscritaMTok,
     bool Ativo,
+    bool FallbackRecusa,
     DateTimeOffset AtualizadoEm);
 
 internal static class ModeloErros

@@ -12,6 +12,7 @@ describe('ConfiguracoesStore', () => {
     precoEntradaMTok: 1,
     precoSaidaMTok: 5,
     ativo,
+    fallbackRecusa: false,
     atualizadoEm: '2026-10-30T12:00:00Z',
   });
   const api = {
@@ -97,6 +98,7 @@ describe('ConfiguracoesStore', () => {
         precoSaidaMTok: 30,
         precoCacheLeituraMTok: null,
         precoCacheEscritaMTok: null,
+        fallbackRecusa: false,
         ativo: true,
       }),
     ).toBeNull();

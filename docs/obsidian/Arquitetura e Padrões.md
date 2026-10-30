@@ -32,11 +32,11 @@ Tudo do caso de uso fica junto em `Application/<Agregado>/<CasoDeUso>/`:
 2. O controller chama `ICommandHandler<,>`/`IQueryHandler<,>` e converte `Result` em HTTP.
 3. O módulo registra tudo **explicitamente** (sem reflection):
 ```csharp
-services.AddScoped<IValidator<CriarTarefaCommand>, CriarTarefaValidator>();
-services.AddCommandHandler<CriarTarefaCommand, TarefaDto, CriarTarefaHandler>();   // com decorator de validação
-services.AddQueryHandler<ListarTarefasQuery, IReadOnlyList<TarefaDto>, ListarTarefasHandler>();
+services.AddScoped<IValidator<CriarModeloCommand>, CriarModeloValidator>();
+services.AddCommandHandler<CriarModeloCommand, ModeloDto, CriarModeloHandler>();   // com decorator de validação
+services.AddQueryHandler<ListarModelosQuery, IReadOnlyList<ModeloDto>, ListarModelosHandler>();
 ```
-Exemplo completo e comentado: módulo `Tarefas`.
+Exemplo completo e comentado: módulo `Configuracoes` (o `Tarefas` do esqueleto foi removido na Fase 2).
 
 ## 3. Erros e HTTP
 - Regra de negócio violada → `return Error.Conflict("Modulo.Codigo", "Mensagem em português");` (conversão implícita para `Result<T>`).
@@ -48,7 +48,7 @@ Exemplo completo e comentado: módulo `Tarefas`.
 ## 4. Dados (Dapper + PostgreSQL)
 - Repositório abre a conexão por operação: `await using var conn = await factory.OpenConnectionAsync(ct);`.
 - SQL em raw string `const`, **parâmetros nomeados**, `CommandDefinition` com `CancellationToken`. Nunca concatenar.
-- `DefaultTypeMap.MatchNamesWithUnderscores = true`: `tarefa_id` ↔ `TarefaId`.
+- `DefaultTypeMap.MatchNamesWithUnderscores = true`: `automacao_id` ↔ `AutomacaoId`.
 - Enum: coluna `VARCHAR` + `CHECK`; o repositório lê como `string` e usa `EnumTexto.Parse<T>()` / `.ToTexto()` (`SNAKE_CASE_UPPER`, igual ao JSON).
 - Listas: `WHERE id = ANY(@Ids)` com **array** (o Npgsql não expande `IN @Ids`).
 - Concorrência: prefira **update condicional** (`WHERE status = 'PENDENTE'`) e olhe as linhas afetadas, em vez de "consultar e depois gravar".
@@ -73,7 +73,7 @@ Roda a **cada deploy** e nos testes. Por isso:
 - Gate por plano/recurso: filtro de ação (`[ExigePlanoX]`) no SharedKernel que consulta um contrato (`IPlanoAcessoService`).
 
 ## 6. Receita: criar um módulo novo
-1. Copie `src/Modules/Tarefas/AgentDesk.Modules.Tarefas` para `src/Modules/Novo/AgentDesk.Modules.Novo` e renomeie (projeto, namespaces, `NovoModule`).
+1. Copie `src/Modules/Configuracoes/AgentDesk.Modules.Configuracoes` para `src/Modules/Novo/AgentDesk.Modules.Novo` e renomeie (projeto, namespaces, `NovoModule`).
 2. Ajuste Domain (agregado, erros, `INovoRepository`) → Infrastructure (SQL) → Application (slices) → Endpoints.
 3. Registre: `ModuleExtensions.cs` (lista de módulos), `AgentDesk.API.csproj` (ProjectReference), `AgentDesk.slnx`.
 4. Tabelas novas no `database/schema.sql` (idempotente) e, se for demo, no `seed.sql`.
@@ -115,4 +115,5 @@ Ver [[Frontend (Angular PWA)]]: Angular standalone + signals, `core/shared/featu
 | Teste de lógica de plano falhava | Teste usava usuário "Free" para recurso que virou Pro | Ao mudar uma regra, procure os testes que a assumem |
 | Duas leituras do corpo HTTP | `ReadFromJsonAsync` fecha o stream | Ler como texto uma vez e fazer parse |
 | Reembolso/cobrança | Regra de negócio em controller | Regra no handler/domínio, controller só traduz |
+| Teste falhava só quando rodava depois de outro | Um teste editou um dado da carga inicial (preço do Haiku) e outro calculava o custo com ele | Teste que mexe em dado compartilhado (seed) restaura no `finally`; de preferência crie o seu próprio dado |
 | Toque no lugar errado no celular | Tabela larga (mesmo dentro de `overflow-x: auto`) e `<select>` com opções longas alargavam o layout da página no Chrome mobile | Grid com `minmax(0, 1fr)`; tabela vira cartões em tela estreita (com `role` explícitos); E2E no projeto `celular` |

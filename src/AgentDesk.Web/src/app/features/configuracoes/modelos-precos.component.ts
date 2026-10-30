@@ -18,6 +18,10 @@ import { ConfiguracoesStore } from './data-access/configuracoes.store';
     <section class="ui-cartao bloco" aria-labelledby="titulo-modelos">
       <h2 id="titulo-modelos">Modelos e preços</h2>
       <p class="ui-suave">Preços em US$ por milhão de tokens. Cache sem preço é cobrado como entrada. Só administradores editam.</p>
+      <p class="ui-suave">
+        <strong>Fallback:</strong> se o filtro de segurança da Anthropic recusar um pedido, ela tenta de novo em outro modelo.
+        Ligue só nos modelos que têm esse recurso (hoje: Fable, Opus e Sonnet; o Haiku não tem).
+      </p>
 
       <div class="rolagem">
         <table role="table" aria-label="Modelos e preços">
@@ -28,6 +32,7 @@ import { ConfiguracoesStore } from './data-access/configuracoes.store';
               <th role="columnheader" scope="col">Saída</th>
               <th role="columnheader" scope="col">Cache (leitura)</th>
               <th role="columnheader" scope="col">Cache (escrita)</th>
+              <th role="columnheader" scope="col">Fallback</th>
               <th role="columnheader" scope="col">Situação</th>
               <th role="columnheader" scope="col"><span class="ui-visualmente-oculto">Ações</span></th>
             </tr>
@@ -49,6 +54,7 @@ import { ConfiguracoesStore } from './data-access/configuracoes.store';
                     <input id="edicao-cache-leitura" class="ui-entrada" type="number" step="0.0001" min="0" formControlName="precoCacheLeituraMTok" /></td>
                   <td role="cell" data-rotulo="Cache (escrita)"><label class="ui-visualmente-oculto" for="edicao-cache-escrita">Preço do cache (escrita)</label>
                     <input id="edicao-cache-escrita" class="ui-entrada" type="number" step="0.0001" min="0" formControlName="precoCacheEscritaMTok" /></td>
+                  <td role="cell" data-rotulo="Fallback"><label class="opcao"><input type="checkbox" formControlName="fallbackRecusa" /> Fallback</label></td>
                   <td role="cell" data-rotulo="Situação"><label class="opcao"><input type="checkbox" formControlName="ativo" /> Ativo</label></td>
                   <td role="cell" class="acoes">
                     <button type="button" class="ui-botao ui-botao--primario" (click)="salvarEdicao(m.modeloId)">Salvar</button>
@@ -65,6 +71,7 @@ import { ConfiguracoesStore } from './data-access/configuracoes.store';
                   <td role="cell" data-rotulo="Saída">{{ dolar(m.precoSaidaMTok) }}</td>
                   <td role="cell" data-rotulo="Cache (leitura)">{{ m.precoCacheLeituraMTok === undefined ? '—' : dolar(m.precoCacheLeituraMTok) }}</td>
                   <td role="cell" data-rotulo="Cache (escrita)">{{ m.precoCacheEscritaMTok === undefined ? '—' : dolar(m.precoCacheEscritaMTok) }}</td>
+                  <td role="cell" data-rotulo="Fallback">{{ m.fallbackRecusa ? 'Sim' : 'Não' }}</td>
                   <td role="cell" data-rotulo="Situação">{{ m.ativo ? 'Ativo' : 'Inativo' }}</td>
                   <td role="cell">
                     <button type="button" class="ui-botao" [attr.aria-label]="'Editar ' + m.nomeExibicao" (click)="editar(m)">Editar</button>
@@ -149,6 +156,7 @@ export class ModelosPrecos {
     precoSaidaMTok: this.fb.control<number | null>(null),
     precoCacheLeituraMTok: this.fb.control<number | null>(null),
     precoCacheEscritaMTok: this.fb.control<number | null>(null),
+    fallbackRecusa: [false],
     ativo: [true],
   });
 
@@ -169,6 +177,7 @@ export class ModelosPrecos {
       precoSaidaMTok: m.precoSaidaMTok,
       precoCacheLeituraMTok: m.precoCacheLeituraMTok ?? null,
       precoCacheEscritaMTok: m.precoCacheEscritaMTok ?? null,
+      fallbackRecusa: m.fallbackRecusa,
       ativo: m.ativo,
     });
     this.editando.set(m.modeloId);
@@ -182,6 +191,7 @@ export class ModelosPrecos {
       precoSaidaMTok: numero(v.precoSaidaMTok) as number,
       precoCacheLeituraMTok: numero(v.precoCacheLeituraMTok),
       precoCacheEscritaMTok: numero(v.precoCacheEscritaMTok),
+      fallbackRecusa: v.fallbackRecusa,
       ativo: v.ativo,
     });
     this.erroEdicao.set(erro);
@@ -201,6 +211,7 @@ export class ModelosPrecos {
       precoSaidaMTok: numero(v.precoSaidaMTok) as number,
       precoCacheLeituraMTok: numero(v.precoCacheLeituraMTok),
       precoCacheEscritaMTok: numero(v.precoCacheEscritaMTok),
+      fallbackRecusa: false,
     });
     this.criando.set(false);
     this.erroNovo.set(erro);

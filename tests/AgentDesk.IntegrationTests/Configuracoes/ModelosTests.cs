@@ -33,6 +33,8 @@ public sealed class ModelosTests(AgentDeskApiFactory factory)
         Assert.Equal(4m, opus.GetProperty("precoEntradaMTok").GetDecimal());
         Assert.Equal(20m, opus.GetProperty("precoSaidaMTok").GetDecimal());
         Assert.True(opus.GetProperty("ativo").GetBoolean());
+        Assert.True(opus.GetProperty("fallbackRecusa").GetBoolean());   // tem fallback no servidor da Anthropic
+        Assert.False(Achar(lista, "claude-haiku-5-5")!.Value.GetProperty("fallbackRecusa").GetBoolean()); // não tem
     }
 
     [Fact]
@@ -108,12 +110,23 @@ public sealed class ModelosTests(AgentDeskApiFactory factory)
         var editado = await admin.PutAsJsonAsync($"{Rota}/claude-haiku-5-5",
             new { nomeExibicao = "Claude Haiku 5.5", precoEntradaMTok = 0.2m, precoSaidaMTok = 1m, precoCacheLeituraMTok = 0.02m });
         Assert.Equal(HttpStatusCode.OK, editado.StatusCode);
+        try
+        {
+            await factory.AplicarSchemaAsync(); // o deploy roda o schema.sql de novo
 
-        await factory.AplicarSchemaAsync(); // o deploy roda o schema.sql de novo
-
-        var haiku = Achar(await (await admin.GetAsync(Rota)).JsonAsync(), "claude-haiku-5-5")!.Value;
-        Assert.Equal(0.2m, haiku.GetProperty("precoEntradaMTok").GetDecimal());
-        Assert.Equal(1, await factory.ConsultarAsync<long>(
-            "SELECT COUNT(*) FROM migracoes_dados WHERE nome = '2026-10-30-modelos-claude-iniciais'"));
+            var haiku = Achar(await (await admin.GetAsync(Rota)).JsonAsync(), "claude-haiku-5-5")!.Value;
+            Assert.Equal(0.2m, haiku.GetProperty("precoEntradaMTok").GetDecimal());
+            Assert.Equal(1, await factory.ConsultarAsync<long>(
+                "SELECT COUNT(*) FROM migracoes_dados WHERE nome = '2026-10-30-modelos-claude-iniciais'"));
+        }
+        finally
+        {
+            // Volta ao preço da carga inicial: os testes de Automacoes calculam o custo com ele
+            (await admin.PutAsJsonAsync($"{Rota}/claude-haiku-5-5", new
+            {
+                nomeExibicao = "Claude Haiku 5.5", precoEntradaMTok = 0.1m, precoSaidaMTok = 0.5m,
+                precoCacheLeituraMTok = 0.01m, precoCacheEscritaMTok = 0.125m,
+            })).EnsureSuccessStatusCode();
+        }
     }
 }

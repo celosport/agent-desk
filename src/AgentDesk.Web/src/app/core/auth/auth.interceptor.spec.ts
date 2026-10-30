@@ -26,16 +26,16 @@ describe('authInterceptor', () => {
   });
 
   it('anexa o Bearer só nas chamadas à nossa API', () => {
-    void firstValueFrom(http.get('https://api.teste/api/v1/tarefas'));
+    void firstValueFrom(http.get('https://api.teste/api/v1/automacoes'));
     void firstValueFrom(http.get('https://outro.site/dados'));
-    expect(controle.expectOne('https://api.teste/api/v1/tarefas').request.headers.get('Authorization')).toBe('Bearer abc');
+    expect(controle.expectOne('https://api.teste/api/v1/automacoes').request.headers.get('Authorization')).toBe('Bearer abc');
     expect(controle.expectOne('https://outro.site/dados').request.headers.has('Authorization')).toBe(false);
   });
 
   it('401 da API encerra a sessão; 401 do login não', async () => {
-    const tarefas = firstValueFrom(http.get('https://api.teste/api/v1/tarefas')).catch(() => undefined);
-    controle.expectOne('https://api.teste/api/v1/tarefas').flush(null, { status: 401, statusText: 'Unauthorized' });
-    await tarefas;
+    const pedido = firstValueFrom(http.get('https://api.teste/api/v1/automacoes')).catch(() => undefined);
+    controle.expectOne('https://api.teste/api/v1/automacoes').flush(null, { status: 401, statusText: 'Unauthorized' });
+    await pedido;
     expect(sair).toHaveBeenCalledTimes(1);
 
     const login = firstValueFrom(http.post('https://api.teste/api/v1/auth/login', {})).catch(() => undefined);

@@ -14,7 +14,7 @@ public enum ErrorType
 }
 
 /// <summary>Erro de negócio esperado. Exceções ficam reservadas para falhas inesperadas.</summary>
-/// <param name="Code">Código estável para o cliente (ex.: "Tarefas.NaoEncontrada").</param>
+/// <param name="Code">Código estável para o cliente (ex.: "Automacoes.NaoEncontrada").</param>
 /// <param name="Message">Mensagem em português, segura para exibir ao usuário.</param>
 public record Error(string Code, string Message, ErrorType Type)
 {

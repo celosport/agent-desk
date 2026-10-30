@@ -17,15 +17,16 @@ internal sealed class ModelosRepository(IDbConnectionFactory connectionFactory) 
         public decimal? PrecoCacheLeituraMtok { get; set; }
         public decimal? PrecoCacheEscritaMtok { get; set; }
         public bool Ativo { get; set; }
+        public bool FallbackRecusa { get; set; }
         public DateTimeOffset AtualizadoEm { get; set; }
 
         public ModeloClaude ParaDominio() => new(ModeloId, NomeExibicao, PrecoEntradaMtok, PrecoSaidaMtok,
-            PrecoCacheLeituraMtok, PrecoCacheEscritaMtok, Ativo, AtualizadoEm);
+            PrecoCacheLeituraMtok, PrecoCacheEscritaMtok, Ativo, FallbackRecusa, AtualizadoEm);
     }
 
     private const string Colunas = """
         modelo_id, nome_exibicao, preco_entrada_mtok, preco_saida_mtok, preco_cache_leitura_mtok, preco_cache_escrita_mtok,
-        ativo, atualizado_em
+        ativo, fallback_recusa, atualizado_em
         """;
 
     public async Task<IReadOnlyList<ModeloClaude>> ListarAsync(CancellationToken cancellationToken)
@@ -50,9 +51,9 @@ internal sealed class ModelosRepository(IDbConnectionFactory connectionFactory) 
     {
         const string sql = """
             INSERT INTO modelos_claude (modelo_id, nome_exibicao, preco_entrada_mtok, preco_saida_mtok,
-                                        preco_cache_leitura_mtok, preco_cache_escrita_mtok, ativo, atualizado_em)
+                                        preco_cache_leitura_mtok, preco_cache_escrita_mtok, ativo, fallback_recusa, atualizado_em)
             VALUES (@ModeloId, @NomeExibicao, @PrecoEntradaMTok, @PrecoSaidaMTok,
-                    @PrecoCacheLeituraMTok, @PrecoCacheEscritaMTok, @Ativo, @AtualizadoEm)
+                    @PrecoCacheLeituraMTok, @PrecoCacheEscritaMTok, @Ativo, @FallbackRecusa, @AtualizadoEm)
             ON CONFLICT (modelo_id) DO NOTHING;
             """;
         await using var connection = await connectionFactory.OpenConnectionAsync(cancellationToken);
@@ -65,7 +66,7 @@ internal sealed class ModelosRepository(IDbConnectionFactory connectionFactory) 
             UPDATE modelos_claude
                SET nome_exibicao = @NomeExibicao, preco_entrada_mtok = @PrecoEntradaMTok, preco_saida_mtok = @PrecoSaidaMTok,
                    preco_cache_leitura_mtok = @PrecoCacheLeituraMTok, preco_cache_escrita_mtok = @PrecoCacheEscritaMTok,
-                   ativo = @Ativo, atualizado_em = @AtualizadoEm
+                   ativo = @Ativo, fallback_recusa = @FallbackRecusa, atualizado_em = @AtualizadoEm
              WHERE modelo_id = @ModeloId;
             """;
         await using var connection = await connectionFactory.OpenConnectionAsync(cancellationToken);
@@ -75,6 +76,6 @@ internal sealed class ModelosRepository(IDbConnectionFactory connectionFactory) 
     private static object Parametros(ModeloClaude m) => new
     {
         m.ModeloId, m.NomeExibicao, m.PrecoEntradaMTok, m.PrecoSaidaMTok, m.PrecoCacheLeituraMTok, m.PrecoCacheEscritaMTok, m.Ativo,
-        AtualizadoEm = m.AtualizadoEm.ToUniversalTime(),
+        m.FallbackRecusa, AtualizadoEm = m.AtualizadoEm.ToUniversalTime(),
     };
 }

@@ -38,8 +38,9 @@ Voltar: [[00 - Dashboard]]
 | Streaming | Não na Fase 2: resposta completa, timeout de 120 s |
 | Uso principal | Computador (menu lateral/topo); responsivo no celular; Escritório simplificado no celular |
 | Tempo real | Polling de 10 s (`core/tempo-real`); dia e mês no fuso America/Sao_Paulo |
-| Exemplo Tarefas | Removido ao fim da Fase 2 |
+| Exemplo Tarefas | ✅ Removido na Fase 2 (API, app, tabela, testes, E2E e nota) |
 | Integração com a Claude | HttpClient na Infrastructure, contrato no SharedKernel, falso nos testes → [[ADR-006 - Integração com a API da Anthropic]] |
+| Recusa do filtro de segurança | Fallback da Anthropic (`fallbacks: "default"`) ligado por modelo (`fallback_recusa`); recusa final grava RECUSADA com os tokens |
 | Git | `main` + uma branch por fase (`feat/fase-N-...`) |
 <!-- RESPOSTAS:FIM -->
 

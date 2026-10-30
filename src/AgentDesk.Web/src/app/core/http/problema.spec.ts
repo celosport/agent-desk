@@ -9,9 +9,9 @@ describe('problema (problem+json → tela)', () => {
   });
 
   it('usa o título do erro de negócio e expõe o code estável', () => {
-    const erro = resposta(409, { title: 'Esta tarefa já foi concluída.', code: 'Tarefas.JaConcluida' });
-    expect(mensagemDeErro(erro)).toBe('Esta tarefa já foi concluída.');
-    expect(codigoDeErro(erro)).toBe('Tarefas.JaConcluida');
+    const erro = resposta(409, { title: 'Já existe um modelo com este id.', code: 'Modelos.JaExiste' });
+    expect(mensagemDeErro(erro)).toBe('Já existe um modelo com este id.');
+    expect(codigoDeErro(erro)).toBe('Modelos.JaExiste');
   });
 
   it('sem conexão e erro interno viram frases claras (nunca o texto técnico)', () => {

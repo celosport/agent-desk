@@ -30,6 +30,8 @@ export interface Modelo {
   precoCacheLeituraMTok?: number;
   precoCacheEscritaMTok?: number;
   ativo: boolean;
+  /** Liga o fallback da Anthropic quando o classificador de segurança recusa (só modelos com fallback no servidor). */
+  fallbackRecusa: boolean;
   atualizadoEm: string;
 }
 
@@ -40,6 +42,7 @@ export interface CriarModeloRequest {
   precoSaidaMTok: number;
   precoCacheLeituraMTok: number | null;
   precoCacheEscritaMTok: number | null;
+  fallbackRecusa: boolean;
 }
 
 export type AtualizarModeloRequest = Omit<CriarModeloRequest, 'modeloId'> & { ativo: boolean };

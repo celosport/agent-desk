@@ -4,7 +4,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 export interface ProblemDetails {
   status?: number;
   title?: string;
-  /** Código estável do erro de negócio ("Tarefas.NaoEncontrada"): decida pelo code, nunca pelo texto. */
+  /** Código estável do erro de negócio ("Automacoes.NaoEncontrada"): decida pelo code, nunca pelo texto. */
   code?: string;
   errors?: Record<string, string[]>;
 }

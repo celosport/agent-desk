@@ -1,6 +1,7 @@
+using AgentDesk.Modules.Automacoes;
 using AgentDesk.Modules.Configuracoes;
+using AgentDesk.Modules.Consumo;
 using AgentDesk.Modules.Contas;
-using AgentDesk.Modules.Tarefas;
 using AgentDesk.SharedKernel;
 
 namespace AgentDesk.API;
@@ -12,7 +13,8 @@ internal static class ModuleExtensions
     [
         new ContasModule(),
         new ConfiguracoesModule(),
-        new TarefasModule(),
+        new ConsumoModule(),
+        new AutomacoesModule(),
     ];
 
     /// <summary>Registra os serviços de cada módulo e expõe os controllers que vivem dentro deles.</summary>

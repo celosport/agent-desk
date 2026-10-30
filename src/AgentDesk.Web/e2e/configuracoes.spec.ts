@@ -5,7 +5,7 @@ import { entrarComo } from './apoio';
 
 test('salva a API key, só mostra a máscara e testa a chave', async ({ page }) => {
   await entrarComo(page, 'usuario');
-  await page.getByRole('link', { name: 'Configurações' }).click();
+  await page.getByRole('navigation', { name: 'Principal' }).getByRole('link', { name: 'Configurações' }).click();
   await expect(page.getByRole('heading', { name: 'Configurações' })).toBeVisible();
   await expect(page.getByText('Nenhuma chave salva.')).toBeVisible();
 
@@ -65,6 +65,7 @@ test('ADMIN edita o preço, desativa e adiciona modelo', async ({ page }) => {
   await page.goto('/configuracoes');
   const tabela = page.getByRole('table', { name: 'Modelos e preços' });
   await expect(tabela.getByRole('row')).toHaveCount(5); // cabeçalho + 4 modelos
+  await expect(tabela.getByRole('row').filter({ hasText: 'claude-opus-5-5' })).toContainText('Sim'); // fallback ligado
 
   await page.getByRole('button', { name: 'Editar Claude Haiku 5.5' }).click();
   await page.getByLabel('Preço de saída').fill('0.75');

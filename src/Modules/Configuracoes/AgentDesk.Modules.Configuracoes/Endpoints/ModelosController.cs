@@ -33,7 +33,7 @@ public sealed class ModelosController : ControllerBase
         [FromBody] CriarModeloRequestDto r, [FromServices] ICommandHandler<CriarModeloCommand, ModeloDto> handler, CancellationToken ct)
     {
         var result = await handler.Handle(new CriarModeloCommand(r.ModeloId, r.NomeExibicao, r.PrecoEntradaMTok, r.PrecoSaidaMTok,
-            r.PrecoCacheLeituraMTok, r.PrecoCacheEscritaMTok), ct);
+            r.PrecoCacheLeituraMTok, r.PrecoCacheEscritaMTok, r.FallbackRecusa), ct);
         return result.IsSuccess ? Created($"/api/v1/modelos/{result.Value.ModeloId}", result.Value) : this.ToProblem(result.Error);
     }
 
@@ -46,7 +46,7 @@ public sealed class ModelosController : ControllerBase
         string modeloId, [FromBody] AtualizarModeloRequestDto r,
         [FromServices] ICommandHandler<AtualizarModeloCommand, ModeloDto> handler, CancellationToken ct)
         => Responder(await handler.Handle(new AtualizarModeloCommand(modeloId, r.NomeExibicao, r.PrecoEntradaMTok, r.PrecoSaidaMTok,
-            r.PrecoCacheLeituraMTok, r.PrecoCacheEscritaMTok, r.Ativo), ct));
+            r.PrecoCacheLeituraMTok, r.PrecoCacheEscritaMTok, r.Ativo, r.FallbackRecusa), ct));
 
     private IActionResult Responder<T>(Result<T> result) => result.IsSuccess ? Ok(result.Value) : this.ToProblem(result.Error);
 }

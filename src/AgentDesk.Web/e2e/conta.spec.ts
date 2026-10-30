@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import { entrarComo } from './apoio';
 
 test('sem login, qualquer tela leva para o login', async ({ page }) => {
-  await page.goto('/tarefas');
+  await page.goto('/automacoes');
   await expect(page).toHaveURL(/\/entrar$/);
   await expect(page.getByRole('heading', { name: 'Entrar' })).toBeVisible();
 });

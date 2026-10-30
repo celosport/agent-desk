@@ -28,7 +28,7 @@ src/app/
 1. `features → core/shared`, nunca o contrário. **Feature não importa outra feature.**
 2. Componentes standalone com `ChangeDetectionStrategy.OnPush`; estado em **stores com signals** (`*.store.ts`), escopo da rota.
 3. **A tela nunca monta URL**: só a `*.api.ts` da feature conhece os endpoints. Models = DTOs da API (mesmos nomes do JSON).
-4. Erro da API: decidir pelo **`code`** do problem+json (`Tarefas.JaConcluida`), mostrar o **texto do servidor** (`mensagemDeErro`).
+4. Erro da API: decidir pelo **`code`** do problem+json (`Automacoes.LimiteMensalAtingido`), mostrar o **texto do servidor** (`mensagemDeErro`).
 5. Rotas protegidas por guards: `autenticadoGuard`, `anonimoGuard`, `perfilGuard('ADMIN')`; área inicial por perfil em `rotaInicial()`.
 6. Acessibilidade = testabilidade: rótulos (`<label for>`), `aria-label` em botões só com ícone; E2E localiza por papel e rótulo.
 7. Datas: a API manda UTC; a tela formata com `shared/util/formatos.ts` (fuso America/Sao_Paulo).

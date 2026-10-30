@@ -1,7 +1,7 @@
 import { HttpErrorResponse, HttpInterceptorFn, HttpRequest, HttpResponse } from '@angular/common/http';
 import { Observable, delay, of, throwError } from 'rxjs';
 import { Configuracao, Modelo } from '../../features/configuracoes/data-access/configuracoes.models';
-import { Tarefa } from '../../features/tarefas/data-access/tarefas.models';
+import { Automacao, Execucao } from '../../features/automacoes/data-access/automacoes.models';
 
 /**
  * API falsa em memória para `npm run start:mock` e para os testes E2E: demonstração, design e testes sem backend.
@@ -10,6 +10,9 @@ import { Tarefa } from '../../features/tarefas/data-access/tarefas.models';
  * Cada recarga da página volta aos dados de exemplo (testes isolados).
  *
  * Ao criar um endpoint novo na API, acrescente a resposta aqui (mesmo contrato JSON e mesmos `code` de erro).
+ *
+ * Automações: o resultado é um texto falso; "[recusar]" na entrada simula a recusa da Claude, e o custo de cada execução
+ * conta para o limite mensal configurado (o mock guarda o gasto do mês na memória).
  *
  * API key falsa (Configuracoes): qualquer "sk-ant-..." com 20+ caracteres é aceita; o teste da chave responde pelo final —
  * "...INVALIDA" = Anthropic.ChaveInvalida (422), "...FORA" = Anthropic.Indisponivel (503), outra = válida.
@@ -22,30 +25,101 @@ const USUARIOS = {
 type Quem = keyof typeof USUARIOS;
 
 const agora = Date.now();
-let tarefas: Tarefa[] = [
-  { tarefaId: 'a1', titulo: 'Ler o CLAUDE.md e as notas do Obsidian', status: 'PENDENTE', criadaEm: new Date(agora - 3_600_000).toISOString() },
-  { tarefaId: 'a2', titulo: 'Responder as perguntas do novo projeto', status: 'PENDENTE', criadaEm: new Date(agora - 7_200_000).toISOString() },
-  {
-    tarefaId: 'a3',
-    titulo: 'Subir a API e o app juntos (F5)',
-    status: 'CONCLUIDA',
-    criadaEm: new Date(agora - 86_400_000).toISOString(),
-    concluidaEm: new Date(agora - 80_000_000).toISOString(),
-  },
-];
 
 // ---- Configuracoes: modelos (mesma carga inicial do schema.sql) e a configuração do usuário ----
 let modelos: Modelo[] = [
-  modeloMock('claude-fable-5-1', 'Claude Fable 5.1', 10, 50, 0.25, 12.5),
-  modeloMock('claude-opus-5-5', 'Claude Opus 5.5', 4, 20, 0.2, 5),
-  modeloMock('claude-sonnet-5-5', 'Claude Sonnet 5.5', 2, 10, 0.2, 2.5),
-  modeloMock('claude-haiku-5-5', 'Claude Haiku 5.5', 0.1, 0.5, 0.01, 0.125),
+  modeloMock('claude-fable-5-1', 'Claude Fable 5.1', 10, 50, 0.25, 12.5, true),
+  modeloMock('claude-opus-5-5', 'Claude Opus 5.5', 4, 20, 0.2, 5, true),
+  modeloMock('claude-sonnet-5-5', 'Claude Sonnet 5.5', 2, 10, 0.2, 2.5, true),
+  modeloMock('claude-haiku-5-5', 'Claude Haiku 5.5', 0.1, 0.5, 0.01, 0.125, false),
 ];
 let configuracao: Configuracao = { chaveApiConfigurada: false, bloquearAoAtingirLimite: true };
 /** Só existe no mock (a API real guarda cifrada no servidor): decide a resposta do "Testar chave". */
 let chaveSalva: string | null = null;
 
-function modeloMock(modeloId: string, nomeExibicao: string, entrada: number, saida: number, leitura: number, escrita: number): Modelo {
+// ---- Automacoes: a mesma carga inicial do schema.sql (prompts resumidos) ----
+let automacoes: Automacao[] = [
+  automacaoMock('a1e5c1a0-0000-4000-8000-000000000001', 'relatorio-executivo', 'Gerar Relatório Executivo',
+    'Transforma anotações, dados ou um texto longo em um relatório executivo claro para a diretoria.', 'claude-opus-5-5', 8000),
+  automacaoMock('a1e5c1a0-0000-4000-8000-000000000002', 'analisar-codigo', 'Analisar Código',
+    'Revisa um trecho de código: bugs, segurança, legibilidade e sugestões de melhoria.', 'claude-opus-5-5', 8000),
+  automacaoMock('a1e5c1a0-0000-4000-8000-000000000003', 'resumir-documento', 'Resumir Documento',
+    'Resume um documento longo em tópicos, com as decisões e os números importantes.', 'claude-haiku-5-5', 4000),
+];
+/** Gasto do mês no mock (US$), para o limite mensal. */
+let gastoMes = 0;
+
+function automacaoMock(automacaoId: string, codigo: string, nome: string, descricao: string, modeloId: string, maxTokens: number): Automacao {
+  return {
+    automacaoId,
+    codigo,
+    nome,
+    descricao,
+    promptSistema: `Você é um assistente que ajuda com: ${nome}. Responda em português do Brasil, em Markdown.`,
+    modeloMensagem: 'Material:\n\n{{entrada}}',
+    modeloId,
+    maxTokens,
+    ativa: true,
+  };
+}
+
+/** Mesmos tokens fixos do falso dos testes de integração (1000/500/200/100) e o custo pelo preço do modelo. */
+function executarMock(automacao: Automacao, corpo: Record<string, unknown>): Observable<HttpResponse<unknown>> {
+  const entrada = String(corpo['entrada'] ?? '');
+  if (!entrada.trim()) return invalido({ entrada: ['Cole um texto ou envie um arquivo .txt/.md.'] });
+  const arquivo = corpo['nomeArquivo'] ? String(corpo['nomeArquivo']) : null;
+  if (arquivo && !/\.(txt|md)$/i.test(arquivo)) return invalido({ nomeArquivo: ['Só arquivos .txt ou .md.'] });
+  if (!chaveSalva)
+    return erro(422, 'Automacoes.ChaveNaoConfigurada', 'Cadastre a sua API key da Anthropic em Configurações para rodar as automações.');
+  const modeloId = String(corpo['modeloId'] ?? '') || automacao.modeloId || configuracao.modeloPadraoId;
+  if (!modeloId) return erro(422, 'Automacoes.ModeloNaoDefinido', 'Escolha um modelo (ou defina o seu modelo padrão em Configurações).');
+  const modelo = modelos.find((m) => m.modeloId === modeloId && m.ativo);
+  if (!modelo) return erro(422, 'Automacoes.ModeloInvalido', 'Este modelo não está ativo na tabela de modelos. Escolha outro.');
+  const limite = configuracao.limiteMensalUsd;
+  if (limite !== undefined && configuracao.bloquearAoAtingirLimite && gastoMes >= limite)
+    return erro(422, 'Automacoes.LimiteMensalAtingido',
+      `Você atingiu o limite de gasto do mês (US$ ${gastoMes.toFixed(2)} de US$ ${limite.toFixed(2)}). Aumente o limite em Configurações ou espere o próximo mês.`);
+  if (entrada.includes('[recusar]'))
+    return erro(422, 'Automacoes.Recusada', 'A Claude recusou este pedido (filtro de segurança). Os tokens usados foram registrados no consumo.');
+
+  const uso = { entrada: 1000, saida: 500, cacheLeitura: 200, cacheEscrita: 100 };
+  const custo =
+    Math.round(
+      (uso.entrada * modelo.precoEntradaMTok +
+        uso.saida * modelo.precoSaidaMTok +
+        uso.cacheLeitura * (modelo.precoCacheLeituraMTok ?? modelo.precoEntradaMTok) +
+        uso.cacheEscrita * (modelo.precoCacheEscritaMTok ?? modelo.precoEntradaMTok)) / 1e6 * 1e6,
+    ) / 1e6;
+  gastoMes += custo;
+  const percentual = limite ? Math.round((gastoMes / limite) * 1000) / 10 : 0;
+  const execucao: Execucao = {
+    chamadaId: crypto.randomUUID(),
+    automacaoId: automacao.automacaoId,
+    codigo: automacao.codigo,
+    modeloId,
+    modeloUsado: modeloId,
+    resultado: `# ${automacao.nome}\n\nResultado de demonstração (modo mock) para:\n\n> ${entrada.slice(0, 80)}\n\n- Ponto 1\n- Ponto 2`,
+    truncado: entrada.includes('[longo]'),
+    tokens: { ...uso, total: 1800 },
+    custoUsd: custo,
+    duracaoMs: 1234,
+    iniciadaEm: new Date().toISOString(),
+    alertaLimite: limite && percentual >= 80
+      ? { gastoMesUsd: gastoMes, limiteMensalUsd: limite, percentual, atingido: gastoMes >= limite }
+      : undefined,
+  };
+  return ok(execucao).pipe(delay(400)); // a Claude demora: dá tempo de ver o "Executando…"
+}
+
+function modeloMock(
+  modeloId: string,
+  nomeExibicao: string,
+  entrada: number,
+  saida: number,
+  leitura: number,
+  escrita: number,
+  fallbackRecusa: boolean,
+): Modelo {
   return {
     modeloId,
     nomeExibicao,
@@ -54,6 +128,7 @@ function modeloMock(modeloId: string, nomeExibicao: string, entrada: number, sai
     precoCacheLeituraMTok: leitura,
     precoCacheEscritaMTok: escrita,
     ativo: true,
+    fallbackRecusa,
     atualizadoEm: new Date(agora - 86_400_000).toISOString(),
   };
 }
@@ -108,7 +183,7 @@ function validarModelo(corpo: Record<string, unknown>): Record<string, string[]>
   return erros;
 }
 
-function modeloDoCorpo(modeloId: string, corpo: Record<string, unknown>, ativo: boolean): Modelo {
+function modeloDoCorpo(modeloId: string, corpo: Record<string, unknown>, ativo: boolean, fallbackAtual = false): Modelo {
   return {
     modeloId,
     nomeExibicao: String(corpo['nomeExibicao']).trim(),
@@ -117,6 +192,7 @@ function modeloDoCorpo(modeloId: string, corpo: Record<string, unknown>, ativo: 
     precoCacheLeituraMTok: opcional(corpo['precoCacheLeituraMTok']),
     precoCacheEscritaMTok: opcional(corpo['precoCacheEscritaMTok']),
     ativo,
+    fallbackRecusa: typeof corpo['fallbackRecusa'] === 'boolean' ? corpo['fallbackRecusa'] : fallbackAtual,
     atualizadoEm: new Date().toISOString(),
   };
 }
@@ -140,25 +216,33 @@ function responder(req: HttpRequest<unknown>, url: URL): Observable<HttpResponse
 
   if (!autenticado(req)) return erro(401, 'Auth.NaoAutenticado', 'Entre novamente.');
 
-  // ---- Tarefas (módulo de exemplo) ----
-  if (c === '/api/v1/tarefas' && req.method === 'GET') {
-    const status = url.searchParams.get('status');
-    return ok(status ? tarefas.filter((t) => t.status === status) : tarefas);
+  // ---- Automacoes ----
+  if (c === '/api/v1/automacoes' && req.method === 'GET') return ok(ehAdmin(req) ? automacoes : automacoes.filter((a) => a.ativa));
+  const executarAutomacao = c.match(/^\/api\/v1\/automacoes\/([^/]+)\/executar$/);
+  if (executarAutomacao && req.method === 'POST') {
+    const automacao = automacoes.find((a) => a.automacaoId === executarAutomacao[1] && a.ativa);
+    if (!automacao) return erro(404, 'Automacoes.NaoEncontrada', 'Automação não encontrada.');
+    return executarMock(automacao, corpo);
   }
-  if (c === '/api/v1/tarefas' && req.method === 'POST') {
-    const titulo = String(corpo['titulo'] ?? '').trim();
-    if (!titulo) return erro(400, 'Validacao', 'Dados inválidos.', { titulo: ['Informe o título.'] });
-    const nova: Tarefa = { tarefaId: crypto.randomUUID(), titulo, status: 'PENDENTE', criadaEm: new Date().toISOString() };
-    tarefas = [nova, ...tarefas];
-    return ok(nova, 201);
-  }
-  const concluir = c.match(/^\/api\/v1\/tarefas\/([^/]+)\/concluir$/);
-  if (concluir && req.method === 'PUT') {
-    const tarefa = tarefas.find((t) => t.tarefaId === concluir[1]);
-    if (!tarefa) return erro(404, 'Tarefas.NaoEncontrada', 'Tarefa não encontrada.');
-    if (tarefa.status === 'CONCLUIDA') return erro(409, 'Tarefas.JaConcluida', 'Esta tarefa já foi concluída.');
-    const atualizada: Tarefa = { ...tarefa, status: 'CONCLUIDA', concluidaEm: new Date().toISOString() };
-    tarefas = tarefas.map((t) => (t.tarefaId === atualizada.tarefaId ? atualizada : t));
+  const editarAutomacao = c.match(/^\/api\/v1\/automacoes\/([^/]+)$/);
+  if (editarAutomacao && req.method === 'PUT') {
+    if (!ehAdmin(req)) return erro(403, 'Auth.SemPermissao', 'Acesso negado.');
+    const atual = automacoes.find((a) => a.automacaoId === editarAutomacao[1]);
+    if (!atual) return erro(404, 'Automacoes.NaoEncontrada', 'Automação não encontrada.');
+    const mensagem = String(corpo['modeloMensagem'] ?? '');
+    if (!mensagem.includes('{{entrada}}'))
+      return invalido({ modeloMensagem: ['O modelo da mensagem precisa ter {{entrada}} onde entra o texto do usuário.'] });
+    const atualizada: Automacao = {
+      ...atual,
+      nome: String(corpo['nome'] ?? '').trim(),
+      descricao: String(corpo['descricao'] ?? '').trim(),
+      promptSistema: String(corpo['promptSistema'] ?? '').trim(),
+      modeloMensagem: mensagem.trim(),
+      modeloId: corpo['modeloId'] ? String(corpo['modeloId']) : undefined,
+      maxTokens: Number(corpo['maxTokens']),
+      ativa: corpo['ativa'] !== false,
+    };
+    automacoes = automacoes.map((a) => (a.automacaoId === atual.automacaoId ? atualizada : a));
     return ok(atualizada);
   }
 
@@ -223,7 +307,7 @@ function responder(req: HttpRequest<unknown>, url: URL): Observable<HttpResponse
     if (!atual) return erro(404, 'Modelos.NaoEncontrado', 'Modelo não encontrado.');
     const erros = validarModelo(corpo);
     if (Object.keys(erros).length) return invalido(erros);
-    const atualizado = modeloDoCorpo(id, corpo, typeof corpo['ativo'] === 'boolean' ? corpo['ativo'] : atual.ativo);
+    const atualizado = modeloDoCorpo(id, corpo, typeof corpo['ativo'] === 'boolean' ? corpo['ativo'] : atual.ativo, atual.fallbackRecusa);
     modelos = modelos.map((m) => (m.modeloId === id ? atualizado : m));
     return ok(atualizado);
   }

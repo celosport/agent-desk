@@ -6,14 +6,15 @@ Documentação = cofre do Obsidian em **`docs/obsidian/`** (entrada: `00 - Dashb
 <!-- CONTEXTO:INICIO -->
 ## Contexto deste projeto (gerado pelo novo-projeto.sh em 2026-10-30)
 **Agent Desk** — Painel de consumo e automações com a API da Claude, com escritório animado dos agentes
-- Perfis além de USUARIO/ADMIN: **nenhum** · Módulos iniciais: **Configuracoes,Automacoes,Consumo** · Manter exemplo Tarefas: **sim**
+- Perfis além de USUARIO/ADMIN: **nenhum** · Módulos iniciais: **Configuracoes,Automacoes,Consumo** · Manter exemplo Tarefas: ~~sim~~ removido na Fase 2
 - Offline: **não** · Plano pago: **não** · Lojas (Capacitor): **não**
 - Já aplicado pelo script: nome, nome de exibição, descrição, cor (#3b5bdb) e portas.
 - ✅ Perguntas respondidas (2026-10-30) — ver `Perguntas para Novo Projeto.md` e ADR-005 a 007. Perfis: só USUARIO/ADMIN (nada a mudar).
-- Entrega por fases, uma branch cada (`feat/fase-N-...`): ✅ Fase 1 Configuracoes · ⏳ Fase 2 Automacoes (+ remover Tarefas) ·
+- Entrega por fases, uma branch cada (`feat/fase-N-...`): ✅ Fase 1 Configuracoes · ✅ Fase 2 Automacoes (+ Tarefas removido) ·
   ⏳ Fase 3 Consumo · ⏳ Fase 4 Escritório.
 - Integração com a Claude: só via `IClienteAnthropic` (SharedKernel); nos testes, `AnthropicFalso` — nunca chamada real nem chave real.
 - Modelos e preços **nunca** no código: tabela `modelos_claude` (ADMIN edita).
+- Contratos entre módulos ficam em `SharedKernel/Contratos` (`IConfiguracoesDeUso`, `IRegistroConsumo`) — [[ADR-008 - Contratos entre Módulos (Automacoes, Configuracoes e Consumo)]].
 <!-- CONTEXTO:FIM -->
 
 ## Projeto novo (primeira sessão)
@@ -38,7 +39,7 @@ Documentação = cofre do Obsidian em **`docs/obsidian/`** (entrada: `00 - Dashb
 2. **Módulo → SharedKernel apenas.** Um módulo **nunca** referencia outro nem o Npgsql. Comunicação entre módulos = interface no SharedKernel implementada pelo dono.
 3. **Controller enxuto:** só traduz HTTP ↔ Command/Query e `Result` ↔ status. Sem SQL, sem regra.
 4. **CQRS leve, sem MediatR:** `ICommand/IQuery` + handler; registro explícito no `IModule` (`AddCommandHandler` ganha o decorator de FluentValidation).
-5. **Erro de negócio = `Result`/`Error` com código estável** (`"Tarefas.NaoEncontrada"`), nunca exceção. 500 nunca expõe `ex.Message`.
+5. **Erro de negócio = `Result`/`Error` com código estável** (`"Automacoes.NaoEncontrada"`), nunca exceção. 500 nunca expõe `ex.Message`.
 6. **Dapper com SQL explícito** (raw string `"""`, parâmetros nomeados, `CommandDefinition` com `CancellationToken`). Nunca concatenar SQL.
 7. **Visibilidade:** Command, Query e DTOs `public`; handler, validator, repositório e domínio `internal sealed`.
 8. **O usuário vem do token** (`IUsuarioAtual`), nunca do body. Tudo é filtrado pelo dono do dado; dado de outro = `404`.
@@ -54,7 +55,7 @@ Documentação = cofre do Obsidian em **`docs/obsidian/`** (entrada: `00 - Dashb
 7. Porta da API mudou? `launchSettings.json`, `environment.development.ts`, `scripts/iniciar-com-api.mjs` e `Cors:Origins`.
 
 ## Receita: módulo novo (API + App + docs)
-Siga `docs/obsidian/Receita - Novo Módulo (API + App).md`: schema → módulo (copie `Tarefas`) → testes de integração → feature (copie `features/tarefas`) → rota/menu → mock + E2E → nota do módulo + linha no Dashboard.
+Siga `docs/obsidian/Receita - Novo Módulo (API + App).md`: schema → módulo (copie `Configuracoes`, o exemplo de referência desde que o Tarefas saiu) → testes de integração → feature (copie `features/configuracoes`) → rota/menu → mock + E2E → nota do módulo + linha no Dashboard.
 
 ## Banco
 - `database/schema.sql` é **idempotente** (roda a cada deploy): `IF NOT EXISTS`, `ADD COLUMN IF NOT EXISTS`, constraints em `DO $$ ... EXCEPTION WHEN duplicate_object`.

@@ -18,7 +18,8 @@ public sealed record AtualizarModeloCommand(
     decimal? PrecoSaidaMTok,
     decimal? PrecoCacheLeituraMTok,
     decimal? PrecoCacheEscritaMTok,
-    bool? Ativo) : ICommand<ModeloDto>;
+    bool? Ativo,
+    bool? FallbackRecusa = null) : ICommand<ModeloDto>;
 
 internal sealed class AtualizarModeloValidator : AbstractValidator<AtualizarModeloCommand>
 {
@@ -47,6 +48,7 @@ internal sealed class AtualizarModeloHandler(IModelosRepository repository, Time
             PrecoCacheLeituraMTok = command.PrecoCacheLeituraMTok,
             PrecoCacheEscritaMTok = command.PrecoCacheEscritaMTok,
             Ativo = command.Ativo ?? atual.Ativo,
+            FallbackRecusa = command.FallbackRecusa ?? atual.FallbackRecusa,
             AtualizadoEm = clock.GetUtcNow(),
         };
         if (!await repository.AtualizarAsync(modelo, cancellationToken)) return ModeloErros.NaoEncontrado;

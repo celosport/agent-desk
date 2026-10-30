@@ -30,7 +30,11 @@ export const routes: Routes = [
         title: 'Configurações | Agent Desk',
         loadComponent: () => import('./features/configuracoes/configuracoes.page').then((m) => m.ConfiguracoesPage),
       },
-      { path: 'tarefas', title: 'Tarefas | Agent Desk', loadComponent: () => import('./features/tarefas/tarefas.page').then((m) => m.TarefasPage) },
+      {
+        path: 'automacoes',
+        title: 'Automações | Agent Desk',
+        loadComponent: () => import('./features/automacoes/automacoes.page').then((m) => m.AutomacoesPage),
+      },
     ],
   },
   { path: '**', redirectTo: '' },

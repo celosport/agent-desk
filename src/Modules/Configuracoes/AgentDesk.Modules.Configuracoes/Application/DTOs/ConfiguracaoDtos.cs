@@ -36,10 +36,11 @@ public sealed record ModeloDto(
     decimal? PrecoCacheLeituraMTok,
     decimal? PrecoCacheEscritaMTok,
     bool Ativo,
+    bool FallbackRecusa,
     DateTimeOffset AtualizadoEm)
 {
     internal static ModeloDto De(ModeloClaude m) => new(m.ModeloId, m.NomeExibicao, m.PrecoEntradaMTok, m.PrecoSaidaMTok,
-        m.PrecoCacheLeituraMTok, m.PrecoCacheEscritaMTok, m.Ativo, m.AtualizadoEm);
+        m.PrecoCacheLeituraMTok, m.PrecoCacheEscritaMTok, m.Ativo, m.FallbackRecusa, m.AtualizadoEm);
 }
 
 public sealed record CriarModeloRequestDto(
@@ -48,7 +49,8 @@ public sealed record CriarModeloRequestDto(
     decimal? PrecoEntradaMTok,
     decimal? PrecoSaidaMTok,
     decimal? PrecoCacheLeituraMTok,
-    decimal? PrecoCacheEscritaMTok);
+    decimal? PrecoCacheEscritaMTok,
+    bool? FallbackRecusa);
 
 public sealed record AtualizarModeloRequestDto(
     string? NomeExibicao,
@@ -56,4 +58,5 @@ public sealed record AtualizarModeloRequestDto(
     decimal? PrecoSaidaMTok,
     decimal? PrecoCacheLeituraMTok,
     decimal? PrecoCacheEscritaMTok,
-    bool? Ativo);
+    bool? Ativo,
+    bool? FallbackRecusa);
