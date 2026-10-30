@@ -1,4 +1,6 @@
 using AgentDesk.Infrastructure.Data;
+using AgentDesk.Infrastructure.Integracoes;
+using AgentDesk.Infrastructure.Seguranca;
 using AgentDesk.SharedKernel;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -15,6 +17,8 @@ public static class DependencyInjection
     ///  • NpgsqlDataSource     → Singleton (dono do pool de conexões)
     ///  • IDbConnectionFactory → Singleton (único padrão de acesso: repositórios abrem/fecham a conexão)
     ///  • TimeProvider         → Singleton (relógio testável para CriadoEm, vencimentos etc.)
+    ///  • Data Protection      → anel de chaves no PostgreSQL (cifra as API keys) — ADR-005
+    ///  • IClienteAnthropic    → HttpClient tipado da API da Claude — ADR-006
     /// </summary>
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
@@ -28,6 +32,9 @@ public static class DependencyInjection
         services.AddNpgsqlDataSource(connectionString);
         services.AddSingleton<IDbConnectionFactory, NpgsqlConnectionFactory>();
         services.TryAddSingleton(TimeProvider.System);
+
+        services.AddProtecaoDadosNoBanco();
+        services.AddClienteAnthropic(configuration);
 
         services.AddHealthChecks().AddCheck<DatabaseHealthCheck>("postgresql", tags: ["db", "ready"]);
 

@@ -8,8 +8,12 @@ Documentação = cofre do Obsidian em **`docs/obsidian/`** (entrada: `00 - Dashb
 **Agent Desk** — Painel de consumo e automações com a API da Claude, com escritório animado dos agentes
 - Perfis além de USUARIO/ADMIN: **nenhum** · Módulos iniciais: **Configuracoes,Automacoes,Consumo** · Manter exemplo Tarefas: **sim**
 - Offline: **não** · Plano pago: **não** · Lojas (Capacitor): **não**
-- Já aplicado pelo script: nome, nome de exibição, descrição, cor (#3b5bdb) e portas. **Ainda não aplicado:** perfis, módulos,
-  remoção do Tarefas e opcionais — faça na 1ª sessão seguindo "Projeto novo" abaixo e marque aqui quando concluir.
+- Já aplicado pelo script: nome, nome de exibição, descrição, cor (#3b5bdb) e portas.
+- ✅ Perguntas respondidas (2026-10-30) — ver `Perguntas para Novo Projeto.md` e ADR-005 a 007. Perfis: só USUARIO/ADMIN (nada a mudar).
+- Entrega por fases, uma branch cada (`feat/fase-N-...`): ✅ Fase 1 Configuracoes · ⏳ Fase 2 Automacoes (+ remover Tarefas) ·
+  ⏳ Fase 3 Consumo · ⏳ Fase 4 Escritório.
+- Integração com a Claude: só via `IClienteAnthropic` (SharedKernel); nos testes, `AnthropicFalso` — nunca chamada real nem chave real.
+- Modelos e preços **nunca** no código: tabela `modelos_claude` (ADMIN edita).
 <!-- CONTEXTO:FIM -->
 
 ## Projeto novo (primeira sessão)

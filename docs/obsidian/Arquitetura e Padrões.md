@@ -115,3 +115,4 @@ Ver [[Frontend (Angular PWA)]]: Angular standalone + signals, `core/shared/featu
 | Teste de lógica de plano falhava | Teste usava usuário "Free" para recurso que virou Pro | Ao mudar uma regra, procure os testes que a assumem |
 | Duas leituras do corpo HTTP | `ReadFromJsonAsync` fecha o stream | Ler como texto uma vez e fazer parse |
 | Reembolso/cobrança | Regra de negócio em controller | Regra no handler/domínio, controller só traduz |
+| Toque no lugar errado no celular | Tabela larga (mesmo dentro de `overflow-x: auto`) e `<select>` com opções longas alargavam o layout da página no Chrome mobile | Grid com `minmax(0, 1fr)`; tabela vira cartões em tela estreita (com `role` explícitos); E2E no projeto `celular` |

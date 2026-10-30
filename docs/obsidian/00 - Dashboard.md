@@ -18,6 +18,7 @@ tags: [painel]
 - 🧩 Receita → [[Receita - Novo Módulo (API + App)]]
 - 🐳 Ambiente → [[Ambiente Local (API + App)]] · [[Deploy (Railway)]]
 - 🏛️ Decisões → [[ADR-001 - Monolito Modular]] · [[ADR-002 - Handlers Próprios (CQRS sem MediatR)]] · [[ADR-003 - Frontend Junto da API (SPA Proxy)]] · [[ADR-004 - Documentação no Obsidian]]
+  · [[ADR-005 - Chave da API Criptografada (Data Protection no Postgres)]] · [[ADR-006 - Integração com a API da Anthropic]] · [[ADR-007 - Custo pela Tabela de Preços (Preço Congelado e Limite Mensal)]]
 - 🔁 Migração de sistemas legados → [[Migração do Base44]]
 - 🧱 Modelos de nota → `_Modelos/` (Ctrl/Cmd+P → "Inserir modelo")
 
@@ -25,6 +26,7 @@ tags: [painel]
 | Módulo | Backend | Frontend | Tabelas | Status |
 |---|---|---|---|---|
 | [[Módulo Contas]] | `src/Modules/Contas` | `features/auth` | `usuarios` | 🟢 cadastro, login, `GET /auth/eu` |
+| [[Módulo Configuracoes]] | `src/Modules/Configuracoes` | `features/configuracoes` | `configuracoes_usuario`, `modelos_claude`, `chaves_protecao_dados` | 🟡 Fase 1: API key cifrada, modelo padrão, limite, tabela de preços |
 | [[Módulo Tarefas (exemplo)]] | `src/Modules/Tarefas` | `features/tarefas` | `tarefas` | 🟢 exemplo de CRUD — copie e depois remova |
 
 > Ao criar um módulo: acrescente uma linha aqui e uma nota a partir de `_Modelos/Modelo - Módulo`.
@@ -33,3 +35,4 @@ tags: [painel]
 | Data | O que mudou |
 |---|---|
 | 2026-10-30 | Projeto criado a partir do esqueleto |
+| 2026-10-30 | Perguntas respondidas; ADR-005 a 007; **Fase 1**: módulo Configuracoes + tabela de modelos e preços |

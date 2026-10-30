@@ -19,4 +19,10 @@ describe('problema (problem+json → tela)', () => {
     expect(mensagemDeErro(resposta(500, { title: 'Internal Server Error' }))).toContain('problema no servidor');
     expect(mensagemDeErro(new Error('x'))).toBe('Algo deu errado. Tente de novo.');
   });
+
+  it('503 com code (serviço externo fora) mostra o texto da API; sem code, a frase genérica', () => {
+    const fora = resposta(503, { title: 'A API da Anthropic não respondeu.', code: 'Anthropic.Indisponivel' });
+    expect(mensagemDeErro(fora)).toBe('A API da Anthropic não respondeu.');
+    expect(mensagemDeErro(resposta(503, { title: 'Service Unavailable' }))).toContain('problema no servidor');
+  });
 });

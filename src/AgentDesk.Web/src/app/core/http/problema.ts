@@ -14,9 +14,11 @@ export function mensagemDeErro(erro: unknown): string {
   if (erro instanceof HttpErrorResponse) {
     if (erro.status === 0) return 'Sem conexão com o servidor. Verifique sua internet e tente de novo.';
     if (erro.status === 429) return 'Muitas tentativas seguidas. Aguarde um minuto e tente de novo.';
+    const problema = erro.error as ProblemDetails | null;
+    // 503 com code = serviço externo fora (ex.: Anthropic.Indisponivel): a API manda uma frase pronta para a tela
+    if (erro.status === 503 && problema?.code && problema.title) return problema.title;
     // Falha interna: o título padrão do ASP.NET vem em inglês e não ajuda quem usa o app
     if (erro.status >= 500) return 'Tivemos um problema no servidor. Tente de novo em instantes.';
-    const problema = erro.error as ProblemDetails | null;
     const primeiroCampo = problema?.errors ? Object.values(problema.errors)[0]?.[0] : undefined;
     return primeiroCampo ?? problema?.title ?? 'Não foi possível concluir. Tente de novo em instantes.';
   }

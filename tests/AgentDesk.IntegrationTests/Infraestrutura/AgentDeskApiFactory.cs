@@ -2,9 +2,10 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Dapper;
-using AgentDesk.SharedKernel.Identidade;
+using AgentDesk.SharedKernel.Integracoes;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
 using Testcontainers.PostgreSql;
@@ -29,6 +30,9 @@ public sealed class AgentDeskApiFactory : WebApplicationFactory<Program>, IAsync
     private string _connectionString = string.Empty;
     private string? _bancoCriado;
 
+    /// <summary>API da Anthropic falsa usada por toda a coleção (nada de chamada real).</summary>
+    public AnthropicFalso Anthropic { get; } = new();
+
     public async Task InitializeAsync()
     {
         if (_postgres is not null)
@@ -45,9 +49,7 @@ public sealed class AgentDeskApiFactory : WebApplicationFactory<Program>, IAsync
             _connectionString = new NpgsqlConnectionStringBuilder(BancoExterno) { Database = _bancoCriado }.ConnectionString;
         }
 
-        await using var connection = new NpgsqlConnection(_connectionString);
-        await connection.OpenAsync();
-        await connection.ExecuteAsync(await File.ReadAllTextAsync(Path.Combine(AppContext.BaseDirectory, "database", "schema.sql")));
+        await AplicarSchemaAsync();
 
         // Lidos pelo WebApplication.CreateBuilder quando o servidor de teste sobe (1º CreateClient)
         Environment.SetEnvironmentVariable("ConnectionStrings__AgentDeskDb", _connectionString);
@@ -55,7 +57,35 @@ public sealed class AgentDeskApiFactory : WebApplicationFactory<Program>, IAsync
         Environment.SetEnvironmentVariable("RateLimit__AutenticacaoPorMinuto", "1000");
     }
 
-    protected override void ConfigureWebHost(IWebHostBuilder builder) => builder.UseEnvironment("Testing");
+    protected override void ConfigureWebHost(IWebHostBuilder builder)
+    {
+        builder.UseEnvironment("Testing");
+        // O HttpClient tipado da Anthropic é o cliente nomeado "IClienteAnthropic": troca só o handler primário (headers,
+        // serialização e tradução de erros continuam sendo o código real)
+        builder.ConfigureTestServices(s => s.AddHttpClient(nameof(IClienteAnthropic))
+            .ConfigurePrimaryHttpMessageHandler(() => new AnthropicFalsoHandler(Anthropic)));
+    }
+
+    /// <summary>Roda o database/schema.sql (o mesmo do deploy). Rodar de novo testa a idempotência.</summary>
+    public async Task AplicarSchemaAsync()
+    {
+        await using var connection = new NpgsqlConnection(_connectionString);
+        await connection.OpenAsync();
+        await connection.ExecuteAsync(await File.ReadAllTextAsync(Path.Combine(AppContext.BaseDirectory, "database", "schema.sql")));
+    }
+
+    /// <summary>Consulta direta ao banco para conferir o que a API gravou (ex.: a chave está cifrada).</summary>
+    public async Task<T?> ConsultarAsync<T>(string sql, object? parametros = null)
+    {
+        await using var connection = new NpgsqlConnection(_connectionString);
+        return await connection.QuerySingleOrDefaultAsync<T>(sql, parametros);
+    }
+
+    public async Task<int> ExecutarAsync(string sql, object? parametros = null)
+    {
+        await using var connection = new NpgsqlConnection(_connectionString);
+        return await connection.ExecuteAsync(sql, parametros);
+    }
 
     async Task IAsyncLifetime.DisposeAsync()
     {
@@ -70,15 +100,33 @@ public sealed class AgentDeskApiFactory : WebApplicationFactory<Program>, IAsync
         }
     }
 
+    private const string SenhaTeste = "Senha@2026";
+
     /// <summary>Cria uma conta pela própria API e devolve um cliente HTTP já autenticado com o token dela.</summary>
     public async Task<HttpClient> ClienteNovoUsuarioAsync(string? nome = null)
     {
         var email = $"{Guid.NewGuid():N}@teste.dev";
         var resposta = await CreateClient().PostAsJsonAsync("/api/v1/auth/cadastro",
-            new { nome = nome ?? "Usuário de Teste", email, senha = "Senha@2026" });
+            new { nome = nome ?? "Usuário de Teste", email, senha = SenhaTeste });
         resposta.EnsureSuccessStatusCode();
-        var token = (await resposta.JsonAsync()).GetProperty("accessToken").GetString()!;
+        return ClienteComToken((await resposta.JsonAsync()).GetProperty("accessToken").GetString()!);
+    }
 
+    /// <summary>Conta ADMIN: cadastra, promove no banco (como o promover-admin.sql) e entra de novo para o token sair com o perfil.</summary>
+    public async Task<HttpClient> ClienteNovoAdminAsync()
+    {
+        var email = $"admin-{Guid.NewGuid():N}@teste.dev";
+        (await CreateClient().PostAsJsonAsync("/api/v1/auth/cadastro", new { nome = "Admin de Teste", email, senha = SenhaTeste }))
+            .EnsureSuccessStatusCode();
+        await ExecutarAsync("UPDATE usuarios SET tipo_perfil = 'ADMIN' WHERE email = @Email", new { Email = email });
+
+        var login = await CreateClient().PostAsJsonAsync("/api/v1/auth/login", new { email, senha = SenhaTeste });
+        login.EnsureSuccessStatusCode();
+        return ClienteComToken((await login.JsonAsync()).GetProperty("accessToken").GetString()!);
+    }
+
+    private HttpClient ClienteComToken(string token)
+    {
         var client = CreateClient();
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
         return client;

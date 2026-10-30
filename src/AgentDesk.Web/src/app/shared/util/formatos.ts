@@ -26,3 +26,23 @@ export function formatarMoeda(valor: number | null | undefined): string {
   if (valor === null || valor === undefined) return '';
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
 }
+
+/**
+ * "US$ 4,00" — custos e preços da API da Claude são em dólar. Valores pequenos (preço por token, custo de uma chamada barata)
+ * ganham casas extras em vez de virar "US$ 0,00": até `casasMaximas` (padrão 4).
+ */
+export function formatarDolar(valor: number | null | undefined, casasMaximas = 4): string {
+  if (valor === null || valor === undefined) return '';
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: casasMaximas,
+  }).format(valor);
+}
+
+/** "1.234.567" */
+export function formatarNumero(valor: number | null | undefined): string {
+  if (valor === null || valor === undefined) return '';
+  return new Intl.NumberFormat('pt-BR').format(valor);
+}

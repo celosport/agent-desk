@@ -25,6 +25,22 @@ Voltar: [[00 - Dashboard]]
 | App nas lojas (Capacitor) | não |
 | Cor da marca | #3b5bdb |
 | Portas (API https/http · app · PostgreSQL) | 52480 / 52481 · 4210 · 5434 |
+| Dono da API key da Anthropic | **Cada usuário** cadastra a sua (criptografada) → [[ADR-005 - Chave da API Criptografada (Data Protection no Postgres)]] |
+| Dono dos dados de consumo | **Por usuário**; o ADMIN tem a visão "Todos" (consolidado) |
+| Cadastro | Público (como o módulo Contas já faz); ADMIN promovido por `database/manutencao/promover-admin.sql` |
+| Limite de gasto | Opcional por usuário, em US$/mês: aviso a 80% e bloqueio a 100% (ou "só avisar") → [[ADR-007 - Custo pela Tabela de Preços (Preço Congelado e Limite Mensal)]] |
+| Preço no histórico | **Congelado** no log no momento da chamada |
+| Tokens de cache | Gravados (`cache_read` / `cache_creation`), com preço opcional na tabela de modelos |
+| Tabela de modelos | No banco, editável pelo ADMIN; carga inicial única (`migracoes_dados`) com Fable 5.1, Opus 5.5, Sonnet 5.5 e Haiku 5.5 |
+| Automações | Tabela `automacoes` (prompt-modelo, modelo padrão, `max_tokens`) editável pelo ADMIN; usuário pode trocar o modelo na execução. Fluxos do usuário: depois |
+| Arquivo de entrada | .txt/.md lido no navegador e enviado como texto; até 200 KB; arquivo não é guardado |
+| O que se guarda da execução | A **resposta** (para reabrir no histórico) e os metadados; a entrada não |
+| Streaming | Não na Fase 2: resposta completa, timeout de 120 s |
+| Uso principal | Computador (menu lateral/topo); responsivo no celular; Escritório simplificado no celular |
+| Tempo real | Polling de 10 s (`core/tempo-real`); dia e mês no fuso America/Sao_Paulo |
+| Exemplo Tarefas | Removido ao fim da Fase 2 |
+| Integração com a Claude | HttpClient na Infrastructure, contrato no SharedKernel, falso nos testes → [[ADR-006 - Integração com a API da Anthropic]] |
+| Git | `main` + uma branch por fase (`feat/fase-N-...`) |
 <!-- RESPOSTAS:FIM -->
 
 ## 1. Produto e negócio

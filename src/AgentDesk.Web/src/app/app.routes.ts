@@ -25,6 +25,11 @@ export const routes: Routes = [
     children: [
       { path: '', pathMatch: 'full', redirectTo: 'inicio' },
       { path: 'inicio', title: 'Início | Agent Desk', loadComponent: () => import('./features/inicio/inicio.page').then((m) => m.InicioPage) },
+      {
+        path: 'configuracoes',
+        title: 'Configurações | Agent Desk',
+        loadComponent: () => import('./features/configuracoes/configuracoes.page').then((m) => m.ConfiguracoesPage),
+      },
       { path: 'tarefas', title: 'Tarefas | Agent Desk', loadComponent: () => import('./features/tarefas/tarefas.page').then((m) => m.TarefasPage) },
     ],
   },

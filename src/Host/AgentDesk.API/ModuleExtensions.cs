@@ -1,3 +1,4 @@
+using AgentDesk.Modules.Configuracoes;
 using AgentDesk.Modules.Contas;
 using AgentDesk.Modules.Tarefas;
 using AgentDesk.SharedKernel;
@@ -10,6 +11,7 @@ internal static class ModuleExtensions
     private static readonly IModule[] Modulos =
     [
         new ContasModule(),
+        new ConfiguracoesModule(),
         new TarefasModule(),
     ];
 

@@ -39,6 +39,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\BuildingBlocks\AgentDesk.Infrastructure\AgentDesk.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Modules\Configuracoes\AgentDesk.Modules.Configuracoes\AgentDesk.Modules.Configuracoes.csproj" />
     <ProjectReference Include="..\..\Modules\Contas\AgentDesk.Modules.Contas\AgentDesk.Modules.Contas.csproj" />
     <ProjectReference Include="..\..\Modules\Tarefas\AgentDesk.Modules.Tarefas\AgentDesk.Modules.Tarefas.csproj" />
   </ItemGroup>
