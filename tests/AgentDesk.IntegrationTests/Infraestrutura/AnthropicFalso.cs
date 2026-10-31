@@ -51,7 +51,13 @@ public sealed class AnthropicFalso
                 {"data":[{"type":"model","id":"claude-opus-5-5","display_name":"Claude Opus 5.5","created_at":"2026-09-01T00:00:00Z"}],
                  "has_more":true,"first_id":"claude-opus-5-5","last_id":"claude-opus-5-5"}
                 """);
-        if (pedido.Method == HttpMethod.Post && caminho == "/v1/messages") return Mensagem(JsonNode.Parse(corpo!)!);
+        if (pedido.Method == HttpMethod.Post && caminho == "/v1/messages")
+        {
+            var json = JsonNode.Parse(corpo!)!;
+            // "[lento]": segura a resposta até o cancelamento (ou 30 s), para testar o botão Cancelar
+            if (json["messages"]![0]!["content"]!.GetValue<string>().Contains("[lento]")) await Task.Delay(TimeSpan.FromSeconds(30), ct);
+            return Mensagem(json);
+        }
 
         return Erro(HttpStatusCode.NotFound, "not_found_error", $"Falso sem resposta para {pedido.Method} {caminho}.");
     }

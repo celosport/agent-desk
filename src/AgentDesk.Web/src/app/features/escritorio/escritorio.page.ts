@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
+import { formatarIntervalo } from '../../shared/util/formatos';
 import { CenaEscritorio } from './cena-escritorio.component';
 import { EquipeStore } from './data-access/equipe.store';
 import { EscritorioStore } from './data-access/escritorio.store';
@@ -69,9 +70,20 @@ import { SalaClaudeCode } from './sala-claude-code.component';
                   <textarea id="pedido" class="ui-entrada texto" rows="5" formControlName="entrada"
                             placeholder="Cole o texto, o código ou o documento…"></textarea>
                 </div>
-                <button type="submit" class="ui-botao ui-botao--primario" [disabled]="s.ocupado">
-                  {{ s.ocupado ? s.apelido + ' está trabalhando…' : 'Mandar ' + s.apelido + ' trabalhar' }}
-                </button>
+                <div class="acoes-pedido">
+                  <button type="submit" class="ui-botao ui-botao--primario" [disabled]="s.ocupado">
+                    {{ s.ocupado ? s.apelido + ' está trabalhando…' : 'Mandar ' + s.apelido + ' trabalhar' }}
+                  </button>
+                  @if (s.cancelavel) {
+                    <button type="button" class="ui-botao" [disabled]="store.cancelando() === s.codigo"
+                            [attr.aria-label]="'Cancelar a tarefa de ' + s.apelido" (click)="store.cancelar(s.codigo)">
+                      {{ store.cancelando() === s.codigo ? 'Cancelando…' : 'Cancelar' }}
+                    </button>
+                  }
+                </div>
+                @if (s.trabalhandoHa) {
+                  <p class="ui-suave" role="timer">{{ s.apelido }} trabalha há {{ s.trabalhandoHa }}</p>
+                }
               </form>
             }
 
@@ -83,7 +95,8 @@ import { SalaClaudeCode } from './sala-claude-code.component';
                 }
               </div>
             }
-            @if (store.ultimaExecucao()) {
+            @if (store.ultimaExecucao(); as u) {
+              <p class="ui-suave" data-testid="ultima-execucao">Última execução: {{ intervalo(u.iniciadaEm, u.finalizadaEm) }}</p>
               <p class="ui-suave"><a routerLink="/consumo/historico">Ver o resultado completo no histórico</a></p>
             }
           </section>
@@ -115,11 +128,13 @@ import { SalaClaudeCode } from './sala-claude-code.component';
     .status { grid-column: 2; font-size: var(--ui-t-xs); color: var(--ui-texto-2); }
     .status.ocupado { color: var(--ui-marca-tinta); font-weight: 600; }
     .pedido { display: grid; gap: var(--ui-e3); }
+    .acoes-pedido { display: flex; flex-wrap: wrap; gap: var(--ui-e2); }
     .texto { min-height: 7rem; padding: var(--ui-e3); resize: vertical; }
   `,
 })
 export class EscritorioPage {
   protected readonly store = inject(EscritorioStore);
+  protected readonly intervalo = formatarIntervalo;
   private readonly equipe = inject(EquipeStore);
   protected readonly form = inject(NonNullableFormBuilder).group({ entrada: [''] });
   /** A sala do Claude Code abre primeiro: é onde está o trabalho de verdade. */
@@ -128,6 +143,9 @@ export class EscritorioPage {
   constructor() {
     // Movimento reduzido: o motor não anima a caminhada e o desenho não pisca
     acompanharMovimentoReduzido((r) => (this.store.reduzido = r), inject(DestroyRef));
+    // Cronômetro "trabalha há 12 s": um tique por segundo, só enquanto a página existe
+    const relogio = setInterval(() => this.store.relogioMs.set(Date.now()), 1000);
+    inject(DestroyRef).onDestroy(() => clearInterval(relogio));
     void this.equipe.carregar();
     void this.store.carregar();
   }

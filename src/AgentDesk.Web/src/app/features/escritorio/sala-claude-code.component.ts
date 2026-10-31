@@ -1,8 +1,9 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { atualizarPeriodicamente } from '../../core/tempo-real/atualizacao-periodica';
-import { formatarDolarCompacto, formatarHaQuanto, formatarNumero } from '../../shared/util/formatos';
+import { formatarDolarCompacto, formatarDuracao, formatarHaQuanto, formatarHora, formatarIntervalo, formatarNumero } from '../../shared/util/formatos';
 import { CenaEscritorio } from './cena-escritorio.component';
+import { SessaoAoVivo } from './data-access/sessoes.models';
 import { SessoesStore } from './data-access/sessoes.store';
 import { acompanharMovimentoReduzido } from './movimento-reduzido';
 import { StatusSessao } from './motor/sessao';
@@ -78,7 +79,7 @@ const ROTULO: Record<StatusSessao, string> = {
                   <span [class]="'status ' + s.status.toLowerCase()">{{ rotulo[s.status] }}</span>
                   <span class="atividade">{{ s.atividade ?? '—' }}</span>
                   <span class="numeros ui-suave">
-                    {{ numero(s.tokens) }} tokens · ≈ {{ dolar(s.custoUsd) }} · {{ s.pedidos }} pedidos · {{ haQuanto(s.ultimaAtividadeEm) }}
+                    {{ tempo(s) }} · {{ numero(s.tokens) }} tokens · ≈ {{ dolar(s.custoUsd) }} · {{ s.pedidos }} pedidos · {{ haQuanto(s.ultimaAtividadeEm) }}
                     @if (s.modelo) { · {{ s.modelo }} }
                   </span>
                 </button>
@@ -125,6 +126,11 @@ export class SalaClaudeCode {
   protected readonly numero = formatarNumero;
   protected readonly dolar = formatarDolarCompacto;
   protected readonly haQuanto = (iso: string) => formatarHaQuanto(iso);
+  /** Quando a sessão começou e quanto tempo dura (ou durou, se já encerrou). */
+  protected readonly tempo = (s: SessaoAoVivo) =>
+    s.status === 'ENCERRADA'
+      ? `${formatarIntervalo(s.iniciadaEm, s.ultimaAtividadeEm)}`
+      : `iniciada às ${formatarHora(s.iniciadaEm)} · ${formatarDuracao(Date.now() - new Date(s.iniciadaEm).getTime())}`;
   protected readonly temAlerta = (sessoes: { status: StatusSessao }[]) => sessoes.some((s) => s.status === 'ESPERANDO_VOCE');
 
   constructor() {

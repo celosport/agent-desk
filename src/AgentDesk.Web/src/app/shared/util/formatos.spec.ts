@@ -1,4 +1,15 @@
-import { formatarData, formatarDataHora, formatarDolar, formatarDolarCompacto, formatarHaQuanto, formatarMoeda, formatarNumero } from './formatos';
+import {
+  formatarData,
+  formatarDataHora,
+  formatarDolar,
+  formatarDolarCompacto,
+  formatarDuracao,
+  formatarHaQuanto,
+  formatarHora,
+  formatarIntervalo,
+  formatarMoeda,
+  formatarNumero,
+} from './formatos';
 
 describe('formatos pt-BR', () => {
   it('datas da API (UTC) aparecem no horário de Brasília', () => {
@@ -35,5 +46,22 @@ describe('formatos pt-BR', () => {
 
   it('números com separador de milhar', () => {
     expect(formatarNumero(1234567)).toBe('1.234.567');
+  });
+
+  it('hora da API (UTC) no horário de Brasília, com segundos', () => {
+    expect(formatarHora('2026-10-30T16:45:07Z')).toBe('13:45:07');
+    expect(formatarHora(null)).toBe('');
+  });
+
+  it('duração em linguagem corrida', () => {
+    expect(formatarDuracao(400)).toBe('0,4 s');
+    expect(formatarDuracao(7_000)).toBe('7 s');
+    expect(formatarDuracao(65_000)).toBe('1 min 05 s');
+    expect(formatarDuracao(2 * 3_600_000 + 3 * 60_000)).toBe('2 h 03 min');
+    expect(formatarDuracao(undefined)).toBe('');
+  });
+
+  it('intervalo mostra início, fim e quanto demorou', () => {
+    expect(formatarIntervalo('2026-10-30T11:15:02Z', '2026-10-30T11:15:09Z')).toBe('08:15:02 → 08:15:09 · 7 s');
   });
 });

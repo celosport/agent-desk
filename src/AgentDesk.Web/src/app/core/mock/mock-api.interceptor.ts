@@ -45,6 +45,9 @@ let configuracao: Configuracao = { chaveApiConfigurada: false, bloquearAoAtingir
 let chaveSalva: string | null = null;
 
 // ---- Automacoes: a mesma carga inicial do schema.sql (prompts resumidos) ----
+/** Execuções em andamento (id enviado pelo app) que o botão Cancelar já interrompeu. */
+const execucoesCanceladas = new Set<string>();
+
 /** Nome e aparência dos agentes (módulo Equipe); começa vazio: tudo no padrão do Escritório. */
 let equipe: AgenteEquipe[] = [];
 
@@ -116,7 +119,7 @@ function aoVivoMock() {
 }
 
 // ---- Consumo ----
-interface ChamadaMock extends Chamada {
+interface ChamadaMock extends Omit<Chamada, 'finalizadaEm'> {
   usuarioId: string;
   resultado?: string;
   precoEntradaMTok?: number;
@@ -195,7 +198,8 @@ function totais(lista: ChamadaMock[]) {
 /** Sem o campo interno nem o resultado (o resultado só vem no detalhe); nome só no escopo TODOS. */
 function chamadaPublica(c: ChamadaMock, comNome: boolean): Chamada {
   const { usuarioId: _u, resultado: _r, precoEntradaMTok: _pe, precoSaidaMTok: _ps, exemplo: _e, usuarioNome, ...resto } = c;
-  return comNome ? { ...resto, usuarioNome } : resto;
+  const finalizadaEm = new Date(Date.parse(c.iniciadaEm) + c.duracaoMs).toISOString();
+  return comNome ? { ...resto, usuarioNome, finalizadaEm } : { ...resto, finalizadaEm };
 }
 
 function consumoDoEscopo(req: HttpRequest<unknown>, url: URL): ChamadaMock[] | Observable<never> {
@@ -345,7 +349,31 @@ function executarMock(automacao: Automacao, corpo: Record<string, unknown>, req:
   };
   const registro = registroMock(automacao, usuario, modeloId, uso, custo, 'SUCESSO', modelo.precoEntradaMTok, modelo.precoSaidaMTok);
   chamadas = [{ ...registro, chamadaId: execucao.chamadaId, iniciadaEm: execucao.iniciadaEm, resultado: execucao.resultado, temResultado: true }, ...chamadas];
-  return ok(execucao).pipe(delay(400)); // a Claude demora: dá tempo de ver o "Executando…"
+  const finalizadaEm = new Date(new Date(execucao.iniciadaEm).getTime() + execucao.duracaoMs).toISOString();
+  const resposta = ok({ ...execucao, finalizadaEm });
+  const execucaoId = String(corpo['execucaoId'] ?? '');
+  if (!entrada.includes('[lento]')) return resposta.pipe(delay(400)); // a Claude demora: dá tempo de ver o "Executando…"
+
+  // "[lento]": espera até 8 s e responde a um Cancelar (o mesmo que a API faz ao cancelar a chamada à Claude)
+  chamadas = chamadas.filter((x) => x.chamadaId !== execucao.chamadaId);
+  return new Observable<HttpResponse<unknown>>((assinante) => {
+    const inicio = Date.now();
+    const timer = setInterval(() => {
+      if (execucoesCanceladas.delete(execucaoId)) {
+        clearInterval(timer);
+        const cancelada = registroMock(automacao, usuario, modeloId, { entrada: 0, saida: 0, cacheLeitura: 0, cacheEscrita: 0 }, 0, 'CANCELADA',
+          modelo.precoEntradaMTok, modelo.precoSaidaMTok);
+        chamadas = [{ ...cancelada, duracaoMs: Date.now() - inicio, erroCodigo: 'Automacoes.Cancelada' }, ...chamadas];
+        assinante.error(new HttpErrorResponse({ status: 422, error: { code: 'Automacoes.Cancelada', title: 'Execução cancelada.' } }));
+      } else if (Date.now() - inicio >= 8000) {
+        clearInterval(timer);
+        chamadas = [{ ...registro, chamadaId: execucao.chamadaId, iniciadaEm: execucao.iniciadaEm, resultado: execucao.resultado, temResultado: true }, ...chamadas];
+        assinante.next(new HttpResponse({ status: 200, body: { ...execucao, finalizadaEm } }));
+        assinante.complete();
+      }
+    }, 100);
+    return () => clearInterval(timer);
+  });
 }
 
 function registroMock(
@@ -498,6 +526,12 @@ function responder(req: HttpRequest<unknown>, url: URL): Observable<HttpResponse
 
   // ---- Automacoes ----
   if (c === '/api/v1/automacoes' && req.method === 'GET') return ok(ehAdmin(req) ? automacoes : automacoes.filter((a) => a.ativa));
+  const cancelarExecucao = c.match(/^\/api\/v1\/automacoes\/execucoes\/([^/]+)\/cancelar$/);
+  if (cancelarExecucao && req.method === 'POST') {
+    // Só existe execução cancelável enquanto uma "[lento]" aguarda; o mock marca e a espera acima responde
+    execucoesCanceladas.add(cancelarExecucao[1]);
+    return ok(null, 204);
+  }
   const executarAutomacao = c.match(/^\/api\/v1\/automacoes\/([^/]+)\/executar$/);
   if (executarAutomacao && req.method === 'POST') {
     const automacao = automacoes.find((a) => a.automacaoId === executarAutomacao[1] && a.ativa);

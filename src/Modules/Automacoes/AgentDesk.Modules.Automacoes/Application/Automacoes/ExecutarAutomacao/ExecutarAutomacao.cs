@@ -14,8 +14,8 @@ namespace AgentDesk.Modules.Automacoes.Application.Automacoes.ExecutarAutomacao;
 /// Roda a automação na Claude com a chave do usuário (do servidor, nunca do navegador) e grava o consumo.
 /// Modelo: o do pedido → o da automação → o padrão do usuário. O limite mensal é conferido ANTES da chamada.
 /// </summary>
-public sealed record ExecutarAutomacaoCommand(Guid UsuarioId, Guid AutomacaoId, string? Entrada, string? ModeloId, string? NomeArquivo)
-    : ICommand<ExecucaoDto>;
+public sealed record ExecutarAutomacaoCommand(Guid UsuarioId, Guid AutomacaoId, string? Entrada, string? ModeloId, string? NomeArquivo,
+    Guid? ExecucaoId = null) : ICommand<ExecucaoDto>;
 
 internal sealed class ExecutarAutomacaoValidator : AbstractValidator<ExecutarAutomacaoCommand>
 {
@@ -38,6 +38,7 @@ internal sealed class ExecutarAutomacaoHandler(
     IConfiguracoesDeUso configuracoes,
     IRegistroConsumo consumo,
     IClienteAnthropic anthropic,
+    IExecucoesEmAndamento emAndamento,
     TimeProvider clock) : ICommandHandler<ExecutarAutomacaoCommand, ExecucaoDto>
 {
     /// <summary>A partir de quanto do limite a resposta traz o alerta.</summary>
@@ -64,12 +65,25 @@ internal sealed class ExecutarAutomacaoHandler(
         if (preferencias.LimiteMensalUsd is { } limite && preferencias.BloquearAoAtingirLimite && gastoAntes >= limite)
             return AutomacaoErros.LimiteMensalAtingido(gastoAntes, limite);
 
-        // A partir daqui a Anthropic pode cobrar: se o navegador desistir no meio, a chamada segue e o consumo é gravado
-        // mesmo assim (por isso CancellationToken.None).
+        // Só o botão Cancelar interrompe a chamada. Se o navegador simplesmente desistir (aba fechada), ela segue e o consumo é
+        // gravado mesmo assim, porque a Anthropic pode cobrar (por isso o token da requisição não é usado aqui).
+        using var cancelavel = command.ExecucaoId is { } execucaoId ? emAndamento.Iniciar(execucaoId, command.UsuarioId) : null;
+        if (command.ExecucaoId is not null && cancelavel is null) return AutomacaoErros.ExecucaoDuplicada;
+
         var pedido = new PedidoMensagem(modeloId, automacao.MaxTokens, automacao.PromptSistema,
             automacao.MontarMensagem(command.Entrada!), preco.FallbackRecusa);
         var inicio = clock.GetTimestamp();
-        var resposta = await anthropic.EnviarMensagemAsync(preferencias.ChaveApi, pedido, CancellationToken.None);
+        Result<RespostaMensagem> resposta;
+        var cancelada = false;
+        try
+        {
+            resposta = await anthropic.EnviarMensagemAsync(preferencias.ChaveApi, pedido, cancelavel?.Token ?? CancellationToken.None);
+        }
+        catch (OperationCanceledException) when (cancelavel is { Token.IsCancellationRequested: true })
+        {
+            resposta = AutomacaoErros.Cancelada;
+            cancelada = true;
+        }
         var duracaoMs = (int)clock.GetElapsedTime(inicio).TotalMilliseconds;
 
         var chamada = new ChamadaClaude(Guid.NewGuid(), command.UsuarioId, automacao.AutomacaoId, automacao.Nome, modeloId, null,
@@ -77,7 +91,9 @@ internal sealed class ExecutarAutomacaoHandler(
 
         if (resposta.IsFailure)
         {
-            await consumo.RegistrarAsync(chamada with { ErroCodigo = resposta.Error.Code }, CancellationToken.None);
+            await consumo.RegistrarAsync(
+                chamada with { Status = cancelada ? StatusChamada.Cancelada : StatusChamada.Erro, ErroCodigo = resposta.Error.Code },
+                CancellationToken.None);
             return resposta.Error;
         }
 

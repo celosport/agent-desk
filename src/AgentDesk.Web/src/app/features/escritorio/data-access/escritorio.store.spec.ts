@@ -7,7 +7,7 @@ import { ExecucaoResumo } from './escritorio.models';
 import { EscritorioStore, textoDoResultado } from './escritorio.store';
 
 describe('EscritorioStore', () => {
-  const api = { automacoes: vi.fn(), executar: vi.fn() };
+  const api = { automacoes: vi.fn(), executar: vi.fn(), cancelar: vi.fn() };
   const apiEquipe = { listar: vi.fn().mockResolvedValue([]), salvar: vi.fn(), restaurar: vi.fn() };
   const execucao: ExecucaoResumo = {
     chamadaId: 'c1',
@@ -16,6 +16,9 @@ describe('EscritorioStore', () => {
     truncado: false,
     tokens: { total: 1800 },
     custoUsd: 0.000365,
+    duracaoMs: 7000,
+    iniciadaEm: '2026-10-31T11:15:02Z',
+    finalizadaEm: '2026-10-31T11:15:09Z',
   };
   let relogio = 0;
   /** O Intl separa "US$" do valor com espaço não separável (U+00A0). */
@@ -54,13 +57,53 @@ describe('EscritorioStore', () => {
     const promessa = store.executar('resumir-documento', 'texto');
     expect(store.status()[1]).toMatchObject({ status: 'pensando…', ocupado: true });
     expect(await store.executar('resumir-documento', 'de novo')).toBe(false);
-    expect(api.executar).toHaveBeenCalledWith('3', 'texto');
+    expect(api.executar).toHaveBeenCalledWith('3', 'texto', expect.stringMatching(/^[0-9a-f-]{36}$/));
 
     relogio = 1000; // depois do mínimo do "pensando…"
     responder(execucao);
     expect(await promessa).toBe(true);
     expect(texto(store.status()[1].status)).toBe('terminou: 1.800 tokens · US$ 0,0004');
     expect(store.status()[0].status).toBe('disponível'); // o outro agente nem se mexeu
+  });
+
+  it('cancelar: o agente mostra o cronômetro, a API recebe o id da execução e o balão diz "cancelada" sem painel de erro', async () => {
+    const store = await criar();
+    let rejeitar!: (e: unknown) => void;
+    api.executar.mockReturnValue(new Promise<ExecucaoResumo>((_, r) => (rejeitar = r)));
+    api.cancelar.mockResolvedValue(undefined);
+
+    const promessa = store.executar('resumir-documento', 'texto');
+    const inicio = Date.now();
+    store.relogioMs.set(inicio + 12_000);
+    expect(store.status()[1]).toMatchObject({ cancelavel: true, trabalhandoHa: '12 s' });
+    expect(store.status()[0]).toMatchObject({ cancelavel: false, trabalhandoHa: null });
+
+    await store.cancelar('resumir-documento');
+    const execucaoId = api.executar.mock.calls[0][2];
+    expect(api.cancelar).toHaveBeenCalledWith(execucaoId);
+
+    rejeitar(new HttpErrorResponse({ status: 422, error: { code: 'Automacoes.Cancelada', title: 'Execução cancelada.' } }));
+    expect(await promessa).toBe(false);
+    expect(store.falha()).toBeNull();
+    expect(store.status()[1].cancelavel).toBe(false);
+    relogio = 1000;
+    store.passo(16);
+    expect(store.status()[1].status).toBe('erro: Execução cancelada');
+  });
+
+  it('cancelar sem execução em andamento não chama a API; 404 da API (já terminou) é ignorado', async () => {
+    const store = await criar();
+    await store.cancelar('resumir-documento');
+    expect(api.cancelar).not.toHaveBeenCalled();
+
+    let responder!: (e: ExecucaoResumo) => void;
+    api.executar.mockReturnValue(new Promise<ExecucaoResumo>((r) => (responder = r)));
+    api.cancelar.mockRejectedValue(new HttpErrorResponse({ status: 404, error: { code: 'Automacoes.ExecucaoNaoEncontrada' } }));
+    const promessa = store.executar('resumir-documento', 'texto');
+    await expect(store.cancelar('resumir-documento')).resolves.toBeUndefined();
+    relogio = 1000;
+    responder(execucao);
+    expect(await promessa).toBe(true);
   });
 
   it('erro da API vira balão de erro e, se for de configuração, oferece Configurações', async () => {

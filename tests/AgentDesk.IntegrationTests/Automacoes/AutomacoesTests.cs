@@ -332,6 +332,79 @@ public sealed class AutomacoesTests(AgentDeskApiFactory factory)
         }
     }
 
+    private async Task<(Task<HttpResponseMessage> Execucao, Guid ExecucaoId)> ExecutarLentaAsync(HttpClient http, string chave)
+    {
+        var execucaoId = Guid.NewGuid();
+        var id = await IdAsync(http, "resumir-documento");
+        var execucao = http.PostAsJsonAsync($"{Rota}/{id}/executar", new { entrada = "Resuma isto [lento]", execucaoId });
+        // Espera a chamada chegar na Anthropic (falsa) antes de cancelar
+        for (var i = 0; i < 100 && !factory.Anthropic.PedidosDa(chave).Any(p => p.Caminho.EndsWith("/v1/messages", StringComparison.Ordinal)); i++)
+            await Task.Delay(50);
+        return (execucao, execucaoId);
+    }
+
+    [Fact]
+    public async Task Cancelar_interrompe_a_execucao_e_grava_a_chamada_como_cancelada()
+    {
+        var u = await UsuarioComChaveAsync();
+        var (execucao, execucaoId) = await ExecutarLentaAsync(u.Http, u.Chave);
+
+        var cancelar = await u.Http.PostAsync($"{Rota}/execucoes/{execucaoId}/cancelar", null);
+
+        Assert.Equal(HttpStatusCode.NoContent, cancelar.StatusCode);
+        var resposta = await execucao.WaitAsync(TimeSpan.FromSeconds(10));
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, resposta.StatusCode);
+        Assert.Equal("Automacoes.Cancelada", await resposta.CodigoErroAsync());
+        var chamada = await UltimaChamadaAsync(u.Id);
+        Assert.Equal("CANCELADA", chamada!.Status);
+        Assert.Equal("Automacoes.Cancelada", chamada.ErroCodigo);
+        Assert.Equal(0, chamada.TokensTotal);
+        Assert.Equal(0m, chamada.CustoUsd);
+        Assert.Equal(1, await TotalChamadasAsync(u.Id));
+    }
+
+    [Fact]
+    public async Task Cancelar_o_que_nao_existe_ou_ja_terminou_responde_404()
+    {
+        var u = await UsuarioComChaveAsync();
+
+        var inexistente = await u.Http.PostAsync($"{Rota}/execucoes/{Guid.NewGuid()}/cancelar", null);
+        Assert.Equal(HttpStatusCode.NotFound, inexistente.StatusCode);
+        Assert.Equal("Automacoes.ExecucaoNaoEncontrada", await inexistente.CodigoErroAsync());
+
+        var execucaoId = Guid.NewGuid();
+        var id = await IdAsync(u.Http, "resumir-documento");
+        (await u.Http.PostAsJsonAsync($"{Rota}/{id}/executar", new { entrada = "rápida", execucaoId })).EnsureSuccessStatusCode();
+        Assert.Equal(HttpStatusCode.NotFound, (await u.Http.PostAsync($"{Rota}/execucoes/{execucaoId}/cancelar", null)).StatusCode);
+    }
+
+    [Fact]
+    public async Task So_o_dono_cancela_a_execucao()
+    {
+        var dono = await UsuarioComChaveAsync();
+        var intruso = await factory.ClienteNovoUsuarioAsync();
+        var (execucao, execucaoId) = await ExecutarLentaAsync(dono.Http, dono.Chave);
+
+        Assert.Equal(HttpStatusCode.NotFound, (await intruso.PostAsync($"{Rota}/execucoes/{execucaoId}/cancelar", null)).StatusCode);
+        Assert.False(execucao.IsCompleted); // a execução do dono segue
+
+        Assert.Equal(HttpStatusCode.NoContent, (await dono.Http.PostAsync($"{Rota}/execucoes/{execucaoId}/cancelar", null)).StatusCode);
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, (await execucao.WaitAsync(TimeSpan.FromSeconds(10))).StatusCode);
+    }
+
+    [Fact]
+    public async Task Execucao_traz_inicio_fim_e_duracao()
+    {
+        var u = await UsuarioComChaveAsync();
+
+        var json = await (await ExecutarAsync(u.Http, "resumir-documento", "Resuma isto")).JsonAsync();
+
+        var inicio = json.GetProperty("iniciadaEm").GetDateTimeOffset();
+        var fim = json.GetProperty("finalizadaEm").GetDateTimeOffset();
+        Assert.Equal(inicio.AddMilliseconds(json.GetProperty("duracaoMs").GetInt32()), fim);
+        Assert.True(fim >= inicio);
+    }
+
     [Fact]
     public async Task Automacao_inexistente_responde_404()
     {

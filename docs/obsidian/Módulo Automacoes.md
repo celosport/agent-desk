@@ -34,6 +34,7 @@ Voltar: [[00 - Dashboard]] · Receita: [[Receita - Novo Módulo (API + App)]]
 | GET | `/api/v1/automacoes` | logado (ADMIN vê inativas) | 200 `AutomacaoDto[]` |
 | PUT | `/api/v1/automacoes/{id}` | ADMIN | 200 · 400 (`modeloMensagem` sem `{{entrada}}`…) · 403 · 404 `Automacoes.NaoEncontrada` · 422 `Automacoes.ModeloInvalido` |
 | POST | `/api/v1/automacoes/{id}/executar` | logado | 200 `ExecucaoDto` · 400 (`entrada`, `nomeArquivo`) · 404 · 422 `Automacoes.ChaveNaoConfigurada` / `ModeloNaoDefinido` / `ModeloInvalido` / `LimiteMensalAtingido` / `Recusada` / `Anthropic.ChaveInvalida` / `Anthropic.SemCredito` / `Anthropic.PedidoInvalido` · 503 `Anthropic.LimiteDeTaxa` / `Anthropic.Indisponivel` |
+| POST | `/api/v1/automacoes/execucoes/{execucaoId}/cancelar` | logado (dono) | 204 · 404 `Automacoes.ExecucaoNaoEncontrada` — a execução original responde 422 `Automacoes.Cancelada` ([[ADR-012 - Cancelar Tarefa do Agente]]) |
 
 ## Telas
 - **Automações** (`/automacoes`): cartões dos fluxos, texto ou arquivo, modelo, Executar; resultado com tokens, custo, duração,
@@ -45,3 +46,7 @@ Voltar: [[00 - Dashboard]] · Receita: [[Receita - Novo Módulo (API + App)]]
 - [ ] Fluxos criados pelo próprio usuário.
 
 Criado em 2026-10-30.
+
+## Cancelar e tempos (Fase 6b-1)
+- Escritório: enquanto o agente trabalha aparece **Cancelar** e o cronômetro "trabalha há 12 s"; depois, "Última execução: 08:15:02 → 08:15:09 · 7 s". O histórico mostra início → fim e o status **Cancelada**.
+- `execucaoId` vai no `executar`; `finalizadaEm` = início + duração (DTO). Sessões do Claude Code mostram "iniciada às HH:mm:ss · duração" (ou início → fim, se encerrada). O topo do app mostra quem está logado.

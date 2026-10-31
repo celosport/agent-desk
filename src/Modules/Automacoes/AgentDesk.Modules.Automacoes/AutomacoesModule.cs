@@ -1,4 +1,5 @@
 using AgentDesk.Modules.Automacoes.Application.Automacoes.AtualizarAutomacao;
+using AgentDesk.Modules.Automacoes.Application.Automacoes.CancelarExecucao;
 using AgentDesk.Modules.Automacoes.Application.Automacoes.ExecutarAutomacao;
 using AgentDesk.Modules.Automacoes.Application.Automacoes.ListarAutomacoes;
 using AgentDesk.Modules.Automacoes.Application.DTOs;
@@ -23,6 +24,7 @@ public sealed class AutomacoesModule : IModule
     public IServiceCollection RegisterServices(IServiceCollection services, IConfiguration configuration)
     {
         services.AddScoped<IAutomacoesRepository, AutomacoesRepository>();
+        services.AddSingleton<IExecucoesEmAndamento, ExecucoesEmAndamento>();
 
         services.AddScoped<IValidator<AtualizarAutomacaoCommand>, AtualizarAutomacaoValidator>();
         services.AddScoped<IValidator<ExecutarAutomacaoCommand>, ExecutarAutomacaoValidator>();
@@ -30,6 +32,7 @@ public sealed class AutomacoesModule : IModule
         services.AddQueryHandler<ListarAutomacoesQuery, IReadOnlyList<AutomacaoDto>, ListarAutomacoesHandler>();
         services.AddCommandHandler<AtualizarAutomacaoCommand, AutomacaoDto, AtualizarAutomacaoHandler>();
         services.AddCommandHandler<ExecutarAutomacaoCommand, ExecucaoDto, ExecutarAutomacaoHandler>();
+        services.AddCommandHandler<CancelarExecucaoCommand, bool, CancelarExecucaoHandler>();
 
         return services;
     }

@@ -14,7 +14,15 @@ export class EscritorioApi {
     return firstValueFrom(this.http.get<AutomacaoAgente[]>(this.base));
   }
 
-  executar(automacaoId: string, entrada: string): Promise<ExecucaoResumo> {
-    return firstValueFrom(this.http.post<ExecucaoResumo>(`${this.base}/${automacaoId}/executar`, { entrada, modeloId: null, nomeArquivo: null }));
+  /** `execucaoId` é gerado aqui para poder cancelar antes de a resposta chegar. */
+  executar(automacaoId: string, entrada: string, execucaoId: string): Promise<ExecucaoResumo> {
+    return firstValueFrom(
+      this.http.post<ExecucaoResumo>(`${this.base}/${automacaoId}/executar`, { entrada, modeloId: null, nomeArquivo: null, execucaoId }),
+    );
+  }
+
+  /** 404 se a execução já terminou (quem chama ignora). */
+  cancelar(execucaoId: string): Promise<void> {
+    return firstValueFrom(this.http.post<void>(`${this.base}/execucoes/${execucaoId}/cancelar`, null));
   }
 }

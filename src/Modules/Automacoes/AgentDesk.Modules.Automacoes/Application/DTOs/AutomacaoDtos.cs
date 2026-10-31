@@ -31,7 +31,8 @@ public sealed record AtualizarAutomacaoRequestDto(
 
 /// <param name="ModeloId">Opcional: sobrepõe o modelo da automação só nesta execução.</param>
 /// <param name="NomeArquivo">Nome do .txt/.md de onde veio a entrada (só para o histórico; o arquivo não é guardado).</param>
-public sealed record ExecutarAutomacaoRequestDto(string? Entrada, string? ModeloId, string? NomeArquivo);
+/// <param name="ExecucaoId">Opcional: id gerado pelo app para poder cancelar a execução (POST execucoes/{id}/cancelar).</param>
+public sealed record ExecutarAutomacaoRequestDto(string? Entrada, string? ModeloId, string? NomeArquivo, Guid? ExecucaoId = null);
 
 public sealed record TokensDto(int Entrada, int Saida, int CacheLeitura, int CacheEscrita, int Total)
 {
@@ -53,4 +54,8 @@ public sealed record ExecucaoDto(
     decimal CustoUsd,
     int DuracaoMs,
     DateTimeOffset IniciadaEm,
-    AlertaLimiteDto? AlertaLimite);
+    AlertaLimiteDto? AlertaLimite)
+{
+    /// <summary>Quando terminou (início + duração): com o início, dá o tempo que o agente levou.</summary>
+    public DateTimeOffset FinalizadaEm => IniciadaEm.AddMilliseconds(DuracaoMs);
+}

@@ -53,6 +53,9 @@ public sealed record ChamadaDto(
     string? NomeArquivo,
     bool TemResultado)
 {
+    /// <summary>Quando terminou (início + duração).</summary>
+    public DateTimeOffset FinalizadaEm => IniciadaEm.AddMilliseconds(DuracaoMs);
+
     internal static ChamadaDto De(Chamada c, string? usuarioNome) => new(c.ChamadaId, c.IniciadaEm, usuarioNome, c.AutomacaoId,
         c.AutomacaoNome, c.ModeloId, c.ModeloUsado, TokensDto.De(c.Uso), c.CustoUsd, c.DuracaoMs, c.Status, c.ErroCodigo,
         c.MotivoParada, c.NomeArquivo, c.TemResultado);

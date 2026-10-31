@@ -10,12 +10,16 @@ public sealed record UsoTokens(int Entrada, int Saida, int CacheLeitura, int Cac
     public int Total => Entrada + Saida + CacheLeitura + CacheEscrita;
 }
 
-/// <summary>JSON/banco: "SUCESSO", "ERRO", "RECUSADA" (stop_reason "refusal": não é erro HTTP, mas não há resposta útil).</summary>
+/// <summary>
+/// JSON/banco: "SUCESSO", "ERRO", "RECUSADA" (stop_reason "refusal": não é erro HTTP, mas não há resposta útil),
+/// "CANCELADA" (o usuário cancelou a tarefa antes de a resposta chegar).
+/// </summary>
 public enum StatusChamada
 {
     Sucesso,
     Erro,
     Recusada,
+    Cancelada,
 }
 
 /// <summary>Uma chamada à API da Claude, já com o custo calculado e o preço da época (congelado). [[ADR-007 - Custo pela Tabela de Preços (Preço Congelado e Limite Mensal)]]</summary>
