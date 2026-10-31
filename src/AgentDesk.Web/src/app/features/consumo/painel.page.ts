@@ -88,7 +88,7 @@ export const INTERVALO_PAINEL_MS = 10_000;
 
         <div class="graficos">
           <section class="ui-cartao">
-            <app-grafico-dias [dias]="r.porDia" [titulo]="'Custo por dia — últimos ' + r.dias + ' dias (US$)'" />
+            <app-grafico-dias [dias]="r.porDia" [titulo]="'Custo por dia — últimos ' + r.dias + ' dias'" />
           </section>
 
           <section class="ui-cartao" aria-labelledby="titulo-ranking">

@@ -3,6 +3,7 @@ import {
   formatarDataHora,
   formatarDolar,
   formatarDolarCompacto,
+  formatarDolarFixo,
   formatarDuracao,
   formatarHaQuanto,
   formatarHora,
@@ -12,6 +13,7 @@ import {
   formatarPercentual,
   formatarRenovacao,
 } from './formatos';
+import { moedaAtiva, taxasPorDolar } from './moeda-ativa';
 
 describe('formatos pt-BR', () => {
   it('datas da API (UTC) aparecem no horário de Brasília', () => {
@@ -80,5 +82,49 @@ describe('formatos pt-BR', () => {
     expect(formatarRenovacao('2026-11-04T12:00:00Z', agora)).toBe('04/11 às 09:00 · em 93 h 00 min');
     expect(formatarRenovacao('2026-10-31T14:59:00Z', agora)).toBe('renovando');
     expect(formatarRenovacao(undefined, agora)).toBe('');
+  });
+
+  describe('moeda de exibição', () => {
+    const t = (v: string) => v.replace(/\s/g, ' ');
+
+    afterEach(() => {
+      moedaAtiva.set('USD');
+      taxasPorDolar.set(null);
+    });
+
+    it('converte o custo em dólar pela taxa da moeda escolhida', () => {
+      taxasPorDolar.set({ USD: 1, BRL: 5.4, EUR: 0.9, GBP: 0.75 });
+
+      moedaAtiva.set('BRL');
+      expect(t(formatarDolar(4))).toBe('R$ 21,60');
+      expect(t(formatarDolarCompacto(12.3456))).toBe('R$ 66,67');
+      moedaAtiva.set('EUR');
+      expect(t(formatarDolarCompacto(4))).toBe('€ 3,60');
+      moedaAtiva.set('GBP');
+      expect(t(formatarDolar(4))).toBe('£ 3,00');
+    });
+
+    it('valores pequenos mantêm as casas extras na moeda convertida', () => {
+      taxasPorDolar.set({ USD: 1, BRL: 5.4 });
+      moedaAtiva.set('BRL');
+
+      expect(t(formatarDolar(0.000365, 6))).toBe('R$ 0,001971');
+      expect(t(formatarDolarCompacto(0.05))).toBe('R$ 0,27'); // 0,27 < 1 na moeda convertida: até 4 casas, sem zeros à toa
+    });
+
+    it('sem cotação (ou da moeda escolhida) tudo segue em dólar', () => {
+      moedaAtiva.set('BRL');
+      expect(t(formatarDolar(4))).toBe('US$ 4,00');
+
+      taxasPorDolar.set({ USD: 1, EUR: 0.9 }); // sem BRL
+      expect(t(formatarDolar(4))).toBe('US$ 4,00');
+    });
+
+    it('formatarDolarFixo nunca converte (preços e limites são definidos em dólar)', () => {
+      taxasPorDolar.set({ USD: 1, BRL: 5.4 });
+      moedaAtiva.set('BRL');
+
+      expect(t(formatarDolarFixo(4))).toBe('US$ 4,00');
+    });
   });
 });

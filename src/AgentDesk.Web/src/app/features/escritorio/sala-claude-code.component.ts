@@ -92,7 +92,7 @@ const ROTULO: Record<StatusSessao, string> = {
               <button type="button" class="ui-botao" (click)="equipe.pedirEdicao(agente)">Personalizar {{ store.apelido(selecionada) }}</button>
             }
           }
-          <p class="ui-suave dica">≈ US$ = quanto as chamadas custariam na API; na assinatura você não paga por token.</p>
+          <p class="ui-suave dica">≈ valor = quanto as chamadas custariam na API (convertido pela moeda escolhida no topo); na assinatura você não paga por token.</p>
         </section>
       </div>
     }

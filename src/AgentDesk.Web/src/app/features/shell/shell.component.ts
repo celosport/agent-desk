@@ -1,7 +1,10 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthStore } from '../../core/auth/auth.store';
+import { MoedaApp } from '../../core/moeda/moeda';
+import { MOEDAS, Moeda } from '../../shared/util/moeda-ativa';
 import { AlternarTema } from '../../shared/ui/alternar-tema.component';
+import { formatarData } from '../../shared/util/formatos';
 
 /** Item do menu: um por feature. Para esconder por perfil, filtre por auth.usuario()?.perfil (e proteja a rota com perfilGuard). */
 interface ItemMenu {
@@ -29,6 +32,12 @@ interface ItemMenu {
             <small>{{ u.perfil === 'ADMIN' ? 'Administrador' : 'Usuário' }} · {{ u.email }}</small>
           </p>
         }
+        <select class="moeda ui-entrada" aria-label="Moeda dos valores" [value]="moeda.efetiva()" (change)="moeda.escolher($any($event.target).value)"
+                [title]="dicaMoeda()">
+          @for (m of opcoesMoeda(); track m.codigo) {
+            <option [value]="m.codigo" [selected]="m.codigo === moeda.efetiva()">{{ m.simbolo }}</option>
+          }
+        </select>
         <app-alternar-tema />
         <button type="button" class="ui-botao ui-botao--fantasma" (click)="auth.sair()">Sair</button>
       </div>
@@ -52,11 +61,20 @@ interface ItemMenu {
     }
     nav a.ativo { background: var(--ui-superficie-2); color: var(--ui-texto); }
     .acoes { display: flex; align-items: center; flex: none; gap: var(--ui-e2); }
+    .moeda { width: auto; min-height: 0; padding: var(--ui-e1) var(--ui-e2); }
     .usuario { display: grid; margin: 0; line-height: 1.2; text-align: right; min-width: 0; }
     .usuario strong { font-size: var(--ui-t-sm); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 12rem; }
     .usuario small { font-size: var(--ui-t-xs); color: var(--ui-texto-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 12rem; }
     .acoes .ui-botao { padding: 0 var(--ui-e3); }
-    @media (max-width: 720px) { .usuario small { display: none; } .usuario strong { max-width: 6rem; } }
+    @media (max-width: 720px) {
+      .usuario small { display: none; }
+      .usuario strong { max-width: 6rem; }
+      /* Celular: marca e ações na 1ª linha, o menu rolável na 2ª (não cabe tudo numa linha só) */
+      .topo { flex-wrap: wrap; row-gap: var(--ui-e1); }
+      .marca { order: 1; }
+      .acoes { order: 2; margin-left: auto; }
+      nav { order: 3; flex-basis: 100%; }
+    }
     @media (max-width: 480px) {
       .topo { gap: var(--ui-e2); padding-inline: var(--ui-e2); }
       nav a { padding-inline: var(--ui-e2); }
@@ -65,6 +83,16 @@ interface ItemMenu {
 })
 export class Shell {
   protected readonly auth = inject(AuthStore);
+  protected readonly moeda = inject(MoedaApp);
+  protected readonly opcoesMoeda = computed(() => MOEDAS.filter((m) => this.moeda.disponiveis().includes(m.codigo)));
+  protected readonly dicaMoeda = computed(() => {
+    const c = this.moeda.cotacoes();
+    return c ? `Valores calculados em dólar e convertidos pela ${c.fonte}, de ${formatarData(`${c.dataCotacao}T12:00:00-03:00`)}` : 'Cotação indisponível: valores em dólar';
+  });
+
+  constructor() {
+    void this.moeda.carregar();
+  }
 
   protected readonly menu: ItemMenu[] = [
     { rota: '/inicio', rotulo: 'Início' },

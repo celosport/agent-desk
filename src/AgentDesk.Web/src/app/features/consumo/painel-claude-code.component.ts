@@ -95,7 +95,7 @@ export const INTERVALO_CLAUDE_CODE_MS = 10_000;
 
       <div class="graficos">
         <section class="ui-cartao">
-          <app-grafico-dias [dias]="store.serieParaGrafico()" [titulo]="'≈ Custo por dia — últimos ' + p.dias + ' dias (US$)'" />
+          <app-grafico-dias [dias]="store.serieParaGrafico()" [titulo]="'≈ Custo por dia — últimos ' + p.dias + ' dias'" />
         </section>
 
         <section class="ui-cartao" aria-labelledby="titulo-cache-dia">

@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } 
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { AuthStore } from '../../core/auth/auth.store';
 import { Avisos } from '../../core/ui/avisos.service';
-import { formatarDolar } from '../../shared/util/formatos';
+import { formatarDolarFixo } from '../../shared/util/formatos';
 import { ConfiguracoesStore, ResultadoTeste } from './data-access/configuracoes.store';
 import { ConexaoClaude } from './conexao-claude.component';
 import { ModelosPrecos, numero } from './modelos-precos.component';
@@ -131,7 +131,7 @@ export class ConfiguracoesPage {
   private readonly fb = inject(NonNullableFormBuilder);
 
   protected readonly ehAdmin = computed(() => this.auth.usuario()?.perfil === 'ADMIN');
-  protected readonly dolar = (v: number) => formatarDolar(v);
+  protected readonly dolar = (v: number) => formatarDolarFixo(v);
 
   protected readonly formChave = this.fb.group({ chaveApi: ['', Validators.required] });
   protected readonly formPreferencias = this.fb.group({

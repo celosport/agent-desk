@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { Avisos } from '../../core/ui/avisos.service';
-import { formatarDataHora, formatarDolar } from '../../shared/util/formatos';
+import { formatarDataHora, formatarDolarFixo } from '../../shared/util/formatos';
 import { Modelo } from './data-access/configuracoes.models';
 import { ConfiguracoesStore } from './data-access/configuracoes.store';
 
@@ -142,7 +142,7 @@ export class ModelosPrecos {
   private readonly avisos = inject(Avisos);
   private readonly fb = inject(NonNullableFormBuilder);
 
-  protected readonly dolar = (v: number) => formatarDolar(v);
+  protected readonly dolar = (v: number) => formatarDolarFixo(v);
   protected readonly dataHora = formatarDataHora;
 
   protected readonly editando = signal<string | null>(null);

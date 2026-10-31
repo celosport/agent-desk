@@ -4,6 +4,7 @@ using AgentDesk.Modules.Configuracoes.Application.Configuracoes.SalvarChaveApi;
 using AgentDesk.Modules.Configuracoes.Application.Configuracoes.SalvarPreferencias;
 using AgentDesk.Modules.Configuracoes.Application.Configuracoes.TestarChaveApi;
 using AgentDesk.Modules.Configuracoes.Application.Contratos;
+using AgentDesk.Modules.Configuracoes.Application.Cotacoes;
 using AgentDesk.Modules.Configuracoes.Application.DTOs;
 using AgentDesk.Modules.Configuracoes.Application.Modelos.AtualizarModelo;
 using AgentDesk.Modules.Configuracoes.Application.Modelos.CriarModelo;
@@ -30,6 +31,18 @@ public sealed class ConfiguracoesModule : IModule
         services.AddScoped<IConfiguracoesRepository, ConfiguracoesRepository>();
         services.AddScoped<IModelosRepository, ModelosRepository>();
         services.AddSingleton<ICofreChaves, CofreChaves>();
+
+        // Cotações (PTAX do Banco Central) para mostrar R$, € e £; a rotina fica desligada nos testes
+        services.AddScoped<ICotacoesRepository, CotacoesRepository>();
+        services.AddHttpClient<IClienteCotacoes, ClienteBcb>(c =>
+        {
+            c.BaseAddress = new Uri(ClienteBcb.BaseUrl);
+            c.Timeout = TimeSpan.FromSeconds(20);
+        });
+        services.AddQueryHandler<ObterCotacoesQuery, CotacoesDto, ObterCotacoesHandler>();
+        services.AddSingleton<CotacoesRotina>();
+        if (configuration.GetValue("Configuracoes:CotacoesRotinaHabilitada", true))
+            services.AddHostedService(sp => sp.GetRequiredService<CotacoesRotina>());
 
         // Contrato para os outros módulos (Automacoes): chave decifrada, preferências e preço do modelo
         services.AddScoped<IConfiguracoesDeUso, ConfiguracoesDeUso>();
