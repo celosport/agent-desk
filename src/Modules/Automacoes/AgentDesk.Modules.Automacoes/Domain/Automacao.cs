@@ -40,6 +40,15 @@ internal static class AutomacaoErros
     public static readonly Error Recusada = Error.Unprocessable(
         "Automacoes.Recusada", "A Claude recusou este pedido (filtro de segurança). Os tokens usados foram registrados no consumo.");
 
+    public static readonly Error Cancelada = Error.Unprocessable(
+        "Automacoes.Cancelada", "Execução cancelada. A Anthropic pode ter cobrado os tokens de entrada, que não aparecem no consumo.");
+
+    public static readonly Error ExecucaoNaoEncontrada = Error.NotFound(
+        "Automacoes.ExecucaoNaoEncontrada", "Não há execução em andamento com este id (talvez já tenha terminado).");
+
+    public static readonly Error ExecucaoDuplicada = Error.Conflict(
+        "Automacoes.ExecucaoDuplicada", "Já existe uma execução em andamento com este id.");
+
     public static Error LimiteMensalAtingido(decimal gasto, decimal limite) => Error.Unprocessable(
         "Automacoes.LimiteMensalAtingido",
         $"Você atingiu o limite de gasto do mês (US$ {gasto:0.00} de US$ {limite:0.00}). Aumente o limite em Configurações ou espere o próximo mês.");

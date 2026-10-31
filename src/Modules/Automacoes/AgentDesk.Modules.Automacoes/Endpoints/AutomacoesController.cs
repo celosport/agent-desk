@@ -1,4 +1,5 @@
 using AgentDesk.Modules.Automacoes.Application.Automacoes.AtualizarAutomacao;
+using AgentDesk.Modules.Automacoes.Application.Automacoes.CancelarExecucao;
 using AgentDesk.Modules.Automacoes.Application.Automacoes.ExecutarAutomacao;
 using AgentDesk.Modules.Automacoes.Application.Automacoes.ListarAutomacoes;
 using AgentDesk.Modules.Automacoes.Application.DTOs;
@@ -48,7 +49,18 @@ public sealed class AutomacoesController(IUsuarioAtual usuarioAtual) : Controlle
         Guid automacaoId, [FromBody] ExecutarAutomacaoRequestDto r,
         [FromServices] ICommandHandler<ExecutarAutomacaoCommand, ExecucaoDto> handler, CancellationToken ct)
         => Responder(await handler.Handle(
-            new ExecutarAutomacaoCommand(usuarioAtual.UsuarioId, automacaoId, r.Entrada, r.ModeloId, r.NomeArquivo), ct));
+            new ExecutarAutomacaoCommand(usuarioAtual.UsuarioId, automacaoId, r.Entrada, r.ModeloId, r.NomeArquivo, r.ExecucaoId), ct));
+
+    /// <summary>Cancela a execução em andamento (o id foi enviado no <c>executar</c>). 404 se já terminou ou não é sua.</summary>
+    [HttpPost("execucoes/{execucaoId:guid}/cancelar")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Cancelar(
+        Guid execucaoId, [FromServices] ICommandHandler<CancelarExecucaoCommand, bool> handler, CancellationToken ct)
+    {
+        var result = await handler.Handle(new CancelarExecucaoCommand(usuarioAtual.UsuarioId, execucaoId), ct);
+        return result.IsSuccess ? NoContent() : this.ToProblem(result.Error);
+    }
 
     private IActionResult Responder<T>(Result<T> result) => result.IsSuccess ? Ok(result.Value) : this.ToProblem(result.Error);
 }

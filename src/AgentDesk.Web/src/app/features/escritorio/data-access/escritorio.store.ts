@@ -1,12 +1,14 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { codigoDeErro, mensagemDeErro } from '../../../core/http/problema';
-import { formatarDolarCompacto, formatarNumero } from '../../../shared/util/formatos';
+import { formatarDolarCompacto, formatarDuracao, formatarNumero } from '../../../shared/util/formatos';
 import { Agente, Balao, avancar, concluirTarefa, descreverFase, iniciarTarefa, novoAgente, ocupado } from '../motor/agente';
 import { FonteCena } from '../motor/fonte-cena';
 import { MAXIMO_AGENTES, Personagem, lugarDe } from '../motor/personagens';
 import { EquipeStore } from './equipe.store';
 import { EscritorioApi } from './escritorio.api';
 import { AutomacaoAgente, ExecucaoResumo } from './escritorio.models';
+
+const CODIGO_CANCELADA = 'Automacoes.Cancelada';
 
 /** Falta de chave/modelo ou limite: a página oferece o link para Configurações. */
 const CODIGOS_DE_CONFIGURACAO = new Set([
@@ -23,6 +25,10 @@ export interface StatusAgente {
   descricao: string;
   status: string;
   ocupado: boolean;
+  /** Tem uma execução em andamento que o botão Cancelar consegue interromper. */
+  cancelavel: boolean;
+  /** "12 s" enquanto a automação roda; null se está parado. */
+  trabalhandoHa: string | null;
 }
 
 /**
@@ -46,6 +52,12 @@ export class EscritorioStore implements FonteCena {
   readonly falha = signal<{ codigo: string; mensagem: string; irParaConfiguracoes: boolean } | null>(null);
   readonly ultimaExecucao = signal<ExecucaoResumo | null>(null);
   readonly versao = signal(0);
+  /** Execuções em andamento por código de automação (o id é o que a API usa para cancelar). */
+  readonly execucoes = signal<Record<string, { execucaoId: string; inicioMs: number }>>({});
+  /** Quem está cancelando agora (o botão fica desligado até a resposta voltar). */
+  readonly cancelando = signal<string | null>(null);
+  /** Relógio de parede (ms) que a página atualiza a cada segundo para o cronômetro. */
+  readonly relogioMs = signal(Date.now());
   /** Última mudança de um agente, para a região aria-live ("Sumi: pensando…"). */
   readonly anuncio = signal('');
 
@@ -54,6 +66,8 @@ export class EscritorioStore implements FonteCena {
   readonly status = computed<StatusAgente[]>(() => {
     this.versao();
     this.equipe.agentes(); // renomear um agente na Equipe atualiza a lista na hora
+    const execucoes = this.execucoes();
+    const relogio = this.relogioMs();
     return this.agentes.map((a) => {
       const automacao = this.automacoes().find((x) => x.codigo === a.codigo);
       return {
@@ -63,6 +77,8 @@ export class EscritorioStore implements FonteCena {
         descricao: automacao?.descricao ?? '',
         status: descreverFase(a),
         ocupado: ocupado(a),
+        cancelavel: !!execucoes[a.codigo],
+        trabalhandoHa: execucoes[a.codigo] ? formatarDuracao(Math.max(0, relogio - execucoes[a.codigo].inicioMs)) : null,
       };
     });
   });
@@ -123,20 +139,44 @@ export class EscritorioStore implements FonteCena {
     if (!automacao || !agente || ocupado(agente)) return false;
 
     this.falha.set(null);
+    const execucaoId = globalThis.crypto.randomUUID();
+    this.execucoes.update((e) => ({ ...e, [codigo]: { execucaoId, inicioMs: Date.now() } }));
+    this.relogioMs.set(Date.now());
     this.trocar(codigo, (a) => iniciarTarefa(a, this.agora(), this.reduzido));
     let balao: Balao;
     try {
-      const execucao = await this.api.executar(automacao.automacaoId, entrada);
+      const execucao = await this.api.executar(automacao.automacaoId, entrada, execucaoId);
       this.ultimaExecucao.set(execucao);
       balao = { tipo: 'resultado', texto: textoDoResultado(execucao) };
     } catch (e) {
       const codigoErro = codigoDeErro(e);
       const mensagem = mensagemDeErro(e);
-      this.falha.set({ codigo, mensagem, irParaConfiguracoes: !!codigoErro && CODIGOS_DE_CONFIGURACAO.has(codigoErro) });
-      balao = { tipo: 'erro', texto: resumir(mensagem) };
+      if (codigoErro === CODIGO_CANCELADA) {
+        // Cancelar foi escolha do usuário: sem painel de erro, só o balão
+        balao = { tipo: 'erro', texto: 'Execução cancelada' };
+      } else {
+        this.falha.set({ codigo, mensagem, irParaConfiguracoes: !!codigoErro && CODIGOS_DE_CONFIGURACAO.has(codigoErro) });
+        balao = { tipo: 'erro', texto: resumir(mensagem) };
+      }
+    } finally {
+      this.execucoes.update(({ [codigo]: _, ...resto }) => resto);
     }
     this.trocar(codigo, (a) => concluirTarefa(a, balao, this.agora()));
     return balao.tipo === 'resultado';
+  }
+
+  /** Cancela a execução em andamento do agente. A própria `executar` termina com o balão "Execução cancelada". */
+  async cancelar(codigo: string): Promise<void> {
+    const execucao = this.execucoes()[codigo];
+    if (!execucao || this.cancelando()) return;
+    this.cancelando.set(codigo);
+    try {
+      await this.api.cancelar(execucao.execucaoId);
+    } catch {
+      // 404: a execução acabou de terminar sozinha; o resultado normal já está a caminho
+    } finally {
+      this.cancelando.set(null);
+    }
   }
 
   private trocar(codigo: string, f: (a: Agente) => Agente): void {

@@ -4,11 +4,11 @@ import { RouterLink } from '@angular/router';
 import { AuthStore } from '../../core/auth/auth.store';
 import { Avisos } from '../../core/ui/avisos.service';
 import { baixarTexto, nomeArquivoResultado } from '../../shared/util/arquivos';
-import { formatarDataHora, formatarDolar, formatarDolarCompacto, formatarNumero } from '../../shared/util/formatos';
+import { formatarDataHora, formatarDolar, formatarDolarCompacto, formatarHora, formatarNumero } from '../../shared/util/formatos';
 import { Chamada, EscopoConsumo, StatusChamada } from './data-access/consumo.models';
 import { HistoricoStore } from './data-access/historico.store';
 
-const STATUS: Record<StatusChamada, string> = { SUCESSO: '✓ Sucesso', ERRO: '✕ Erro', RECUSADA: '⊘ Recusada' };
+const STATUS: Record<StatusChamada, string> = { SUCESSO: '✓ Sucesso', ERRO: '✕ Erro', RECUSADA: '⊘ Recusada', CANCELADA: '■ Cancelada' };
 
 /** Histórico de chamadas com filtros (período, automação, modelo, status), paginação e o resultado de cada uma. [[Módulo Consumo]] */
 @Component({
@@ -53,6 +53,7 @@ const STATUS: Record<StatusChamada, string> = { SUCESSO: '✓ Sucesso', ERRO: '�
             <option value="SUCESSO">Sucesso</option>
             <option value="ERRO">Erro</option>
             <option value="RECUSADA">Recusada</option>
+            <option value="CANCELADA">Cancelada</option>
           </select></div>
         <div class="acoes">
           <button type="submit" class="ui-botao ui-botao--primario">Filtrar</button>
@@ -96,7 +97,7 @@ const STATUS: Record<StatusChamada, string> = { SUCESSO: '✓ Sucesso', ERRO: '�
                       <span>{{ numero(c.tokens.total) }}<small class="ui-suave detalhe-tokens">entrada {{ numero(c.tokens.entrada) }} · saída {{ numero(c.tokens.saida) }}</small></span>
                     </td>
                     <td role="cell" data-rotulo="Custo">{{ dolar(c.custoUsd) }}</td>
-                    <td role="cell" data-rotulo="Duração">{{ segundos(c.duracaoMs) }}</td>
+                    <td role="cell" data-rotulo="Duração">{{ segundos(c.duracaoMs) }}<small class="ui-suave detalhe-tokens">{{ intervalo(c) }}</small></td>
                     <td role="cell" data-rotulo="Status">
                       <span [class]="'status ' + c.status.toLowerCase()">{{ status[c.status] }}</span>
                       @if (c.erroCodigo) { <small class="ui-suave"> {{ c.erroCodigo }}</small> }
@@ -168,6 +169,7 @@ const STATUS: Record<StatusChamada, string> = { SUCESSO: '✓ Sucesso', ERRO: '�
     .status { font-weight: 600; white-space: nowrap; }
     .status.sucesso { color: var(--ui-verde); }
     .status.erro, .status.recusada { color: var(--ui-vermelho); }
+    .status.cancelada { color: var(--ui-texto-2); }
     .paginas { display: flex; justify-content: center; align-items: center; gap: var(--ui-e3); margin: var(--ui-e4) 0; }
     .vazio { margin-bottom: var(--ui-e4); }
     .detalhe { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--ui-e3); margin-top: var(--ui-e4); }
@@ -210,6 +212,7 @@ export class HistoricoPage {
   protected readonly numero = formatarNumero;
   protected readonly dataHora = formatarDataHora;
   protected readonly segundos = (ms: number) => `${(ms / 1000).toFixed(1).replace('.', ',')} s`;
+  protected readonly intervalo = (c: Chamada) => `${formatarHora(c.iniciadaEm)} → ${formatarHora(c.finalizadaEm)}`;
   protected readonly descricao = (c: Chamada) => `${c.automacaoNome ?? 'chamada'} de ${formatarDataHora(c.iniciadaEm)}`;
 
   constructor() {

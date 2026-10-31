@@ -23,6 +23,12 @@ interface ItemMenu {
         }
       </nav>
       <div class="acoes">
+        @if (auth.usuario(); as u) {
+          <p class="usuario" aria-label="Usuário logado" [title]="u.email">
+            <strong>{{ u.nome }}</strong>
+            <small>{{ u.perfil === 'ADMIN' ? 'Administrador' : 'Usuário' }} · {{ u.email }}</small>
+          </p>
+        }
         <app-alternar-tema />
         <button type="button" class="ui-botao ui-botao--fantasma" (click)="auth.sair()">Sair</button>
       </div>
@@ -45,8 +51,12 @@ interface ItemMenu {
       color: var(--ui-texto-2); text-decoration: none; white-space: nowrap; font-weight: 500;
     }
     nav a.ativo { background: var(--ui-superficie-2); color: var(--ui-texto); }
-    .acoes { display: flex; align-items: center; flex: none; }
+    .acoes { display: flex; align-items: center; flex: none; gap: var(--ui-e2); }
+    .usuario { display: grid; margin: 0; line-height: 1.2; text-align: right; min-width: 0; }
+    .usuario strong { font-size: var(--ui-t-sm); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 12rem; }
+    .usuario small { font-size: var(--ui-t-xs); color: var(--ui-texto-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 12rem; }
     .acoes .ui-botao { padding: 0 var(--ui-e3); }
+    @media (max-width: 720px) { .usuario small { display: none; } .usuario strong { max-width: 6rem; } }
     @media (max-width: 480px) {
       .topo { gap: var(--ui-e2); padding-inline: var(--ui-e2); }
       nav a { padding-inline: var(--ui-e2); }

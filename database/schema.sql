@@ -130,6 +130,17 @@ CREATE TABLE IF NOT EXISTS consumo_chamadas (
 );
 CREATE INDEX IF NOT EXISTS ix_consumo_usuario_data ON consumo_chamadas (usuario_id, iniciada_em DESC);
 
+-- Execução cancelada pelo usuário (botão Cancelar): só troca o CHECK se ainda não aceita CANCELADA — [[ADR-012 - Cancelar Tarefa do Agente]]
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint
+                    WHERE conrelid = 'consumo_chamadas'::regclass AND contype = 'c' AND pg_get_constraintdef(oid) LIKE '%CANCELADA%') THEN
+        ALTER TABLE consumo_chamadas DROP CONSTRAINT IF EXISTS consumo_chamadas_status_check;
+        ALTER TABLE consumo_chamadas ADD CONSTRAINT consumo_chamadas_status_check
+            CHECK (status IN ('SUCESSO', 'ERRO', 'RECUSADA', 'CANCELADA'));
+    END IF;
+END $$;
+
 -- Carga inicial das automações. Uma vez só: depois, o ADMIN edita pela tela.
 DO $$
 BEGIN

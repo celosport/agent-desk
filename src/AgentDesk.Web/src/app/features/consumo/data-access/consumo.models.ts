@@ -3,7 +3,7 @@
 
 /** MEU = só o usuário logado; TODOS = soma de todos os usuários (só ADMIN). */
 export type EscopoConsumo = 'MEU' | 'TODOS';
-export type StatusChamada = 'SUCESSO' | 'ERRO' | 'RECUSADA';
+export type StatusChamada = 'SUCESSO' | 'ERRO' | 'RECUSADA' | 'CANCELADA';
 
 export interface Totais {
   chamadas: number;
@@ -54,6 +54,8 @@ export interface Chamada {
   tokens: Tokens;
   custoUsd: number;
   duracaoMs: number;
+  /** Início + duração (a API calcula). */
+  finalizadaEm: string;
   status: StatusChamada;
   erroCodigo?: string;
   motivoParada?: string;

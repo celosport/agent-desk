@@ -15,5 +15,9 @@ export interface ExecucaoResumo {
   truncado: boolean;
   tokens: { total: number };
   custoUsd: number;
+  duracaoMs: number;
+  iniciadaEm: string;
+  /** Início + duração (a API calcula). */
+  finalizadaEm: string;
   alertaLimite?: { percentual: number; atingido: boolean };
 }

@@ -41,6 +41,7 @@ tags: [painel]
 |---|---|
 | 2026-10-30 | Projeto criado a partir do esqueleto |
 | 2026-10-30 | Perguntas respondidas; ADR-005 a 007; **Fase 1**: módulo Configuracoes + tabela de modelos e preços |
+| 2026-10-31 | **Fase 6b-1**: cancelar tarefa do agente (`CANCELADA`), início/fim/duração, usuário logado no topo, ADR-012 |
 | 2026-10-31 | **Fase 6a**: módulo Equipe (API + aba Equipe no Escritório), robô em camadas, ADR-011 |
 | 2026-10-30 | **Fase 5**: sessões reais do Claude Code no Escritório (coletor local, hooks assíncronos, telemetria OTLP, tokens de ingestão), ADR-010 |
 | 2026-10-30 | **Fase 4**: Escritório animado (Canvas 2D, motor puro, balões com tokens e custo, movimento reduzido), ADR-009 |
