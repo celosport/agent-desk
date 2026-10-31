@@ -3,7 +3,7 @@ import { Observable, delay, of, throwError } from 'rxjs';
 import { Configuracao, Modelo } from '../../features/configuracoes/data-access/configuracoes.models';
 import { Automacao, Execucao } from '../../features/automacoes/data-access/automacoes.models';
 import { Chamada, StatusChamada } from '../../features/consumo/data-access/consumo.models';
-import { DiaClaudeCode, ItemClaudeCode, PainelClaudeCode, UsoClaudeCode } from '../../features/consumo/data-access/claude-code.models';
+import { Dicas, DiaClaudeCode, EventoLinha, ItemClaudeCode, LinhaDoTempo, PaginaHistoricoSessoes, PainelClaudeCode, SessaoHistorico, UsoClaudeCode } from '../../features/consumo/data-access/claude-code.models';
 import { AgenteEquipe } from '../../features/escritorio/data-access/equipe.models';
 
 /**
@@ -510,6 +510,54 @@ function painelClaudeCodeMock(todos: boolean): PainelClaudeCode {
   };
 }
 
+const DICAS_MOCK: Dicas = {
+  dias: 7,
+  economiaTotalUsd: 13.2,
+  dicas: [
+    { regra: 'CACHE_BAIXO', titulo: 'Cache baixo numa sessão longa', projeto: 'app-mobile', sessaoId: 'demo-sessao-1', economiaUsd: 8.4,
+      texto: 'A sessão app-mobile (demo-ses) reaproveitou só 29% do contexto em 120 pedidos. Mantenha o início da conversa estável.' },
+    { regra: 'MODELO_CARO', titulo: 'Modelo caro em sessão simples', projeto: 'api-pagamentos', sessaoId: 'demo-sessao-4', economiaUsd: 3.6,
+      texto: 'A sessão api-pagamentos usou claude-opus-5-5 com só 1 edição de arquivo em 14 pedidos. Experimente o Sonnet.' },
+    { regra: 'DIA_FORA_DA_CURVA', titulo: 'Dia fora da curva', economiaUsd: 1.2,
+      texto: 'Em 29/10 o uso custou ≈ US$ 4,10, mais de 2× a média dos outros dias (≈ US$ 1,30).' },
+  ],
+};
+
+/** 25 sessões de demonstração nos últimos 40 dias (2 páginas de 20), de dois projetos; a mais nova tem linha do tempo. */
+function historicoSessoesMock(todos: boolean): SessaoHistorico[] {
+  const agora = Date.now();
+  return Array.from({ length: 25 }, (_, i) => {
+    const projeto = i % 3 === 0 ? { nome: 'api-pagamentos', chave: 'f5e4d3c2b1a0' } : { nome: 'app-mobile', chave: 'a0b1c2d3e4f5' };
+    const inicio = agora - i * 36 * 3_600_000 - 2 * 3_600_000;
+    const duracaoMs = (20 + i * 3) * 60_000;
+    const uso = usoMock(10 + i, 3000, 1000, i % 4 === 0 ? 2000 : 30_000, 1500, 0.5 + i * 0.1);
+    return {
+      sessaoId: `sess-${String(i).padStart(2, '0')}-${projeto.chave.slice(0, 4)}`,
+      usuarioId: todos && i % 2 ? USUARIOS.admin.usuarioId : USUARIOS.usuario.usuarioId,
+      usuarioNome: todos ? (i % 2 ? USUARIOS.admin.nome : USUARIOS.usuario.nome) : undefined,
+      maquina: 'Notebook', projeto: projeto.nome, projetoChave: projeto.chave, modelo: i % 2 ? 'claude-sonnet-5-5' : 'claude-opus-5-5',
+      status: i === 0 ? 'OCIOSA' : 'ENCERRADA', uso,
+      iniciadaEm: new Date(inicio).toISOString(), ultimaAtividadeEm: new Date(inicio + duracaoMs).toISOString(),
+      encerradaEm: i === 0 ? undefined : new Date(inicio + duracaoMs).toISOString(), duracaoMs,
+    };
+  });
+}
+
+function linhaDoTempoMock(sessao: SessaoHistorico): LinhaDoTempo {
+  const t0 = Date.parse(sessao.iniciadaEm);
+  const e = (min: number, tipo: string, extra: Partial<EventoLinha> = {}): EventoLinha => ({ ocorridoEm: new Date(t0 + min * 60_000).toISOString(), tipo, ...extra });
+  return {
+    sessao,
+    cortada: false,
+    eventos: [
+      e(0, 'SessionStart'), e(1, 'UserPromptSubmit'), e(1.2, 'PreToolUse', { ferramenta: 'Read', resumo: 'api.ts' }),
+      e(1.3, 'PostToolUse', { ferramenta: 'Read' }), e(2, 'api_request', { modelo: 'claude-opus-5-5', tokens: 12_400, custoUsd: 0.21 }),
+      e(3, 'PreToolUse', { ferramenta: 'Edit', resumo: 'api.ts' }), e(62, 'PreToolUse', { ferramenta: 'Bash', resumo: 'npm test' }),
+      e(63, 'PreCompact'), e(64, 'Stop'),
+    ],
+  };
+}
+
 function validarAgente(corpo: Record<string, unknown>): Record<string, string[]> {
   const erros: Record<string, string[]> = {};
   const cor = /^#[0-9a-fA-F]{6}$/;
@@ -636,6 +684,33 @@ function responder(req: HttpRequest<unknown>, url: URL): Observable<HttpResponse
 
   // ---- Sessões do Claude Code ----
   if (c === '/api/v1/sessoes/ao-vivo' && req.method === 'GET') return ok(aoVivoMock());
+  if (c === '/api/v1/sessoes/dicas' && req.method === 'GET') {
+    const todos = url.searchParams.get('escopo') === 'TODOS';
+    if (todos && !ehAdmin(req)) return erro(403, 'Sessoes.SemPermissao', 'Só o administrador vê as sessões de todos os usuários.');
+    return ok(DICAS_MOCK);
+  }
+  if (c === '/api/v1/sessoes/historico' && req.method === 'GET') {
+    const todos = url.searchParams.get('escopo') === 'TODOS';
+    if (todos && !ehAdmin(req)) return erro(403, 'Sessoes.SemPermissao', 'Só o administrador vê as sessões de todos os usuários.');
+    const projeto = url.searchParams.get('projeto');
+    const [de, ate] = [url.searchParams.get('de'), url.searchParams.get('ate')];
+    const tamanho = Number(url.searchParams.get('tamanho') ?? 20) || 20;
+    const pagina = Math.max(1, Number(url.searchParams.get('pagina') ?? 1));
+    const todas = historicoSessoesMock(todos);
+    const filtradas = todas.filter((s) => (!projeto || s.projetoChave === projeto) && (!de || s.iniciadaEm.slice(0, 10) >= de) && (!ate || s.iniciadaEm.slice(0, 10) <= ate));
+    const corpo: PaginaHistoricoSessoes = {
+      itens: filtradas.slice((pagina - 1) * tamanho, pagina * tamanho), total: filtradas.length, pagina, tamanho,
+      projetos: [{ chave: 'f5e4d3c2b1a0', nome: 'api-pagamentos' }, { chave: 'a0b1c2d3e4f5', nome: 'app-mobile' }],
+    };
+    return ok(corpo);
+  }
+  const linhaDoTempo = c.match(/^\/api\/v1\/sessoes\/historico\/([^/]+)$/);
+  if (linhaDoTempo && req.method === 'GET') {
+    const todos = url.searchParams.get('escopo') === 'TODOS';
+    if (todos && !ehAdmin(req)) return erro(403, 'Sessoes.SemPermissao', 'Só o administrador vê as sessões de todos os usuários.');
+    const sessao = historicoSessoesMock(todos).find((s) => s.sessaoId === decodeURIComponent(linhaDoTempo[1]));
+    return sessao ? ok(linhaDoTempoMock(sessao)) : erro(404, 'Sessoes.NaoEncontrada', 'Sessão não encontrada.');
+  }
   if (c === '/api/v1/sessoes/painel' && req.method === 'GET') {
     const todos = url.searchParams.get('escopo') === 'TODOS';
     if (todos && !ehAdmin(req)) return erro(403, 'Sessoes.SemPermissao', 'Só o administrador vê as sessões de todos os usuários.');

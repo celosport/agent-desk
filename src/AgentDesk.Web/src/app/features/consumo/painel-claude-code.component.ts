@@ -37,6 +37,31 @@ export const INTERVALO_CLAUDE_CODE_MS = 10_000;
         }
       </section>
 
+      @if (store.dicas(); as d) {
+        <section class="ui-cartao dicas" aria-labelledby="titulo-dicas">
+          <div class="linha">
+            <h3 id="titulo-dicas">Dicas para gastar menos — últimos {{ d.dias }} dias</h3>
+            <a class="ui-botao" routerLink="/consumo/sessoes">Histórico de sessões</a>
+          </div>
+          @if (d.dicas.length) {
+            <ul class="lista-dicas">
+              @for (dica of d.dicas; track dica.regra + (dica.sessaoId ?? '')) {
+                <li>
+                  <strong>{{ dica.titulo }}</strong>
+                  <p>{{ dica.texto }}</p>
+                  <small class="ui-suave">Economia estimada: até ≈ {{ dolar(dica.economiaUsd) }} (estimativa, não promessa)</small>
+                </li>
+              }
+            </ul>
+            <p class="ui-suave dica">Somando tudo: até ≈ {{ dolar(d.economiaTotalUsd) }} na API. As dicas se sobrepõem, então o real tende a ser menor.</p>
+          } @else {
+            <p class="ui-suave">Nenhuma dica por enquanto: as sessões dos últimos {{ d.dias }} dias estão saudáveis. 🎉</p>
+          }
+        </section>
+      } @else {
+        <p class="ui-suave"><a routerLink="/consumo/sessoes">Ver o histórico de sessões</a></p>
+      }
+
       @if (!store.temDados()) {
         <section class="ui-cartao vazio">
           <h2>Nenhum uso do Claude Code ainda</h2>
@@ -151,6 +176,10 @@ export const INTERVALO_CLAUDE_CODE_MS = 10_000;
     .lista-simples { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--ui-e2); }
     .lista-simples li { display: flex; justify-content: space-between; gap: var(--ui-e2); }
     .dica { font-size: var(--ui-t-xs); margin-top: var(--ui-e3); }
+    .dicas { margin-bottom: var(--ui-e4); display: grid; gap: var(--ui-e2); }
+    .dicas h3 { margin: 0; }
+    .lista-dicas { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--ui-e3); }
+    .lista-dicas li { display: grid; gap: 2px; padding-left: var(--ui-e3); border-left: 3px solid var(--ui-marca); }
     .atualizado { margin-top: var(--ui-e4); font-size: var(--ui-t-xs); }
     section.ui-cartao + section.ui-cartao { margin-top: 0; }
   `,

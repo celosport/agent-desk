@@ -37,6 +37,28 @@ internal sealed record UsoNomeado(string Nome, UsoCc Uso);
 
 internal sealed record UsoFerramenta(string Ferramenta, long Usos);
 
+/// <summary>Uma linha do histórico de sessões (cc_sessoes): quando, quanto durou e quanto gastou.</summary>
+internal sealed record SessaoHistorico(
+    Guid UsuarioId,
+    string SessaoId,
+    string Maquina,
+    string Projeto,
+    string ProjetoChave,
+    string? Modelo,
+    StatusSessao Status,
+    UsoCc Uso,
+    DateTimeOffset IniciadaEm,
+    DateTimeOffset UltimaAtividadeEm,
+    DateTimeOffset? EncerradaEm);
+
+/// <summary>Um item da linha do tempo de uma sessão (hook ou chamada ao modelo).</summary>
+internal sealed record EventoLinha(
+    DateTimeOffset OcorridoEm, string Tipo, string? Ferramenta, string? Resumo, string? Modelo, long? Tokens, decimal? CustoUsd);
+
+internal sealed record ProjetoOpcao(string Chave, string Nome);
+
+internal sealed record FiltroHistoricoSessoes(Guid? UsuarioId, string? ProjetoChave, DateTimeOffset De, DateTimeOffset Ate, int Pagina, int Tamanho);
+
 /// <summary>Leituras do painel do Claude Code. <c>usuarioId</c> nulo = todos os usuários (escopo TODOS, só ADMIN).</summary>
 internal interface ISessoesConsultas
 {
@@ -51,5 +73,16 @@ internal interface ISessoesConsultas
 
     /// <summary>Ferramentas mais usadas (contagem de PreToolUse na linha do tempo, que guarda 90 dias).</summary>
     Task<IReadOnlyList<UsoFerramenta>> FerramentasAsync(Guid? usuarioId, DateTimeOffset de, DateTimeOffset ate, int limite,
+        CancellationToken cancellationToken);
+
+    /// <summary>Sessões com atividade desde <paramref name="desde"/>, com compactações e edições contadas (base das dicas).</summary>
+    Task<IReadOnlyList<SessaoResumo>> ResumosAsync(Guid? usuarioId, DateTimeOffset desde, CancellationToken cancellationToken);
+
+    Task<(IReadOnlyList<SessaoHistorico> Itens, int Total)> HistoricoAsync(FiltroHistoricoSessoes filtro, CancellationToken cancellationToken);
+
+    Task<IReadOnlyList<ProjetoOpcao>> ProjetosAsync(Guid? usuarioId, DateTimeOffset desde, CancellationToken cancellationToken);
+
+    /// <summary>A sessão (se for do usuário; usuário nulo = qualquer, ADMIN) e seus eventos em ordem de hora, até <paramref name="limite"/>.</summary>
+    Task<(SessaoHistorico Sessao, IReadOnlyList<EventoLinha> Eventos)?> LinhaDoTempoAsync(Guid? usuarioId, string sessaoId, int limite,
         CancellationToken cancellationToken);
 }
