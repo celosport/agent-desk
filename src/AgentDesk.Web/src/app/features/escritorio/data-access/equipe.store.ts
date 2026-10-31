@@ -4,6 +4,13 @@ import { Personagem, paletaDeCores, personagemDe, personagemDeSessao } from '../
 import { EquipeApi } from './equipe.api';
 import { AgenteEquipe, AlvoAgente, SalvarAgenteEquipe } from './equipe.models';
 
+/** "Personalizar" clicado numa sala: a aba Equipe abre já neste agente. */
+export interface PedidoEdicao {
+  alvo: AlvoAgente;
+  chave: string;
+  ordem: number;
+}
+
 const chaveDe = (alvo: AlvoAgente, chave: string, ordem: number) => `${alvo}|${chave}|${ordem}`;
 
 /** Nome e aparência dos agentes do usuário. O que não foi personalizado cai no visual automático do Escritório. */
@@ -14,6 +21,8 @@ export class EquipeStore {
   readonly agentes = signal<AgenteEquipe[]>([]);
   readonly carregado = signal(false);
   readonly erro = signal<string | null>(null);
+  /** Pedido pendente de edição (a página troca para a aba Equipe; o editor consome e limpa). */
+  readonly pedido = signal<PedidoEdicao | null>(null);
 
   private readonly porChave = computed(() => new Map(this.agentes().map((a) => [chaveDe(a.alvo, a.chave, a.ordem), a])));
 
@@ -27,6 +36,10 @@ export class EquipeStore {
     } finally {
       this.carregado.set(true);
     }
+  }
+
+  pedirEdicao(pedido: PedidoEdicao): void {
+    this.pedido.set(pedido);
   }
 
   obter(alvo: AlvoAgente, chave: string, ordem: number): AgenteEquipe | null {

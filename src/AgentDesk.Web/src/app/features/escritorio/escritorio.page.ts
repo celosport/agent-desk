@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, effect, inject, signal } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { formatarIntervalo } from '../../shared/util/formatos';
@@ -74,6 +74,7 @@ import { SalaClaudeCode } from './sala-claude-code.component';
                   <button type="submit" class="ui-botao ui-botao--primario" [disabled]="s.ocupado">
                     {{ s.ocupado ? s.apelido + ' está trabalhando…' : 'Mandar ' + s.apelido + ' trabalhar' }}
                   </button>
+                  <button type="button" class="ui-botao ui-botao--fantasma" (click)="personalizar(s.codigo)">Personalizar {{ s.apelido }}</button>
                   @if (s.cancelavel) {
                     <button type="button" class="ui-botao" [disabled]="store.cancelando() === s.codigo"
                             [attr.aria-label]="'Cancelar a tarefa de ' + s.apelido" (click)="store.cancelar(s.codigo)">
@@ -146,8 +147,17 @@ export class EscritorioPage {
     // Cronômetro "trabalha há 12 s": um tique por segundo, só enquanto a página existe
     const relogio = setInterval(() => this.store.relogioMs.set(Date.now()), 1000);
     inject(DestroyRef).onDestroy(() => clearInterval(relogio));
+    // "Personalizar" pedido em qualquer sala leva para a aba Equipe
+    effect(() => {
+      if (this.equipe.pedido()) this.aba.set('equipe');
+    });
     void this.equipe.carregar();
     void this.store.carregar();
+  }
+
+  /** Abre a aba Equipe já no agente escolhido. */
+  protected personalizar(codigo: string): void {
+    this.equipe.pedirEdicao({ alvo: 'AUTOMACAO', chave: codigo, ordem: 0 });
   }
 
   protected async executar(codigo: string): Promise<void> {

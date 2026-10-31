@@ -24,7 +24,7 @@ Voltar: [[00 - Dashboard]] · Receita: [[Receita - Novo Módulo (API + App)]]
 - Robô montado em camadas por código (corpo fixo + antena + expressão + acessório), ainda em pixel art original.
 - Sessões do Claude Code: a posição do robô na sala (0 a 7, a ordem de chegada) escolhe o agente da equipe do projeto; sem agente naquela posição, vale o nome/cor automáticos.
 - Falha ao carregar a equipe não derruba o Escritório (segue com o padrão).
-- Pendente: clicar num robô na sala e escolher "Personalizar" (hoje se edita pela aba Equipe).
+- **Personalizar** na sala: o botão ao lado do agente selecionado (automações) ou da sessão selecionada (Claude Code) abre a aba Equipe já nele; numa sessão, a posição é a dela na sala.
 
 ## Endpoints
 | Método | Rota | Acesso | Resposta / erros (`code`) |

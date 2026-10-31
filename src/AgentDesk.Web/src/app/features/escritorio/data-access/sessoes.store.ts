@@ -55,6 +55,13 @@ export class SessoesStore implements FonteCena {
     return this.equipe.visualSessao(this.projetoSelecionado(), this.lugares.get(sessaoId), sessaoId);
   }
 
+  /** O agente da equipe do projeto que esta sessão representa (a posição dela na sala); null se a sessão não está na sala. */
+  agenteDaSessao(sessaoId: string): { alvo: 'PROJETO'; chave: string; ordem: number } | null {
+    const chave = this.projetoSelecionado();
+    const ordem = this.lugares.get(sessaoId);
+    return chave !== null && ordem !== undefined ? { alvo: 'PROJETO', chave, ordem } : null;
+  }
+
   /** Uma consulta do polling. Lança o erro de volta (o polling espera mais e tenta de novo). */
   async atualizar(): Promise<void> {
     try {
