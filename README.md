@@ -14,6 +14,21 @@ das suas sessões do **Claude Code** (o que cada uma está fazendo, tokens, cust
 - **Controle**: **Parar** uma sessão e **Aprovar/Negar** pedidos de permissão pelo app (sem resposta, o Claude Code pergunta no terminal — nada é aprovado sozinho).
 - **Moedas**: valores em US$, R$, € ou £ (cotação PTAX do Banco Central).
 
+## Telas
+*(Capturas do modo demonstração, com dados fictícios.)*
+
+**Claude Code ao vivo** — cada sessão é um robô; pedidos de permissão para aprovar ou negar pelo app:
+
+![Escritório com as sessões do Claude Code ao vivo e um pedido de permissão](docs/imagens/escritorio-claude-code.png)
+
+**Equipe** — nome e aparência de cada agente, com pré-visualização:
+
+![Editor de equipe: nome, cores, acessório, antena e expressão](docs/imagens/equipe.png)
+
+**Consumo do Claude Code** — tokens, ≈ custo, taxa de cache, barras de 5 horas e da semana e dicas para gastar menos:
+
+![Painel de consumo do Claude Code com barras de uso e dicas](docs/imagens/consumo-claude-code.png)
+
 ## Rodar por conta própria (Docker)
 ```bash
 cp .env.example .env          # preencha POSTGRES_PASSWORD e JWT_CHAVE_SECRETA
