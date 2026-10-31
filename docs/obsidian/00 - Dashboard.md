@@ -30,6 +30,7 @@ tags: [painel]
 | [[Módulo Configuracoes]] | `src/Modules/Configuracoes` | `features/configuracoes` | `configuracoes_usuario`, `modelos_claude`, `chaves_protecao_dados` | 🟡 Fase 1: API key cifrada, modelo padrão, limite, tabela de preços |
 | [[Módulo Automacoes]] | `src/Modules/Automacoes` | `features/automacoes` | `automacoes` | 🟡 Fase 2: 3 fluxos chamando a Claude, edição pelo ADMIN |
 | [[Módulo Sessoes]] | `src/Modules/Sessoes` | `features/escritorio` (sala Claude Code) · `features/configuracoes` (conectar) | `tokens_ingestao`, `cc_sessoes`, `cc_eventos`, `cc_consumo_diario` | 🟢 Fase 5: sessões do Claude Code ao vivo (hooks + telemetria) |
+| [[Módulo Equipe]] | `src/Modules/Equipe` | `features/escritorio` (aba Equipe) | `agentes_personalizados` | 🟡 Fase 6a: nome e aparência dos agentes (API + app) |
 | [[Escritório Animado]] | — (usa Automacoes) | `features/escritorio` | — | 🟢 Fase 4: sala isométrica em Canvas, robôs por automação |
 | [[Módulo Consumo]] | `src/Modules/Consumo` | `features/consumo` | `consumo_chamadas` | 🟢 Fase 3: painel (polling 10 s), gráfico por dia, ranking e histórico |
 
@@ -40,6 +41,7 @@ tags: [painel]
 |---|---|
 | 2026-10-30 | Projeto criado a partir do esqueleto |
 | 2026-10-30 | Perguntas respondidas; ADR-005 a 007; **Fase 1**: módulo Configuracoes + tabela de modelos e preços |
+| 2026-10-31 | **Fase 6a**: módulo Equipe (API + aba Equipe no Escritório), robô em camadas, ADR-011 |
 | 2026-10-30 | **Fase 5**: sessões reais do Claude Code no Escritório (coletor local, hooks assíncronos, telemetria OTLP, tokens de ingestão), ADR-010 |
 | 2026-10-30 | **Fase 4**: Escritório animado (Canvas 2D, motor puro, balões com tokens e custo, movimento reduzido), ADR-009 |
 | 2026-10-30 | **Fase 3**: painel de consumo (hoje, mês, acumulado, gráfico SVG, ranking, limite) e histórico com filtros; contrato `IDiretorioUsuarios` |

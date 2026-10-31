@@ -3,6 +3,7 @@ import { Observable, delay, of, throwError } from 'rxjs';
 import { Configuracao, Modelo } from '../../features/configuracoes/data-access/configuracoes.models';
 import { Automacao, Execucao } from '../../features/automacoes/data-access/automacoes.models';
 import { Chamada, StatusChamada } from '../../features/consumo/data-access/consumo.models';
+import { AgenteEquipe } from '../../features/escritorio/data-access/equipe.models';
 
 /**
  * API falsa em memória para `npm run start:mock` e para os testes E2E: demonstração, design e testes sem backend.
@@ -44,6 +45,9 @@ let configuracao: Configuracao = { chaveApiConfigurada: false, bloquearAoAtingir
 let chaveSalva: string | null = null;
 
 // ---- Automacoes: a mesma carga inicial do schema.sql (prompts resumidos) ----
+/** Nome e aparência dos agentes (módulo Equipe); começa vazio: tudo no padrão do Escritório. */
+let equipe: AgenteEquipe[] = [];
+
 let automacoes: Automacao[] = [
   automacaoMock('a1e5c1a0-0000-4000-8000-000000000001', 'relatorio-executivo', 'Gerar Relatório Executivo',
     'Transforma anotações, dados ou um texto longo em um relatório executivo claro para a diretoria.', 'claude-opus-5-5', 8000),
@@ -435,6 +439,19 @@ function invalido(errors: Record<string, string[]>): Observable<never> {
 }
 
 /** Mesmas regras do validator da API para criar/editar modelo. Devolve os erros por campo. */
+function validarAgente(corpo: Record<string, unknown>): Record<string, string[]> {
+  const erros: Record<string, string[]> = {};
+  const cor = /^#[0-9a-fA-F]{6}$/;
+  if (!['AUTOMACAO', 'PROJETO'].includes(String(corpo['alvo']).toUpperCase())) erros['alvo'] = ['Alvo inválido: use AUTOMACAO ou PROJETO.'];
+  if (!String(corpo['chave'] ?? '').trim()) erros['chave'] = ['Informe a chave do agente.'];
+  if (!String(corpo['nome'] ?? '').trim()) erros['nome'] = ['Dê um nome ao agente.'];
+  else if (String(corpo['nome']).trim().length > 20) erros['nome'] = ['O nome tem no máximo 20 caracteres.'];
+  for (const campo of ['corCabeca', 'corCorpo', 'corDetalhe', 'corOlhos']) {
+    if (!cor.test(String(corpo[campo] ?? ''))) erros[campo] = ['Cor inválida: use o formato #rrggbb.'];
+  }
+  return erros;
+}
+
 function validarModelo(corpo: Record<string, unknown>): Record<string, string[]> {
   const erros: Record<string, string[]> = {};
   if (!String(corpo['nomeExibicao'] ?? '').trim()) erros['nomeExibicao'] = ['Informe o nome de exibição.'];
@@ -507,6 +524,37 @@ function responder(req: HttpRequest<unknown>, url: URL): Observable<HttpResponse
     };
     automacoes = automacoes.map((a) => (a.automacaoId === atual.automacaoId ? atualizada : a));
     return ok(atualizada);
+  }
+
+  // ---- Equipe (nome e aparência dos agentes) ----
+  if (c === '/api/v1/equipe' && req.method === 'GET') return ok(equipe);
+  if (c === '/api/v1/equipe' && req.method === 'PUT') {
+    const erros = validarAgente(corpo);
+    if (Object.keys(erros).length) return invalido(erros);
+    const agente: AgenteEquipe = {
+      alvo: String(corpo['alvo']).toUpperCase() as AgenteEquipe['alvo'],
+      chave: String(corpo['chave']).trim(),
+      ordem: Number(corpo['ordem'] ?? 0),
+      nome: String(corpo['nome']).trim(),
+      corCabeca: String(corpo['corCabeca']).toLowerCase(),
+      corCorpo: String(corpo['corCorpo']).toLowerCase(),
+      corDetalhe: String(corpo['corDetalhe']).toLowerCase(),
+      corOlhos: String(corpo['corOlhos']).toLowerCase(),
+      acessorio: (corpo['acessorio'] ?? 'NENHUM') as AgenteEquipe['acessorio'],
+      antena: (corpo['antena'] ?? 'RETA') as AgenteEquipe['antena'],
+      expressao: (corpo['expressao'] ?? 'NORMAL') as AgenteEquipe['expressao'],
+      atualizadoEm: new Date().toISOString(),
+    };
+    equipe = [...equipe.filter((x) => !(x.alvo === agente.alvo && x.chave === agente.chave && x.ordem === agente.ordem)), agente];
+    return ok(agente);
+  }
+  const restaurarAgente = c.match(/^\/api\/v1\/equipe\/([^/]+)\/(\d+)$/);
+  if (restaurarAgente && req.method === 'DELETE') {
+    const [alvo, ordem, chave] = [restaurarAgente[1].toUpperCase(), Number(restaurarAgente[2]), url.searchParams.get('chave') ?? ''];
+    const existe = equipe.some((x) => x.alvo === alvo && x.chave === chave && x.ordem === ordem);
+    if (!existe) return erro(404, 'Equipe.AgenteNaoEncontrado', 'Agente personalizado não encontrado.');
+    equipe = equipe.filter((x) => !(x.alvo === alvo && x.chave === chave && x.ordem === ordem));
+    return ok(null, 204);
   }
 
   // ---- Sessões do Claude Code ----

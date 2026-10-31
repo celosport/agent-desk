@@ -237,4 +237,26 @@ CREATE TABLE IF NOT EXISTS cc_consumo_diario (
     PRIMARY KEY (usuario_id, dia, projeto, modelo)
 );
 
+-- 9. Equipe: nome e aparência dos agentes de cada usuário (módulo Equipe) — [[ADR-011 - Equipe Personalizada (Nome e Aparência dos Agentes)]]
+--    alvo AUTOMACAO: chave = código da automação (ordem 0). alvo PROJETO: chave = projeto_chave das sessões; ordem = posição na equipe
+--    (a 1ª sessão a chegar na sala usa o agente de ordem 0, e assim por diante).
+CREATE TABLE IF NOT EXISTS agentes_personalizados (
+    agente_id      UUID          PRIMARY KEY,
+    usuario_id     UUID          NOT NULL REFERENCES usuarios(usuario_id) ON DELETE CASCADE,
+    alvo           VARCHAR(20)   NOT NULL CHECK (alvo IN ('AUTOMACAO', 'PROJETO')),
+    chave          VARCHAR(80)   NOT NULL,
+    ordem          SMALLINT      NOT NULL DEFAULT 0 CHECK (ordem BETWEEN 0 AND 7),
+    nome           VARCHAR(20)   NOT NULL,
+    cor_cabeca     CHAR(7)       NOT NULL CHECK (cor_cabeca ~ '^#[0-9a-f]{6}$'),
+    cor_corpo      CHAR(7)       NOT NULL CHECK (cor_corpo ~ '^#[0-9a-f]{6}$'),
+    cor_detalhe    CHAR(7)       NOT NULL CHECK (cor_detalhe ~ '^#[0-9a-f]{6}$'),
+    cor_olhos      CHAR(7)       NOT NULL CHECK (cor_olhos ~ '^#[0-9a-f]{6}$'),
+    acessorio      VARCHAR(20)   NOT NULL DEFAULT 'NENHUM'
+                   CHECK (acessorio IN ('NENHUM', 'BONE', 'CHAPEU', 'FONE', 'OCULOS', 'GRAVATA', 'LACO', 'COROA')),
+    antena         VARCHAR(20)   NOT NULL DEFAULT 'RETA' CHECK (antena IN ('RETA', 'BOLINHA', 'DUPLA', 'NENHUMA')),
+    expressao      VARCHAR(20)   NOT NULL DEFAULT 'NORMAL' CHECK (expressao IN ('NORMAL', 'FELIZ', 'CONCENTRADO', 'SONOLENTO')),
+    atualizado_em  TIMESTAMPTZ   NOT NULL,
+    UNIQUE (usuario_id, alvo, chave, ordem)
+);
+
 COMMIT;

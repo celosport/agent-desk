@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- MODULO: Equipe (nome e aparência dos agentes de cada usuário: automações e equipes dos projetos). Módulos NUNCA referenciam outros módulos: comunicação apenas via SharedKernel/contratos. -->
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Dapper" />
+    <PackageReference Include="FluentValidation" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\BuildingBlocks\AgentDesk.SharedKernel\AgentDesk.SharedKernel.csproj" />
+  </ItemGroup>
+</Project>

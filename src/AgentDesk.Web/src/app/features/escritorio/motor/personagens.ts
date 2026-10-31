@@ -37,18 +37,32 @@ export const ROBO_ESCALA = 2;
 
 export type Paleta = Record<'a' | 'b' | 'c' | 'd' | 'e' | 'f' | 'g' | 'h', string>;
 
+// Mesmos valores (SNAKE_CASE_UPPER) que a API de Equipe grava e valida. [[ADR-011 - Equipe Personalizada (Nome e Aparência dos Agentes)]]
+export const ACESSORIOS = ['NENHUM', 'BONE', 'CHAPEU', 'FONE', 'OCULOS', 'GRAVATA', 'LACO', 'COROA'] as const;
+export const ANTENAS = ['RETA', 'BOLINHA', 'DUPLA', 'NENHUMA'] as const;
+export const EXPRESSOES = ['NORMAL', 'FELIZ', 'CONCENTRADO', 'SONOLENTO'] as const;
+export type Acessorio = (typeof ACESSORIOS)[number];
+export type Antena = (typeof ANTENAS)[number];
+export type Expressao = (typeof EXPRESSOES)[number];
+
 export interface Personagem {
   /** Nome do robô (o da automação aparece junto). */
   apelido: string;
   paleta: Paleta;
+  acessorio: Acessorio;
+  antena: Antena;
+  expressao: Expressao;
 }
+
+/** Aparência padrão: sem acessório, antena reta, expressão normal. */
+const PADRAO = { acessorio: 'NENHUM', antena: 'RETA', expressao: 'NORMAL' } as const;
 
 const base = { c: '#1b2233', e: '#8a93a6', h: '#2b2f3a' };
 
 export const PERSONAGENS: Record<string, Personagem> = {
-  'relatorio-executivo': { apelido: 'Rel', paleta: { ...base, a: '#ffd43b', b: '#4c6ef5', d: '#74f0ff', f: '#364fc7', g: '#ffd43b' } },
-  'analisar-codigo': { apelido: 'Bit', paleta: { ...base, a: '#69db7c', b: '#2f9e44', d: '#b2f2bb', f: '#2b8a3e', g: '#e9ecef' } },
-  'resumir-documento': { apelido: 'Sumi', paleta: { ...base, a: '#ff8787', b: '#f76707', d: '#fff3bf', f: '#d9480f', g: '#ffe066' } },
+  'relatorio-executivo': { ...PADRAO, apelido: 'Rel', paleta: { ...base, a: '#ffd43b', b: '#4c6ef5', d: '#74f0ff', f: '#364fc7', g: '#ffd43b' } },
+  'analisar-codigo': { ...PADRAO, apelido: 'Bit', paleta: { ...base, a: '#69db7c', b: '#2f9e44', d: '#b2f2bb', f: '#2b8a3e', g: '#e9ecef' } },
+  'resumir-documento': { ...PADRAO, apelido: 'Sumi', paleta: { ...base, a: '#ff8787', b: '#f76707', d: '#fff3bf', f: '#d9480f', g: '#ffe066' } },
 };
 
 /** Cores dos robôs sem visual próprio (sessões do Claude Code, automações novas): escolhidas pelo hash do código. */
@@ -83,7 +97,74 @@ export function apelidoDeSessao(sessaoId: string): string {
 }
 
 export function personagemDe(codigo: string): Personagem {
-  return PERSONAGENS[codigo] ?? { apelido: 'Agente', paleta: paletaDe(codigo) };
+  return PERSONAGENS[codigo] ?? { ...PADRAO, apelido: 'Agente', paleta: paletaDe(codigo) };
+}
+
+/** Visual automático de uma sessão do Claude Code (nome e cor estáveis pelo id), quando o projeto não tem equipe. */
+export function personagemDeSessao(sessaoId: string): Personagem {
+  return { ...PADRAO, apelido: apelidoDeSessao(sessaoId), paleta: paletaDe(sessaoId) };
+}
+
+/** Paletas prontas do editor: cabeça, corpo, detalhe (antena, crachá e acessório) e olhos. */
+export const PALETAS_PRONTAS: readonly { nome: string; cabeca: string; corpo: string; detalhe: string; olhos: string }[] = CORES.map(
+  ([cabeca, corpo, detalhe, olhos], i) => ({ nome: `Paleta ${i + 1}`, cabeca, corpo, detalhe, olhos }),
+);
+
+/** Paleta do robô a partir das 4 cores que o usuário escolhe (o resto — tela, pescoço, pés — é fixo). */
+export function paletaDeCores(cabeca: string, corpo: string, detalhe: string, olhos: string): Paleta {
+  return { ...base, a: detalhe, b: cabeca, d: olhos, f: corpo, g: detalhe };
+}
+
+// ---- camadas: corpo (fixo) + antena + expressão + acessório, tudo em texto, montado por código ----
+
+type Quadro = keyof typeof SPRITES;
+
+/** Antena: linhas 0 e 1. */
+const ANTENA_LINHAS: Record<Antena, [string, string]> = {
+  RETA: ['....a.....', '....a.....'],
+  BOLINHA: ['....aa....', '....a.....'],
+  DUPLA: ['.a......a.', '..a....a..'],
+  NENHUMA: ['..........', '..........'],
+};
+
+/** Tela do rosto: linhas 3 a 5. */
+const EXPRESSAO_LINHAS: Record<Expressao, [string, string, string]> = {
+  NORMAL: ['.bccccccb.', '.bcdccdcb.', '.bccccccb.'],
+  FELIZ: ['.bccccccb.', '.bcdccdcb.', '.bccddccb.'],
+  CONCENTRADO: ['.bccccccb.', '.bddccddb.', '.bccccccb.'],
+  SONOLENTO: ['.bccccccb.', '.bccccccb.', '.bcdccdcb.'],
+};
+
+/** Acessórios: linha → texto sobreposto (só as letras ≠ "." substituem). Usam a cor de detalhe ("a"). */
+const ACESSORIO_LINHAS: Record<Acessorio, Record<number, string>> = {
+  NENHUM: {},
+  BONE: { 2: '..aaaaaa..', 3: '.aa.......' },
+  CHAPEU: { 1: '...aaaa...', 2: '.aaaaaaaa.' },
+  FONE: { 2: '.a......a.', 3: 'a........a', 4: 'a........a', 5: 'a........a' },
+  OCULOS: { 3: '..aaaaaa..', 5: '..aaaaaa..' },
+  GRAVATA: { 8: '....aa....', 9: '....aa....' },
+  LACO: { 1: '.aa.......', 2: '.aaa......' },
+  COROA: { 1: '..a.aa.a..', 2: '..aaaaaa..' },
+};
+
+const cache = new Map<string, readonly string[]>();
+
+/** Monta o sprite do quadro com a antena, a expressão e o acessório do personagem (resultado em cache). */
+export function montarSprite(p: Pick<Personagem, 'antena' | 'expressao' | 'acessorio'>, quadro: Quadro): readonly string[] {
+  const chave = `${quadro}|${p.antena}|${p.expressao}|${p.acessorio}`;
+  const pronto = cache.get(chave);
+  if (pronto) return pronto;
+
+  const linhas = [...SPRITES[quadro]];
+  linhas.splice(0, 2, ...ANTENA_LINHAS[p.antena]);
+  // Piscar fecha os olhos de qualquer expressão (olho "d" vira tela "c")
+  EXPRESSAO_LINHAS[p.expressao].forEach((l, i) => (linhas[3 + i] = quadro === 'piscando' ? l.replaceAll('d', 'c') : l));
+  for (const [linha, texto] of Object.entries(ACESSORIO_LINHAS[p.acessorio])) {
+    const n = Number(linha);
+    linhas[n] = [...linhas[n]].map((c, i) => (texto[i] !== '.' ? texto[i] : c)).join('');
+  }
+  cache.set(chave, linhas);
+  return linhas;
 }
 
 /**

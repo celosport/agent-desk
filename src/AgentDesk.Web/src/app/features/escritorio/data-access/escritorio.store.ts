@@ -3,7 +3,8 @@ import { codigoDeErro, mensagemDeErro } from '../../../core/http/problema';
 import { formatarDolarCompacto, formatarNumero } from '../../../shared/util/formatos';
 import { Agente, Balao, avancar, concluirTarefa, descreverFase, iniciarTarefa, novoAgente, ocupado } from '../motor/agente';
 import { FonteCena } from '../motor/fonte-cena';
-import { MAXIMO_AGENTES, lugarDe, personagemDe } from '../motor/personagens';
+import { MAXIMO_AGENTES, Personagem, lugarDe } from '../motor/personagens';
+import { EquipeStore } from './equipe.store';
 import { EscritorioApi } from './escritorio.api';
 import { AutomacaoAgente, ExecucaoResumo } from './escritorio.models';
 
@@ -31,6 +32,7 @@ export interface StatusAgente {
 @Injectable()
 export class EscritorioStore implements FonteCena {
   private readonly api = inject(EscritorioApi);
+  private readonly equipe = inject(EquipeStore);
 
   /** Relógio da animação (ms). Trocável nos testes. */
   agora: () => number = () => performance.now();
@@ -51,11 +53,12 @@ export class EscritorioStore implements FonteCena {
 
   readonly status = computed<StatusAgente[]>(() => {
     this.versao();
+    this.equipe.agentes(); // renomear um agente na Equipe atualiza a lista na hora
     return this.agentes.map((a) => {
       const automacao = this.automacoes().find((x) => x.codigo === a.codigo);
       return {
         codigo: a.codigo,
-        apelido: personagemDe(a.codigo).apelido,
+        apelido: this.visualDe(a.codigo).apelido,
         automacao: automacao?.nome ?? a.codigo,
         descricao: automacao?.descricao ?? '',
         status: descreverFase(a),
@@ -92,6 +95,10 @@ export class EscritorioStore implements FonteCena {
 
   selecionar(codigo: string): void {
     this.selecionado.set(codigo);
+  }
+
+  visualDe(codigo: string): Personagem {
+    return this.equipe.visualAutomacao(codigo);
   }
 
   /** Um quadro da animação. */
@@ -143,7 +150,7 @@ export class EscritorioStore implements FonteCena {
   }
 
   private anunciar(a: Agente): void {
-    this.anuncio.set(`${personagemDe(a.codigo).apelido}: ${descreverFase(a)}`);
+    this.anuncio.set(`${this.visualDe(a.codigo).apelido}: ${descreverFase(a)}`);
   }
 }
 

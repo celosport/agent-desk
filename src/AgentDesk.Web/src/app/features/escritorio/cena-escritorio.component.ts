@@ -14,7 +14,6 @@ import { TemaApp } from '../../core/tema/tema';
 import { PALETAS, agenteEm, ancoraDoBalao, desenharSala } from './motor/desenho';
 import { FonteCena } from './motor/fonte-cena';
 import { CENA_A, CENA_L, escalaPara } from './motor/iso';
-import { personagemDe } from './motor/personagens';
 
 /**
  * A sala em pixel art isométrica (Canvas 2D, escala inteira para ficar nítida). O desenho roda em requestAnimationFrame
@@ -117,7 +116,7 @@ export class CenaEscritorio {
         anterior = agora;
         const fonte = this.fonte();
         fonte.passo(dt);
-        desenharSala(ctx, fonte.agentes, PALETAS[this.tema.tema()], { agora, reduzido: fonte.reduzido }, fonte.selecionado());
+        desenharSala(ctx, fonte.agentes, PALETAS[this.tema.tema()], { agora, reduzido: fonte.reduzido }, fonte.selecionado(), (codigo) => fonte.visualDe(codigo));
         quadro = requestAnimationFrame(desenhar);
       };
       quadro = requestAnimationFrame(desenhar);
@@ -137,9 +136,4 @@ export class CenaEscritorio {
     const agente = agenteEm(fonte.agentes, { x: (evento.clientX - caixa.left) / escala, y: (evento.clientY - caixa.top) / escala });
     if (agente) fonte.selecionar(agente.codigo);
   }
-}
-
-/** Cor do robô (para a lista de agentes da página). */
-export function corDoAgente(codigo: string): string {
-  return personagemDe(codigo).paleta.b;
 }

@@ -1,11 +1,14 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
+import { EquipeApi } from './equipe.api';
+import { EquipeStore } from './equipe.store';
 import { EscritorioApi } from './escritorio.api';
 import { ExecucaoResumo } from './escritorio.models';
 import { EscritorioStore, textoDoResultado } from './escritorio.store';
 
 describe('EscritorioStore', () => {
   const api = { automacoes: vi.fn(), executar: vi.fn() };
+  const apiEquipe = { listar: vi.fn().mockResolvedValue([]), salvar: vi.fn(), restaurar: vi.fn() };
   const execucao: ExecucaoResumo = {
     chamadaId: 'c1',
     codigo: 'resumir-documento',
@@ -19,7 +22,7 @@ describe('EscritorioStore', () => {
   const texto = (t: string) => t.replace(/\s/g, ' ');
 
   const criar = async (reduzido = true) => {
-    TestBed.configureTestingModule({ providers: [EscritorioStore, { provide: EscritorioApi, useValue: api }] });
+    TestBed.configureTestingModule({ providers: [EscritorioStore, EquipeStore, { provide: EscritorioApi, useValue: api }, { provide: EquipeApi, useValue: apiEquipe }] });
     const store = TestBed.inject(EscritorioStore);
     store.agora = () => relogio;
     store.reduzido = reduzido;
