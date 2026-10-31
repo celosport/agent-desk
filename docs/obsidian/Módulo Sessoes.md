@@ -48,3 +48,16 @@ da telemetria. Decisão: [[ADR-010 - Sessões do Claude Code (Hooks e Telemetria
 - [ ] Aprovar permissões pelo Escritório (hook que espera a resposta).
 
 Criado em 2026-10-30.
+
+## Painel de tokens do Claude Code (Fase 6b-2)
+Aba **Claude Code (assinatura)** na tela Consumo (`features/consumo/painel-claude-code.component.ts`), em cima de `cc_consumo_diario` e `cc_eventos`.
+
+| Método | Rota | Acesso | Resposta / erros |
+|---|---|---|---|
+| GET | `/api/v1/sessoes/painel?escopo=MEU\|TODOS&dias=30` | logado (`TODOS` só ADMIN) | 200 `PainelClaudeCodeDto` · 403 `Sessoes.SemPermissao` |
+
+- Totais de **hoje, mês e acumulado** (tokens, ≈ US$, pedidos), série por dia (todos os dias da janela, de 7 a 90), ranking por **projeto** e por **modelo**.
+- **Taxa de cache** = leitura ÷ (entrada + leitura + escrita), de 0 a 1. **Cache baixo** = abaixo de 60% com pelo menos 5 pedidos (`RegrasCache`): a tela destaca por projeto, modelo e dia.
+- **Ferramentas**: contagem de `PreToolUse` (hooks, 90 dias). A telemetria informa tokens por pedido ao modelo, **não por ferramenta**: não há rateio.
+- ≈ US$ é o que as chamadas custariam na API; na assinatura não se paga por token. Escopo TODOS soma todos os usuários.
+

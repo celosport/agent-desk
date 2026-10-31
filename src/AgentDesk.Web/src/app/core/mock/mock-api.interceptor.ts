@@ -3,6 +3,7 @@ import { Observable, delay, of, throwError } from 'rxjs';
 import { Configuracao, Modelo } from '../../features/configuracoes/data-access/configuracoes.models';
 import { Automacao, Execucao } from '../../features/automacoes/data-access/automacoes.models';
 import { Chamada, StatusChamada } from '../../features/consumo/data-access/consumo.models';
+import { DiaClaudeCode, ItemClaudeCode, PainelClaudeCode, UsoClaudeCode } from '../../features/consumo/data-access/claude-code.models';
 import { AgenteEquipe } from '../../features/escritorio/data-access/equipe.models';
 
 /**
@@ -467,6 +468,48 @@ function invalido(errors: Record<string, string[]>): Observable<never> {
 }
 
 /** Mesmas regras do validator da API para criar/editar modelo. Devolve os erros por campo. */
+/** Uso do Claude Code de demonstração (mesma regra da API: cache baixo = abaixo de 60% com 5+ pedidos). */
+function usoMock(pedidos: number, entrada: number, saida: number, cacheLeitura: number, cacheEscrita: number, custoUsd: number, vezes = 1): UsoClaudeCode {
+  const [e, s, cl, ce] = [entrada, saida, cacheLeitura, cacheEscrita].map((v) => v * vezes);
+  const contexto = e + cl + ce;
+  const taxaCache = contexto === 0 ? undefined : Math.round((cl / contexto) * 1000) / 1000;
+  const p = pedidos * vezes;
+  return { pedidos: p, tokens: e + s + cl + ce, entrada: e, saida: s, cacheLeitura: cl, cacheEscrita: ce, custoUsd: Math.round(custoUsd * vezes * 1e6) / 1e6,
+    taxaCache, cacheBaixo: p >= 5 && taxaCache !== undefined && taxaCache < 0.6 };
+}
+
+function painelClaudeCodeMock(todos: boolean): PainelClaudeCode {
+  const k = todos ? 2 : 1;
+  const hoje = new Date();
+  const serie: DiaClaudeCode[] = Array.from({ length: 30 }, (_, i) => {
+    const d = new Date(hoje.getTime() - (29 - i) * 86_400_000);
+    const dia = d.toISOString().slice(0, 10);
+    const ativo = i % 4 !== 3; // alguns dias sem uso
+    // Todo dia múltiplo de 5 tem cache baixo, para a lista "cache por dia" mostrar o destaque
+    const baixo = i % 5 === 0;
+    return { dia, uso: ativo ? usoMock(12 + i, 4000, 1500, baixo ? 3000 : 40_000, 2000, 0.4 + (i % 7) * 0.15, k) : usoMock(0, 0, 0, 0, 0, 0) };
+  });
+  const item = (nome: string, uso: UsoClaudeCode): ItemClaudeCode => ({ nome, uso });
+  return {
+    escopo: todos ? 'TODOS' : 'MEU',
+    hoje: serie[29].uso,
+    mes: usoMock(210, 90_000, 30_000, 900_000, 40_000, 48.2, k),
+    acumulado: usoMock(640, 300_000, 100_000, 3_000_000, 120_000, 151.6, k),
+    dias: 30,
+    serie,
+    projetos: [
+      item('app-mobile', usoMock(120, 70_000, 20_000, 40_000, 30_000, 31.4, k)),
+      item('api-pagamentos', usoMock(90, 20_000, 10_000, 860_000, 10_000, 16.8, k)),
+    ],
+    modelos: [
+      item('claude-opus-5-5', usoMock(140, 60_000, 25_000, 700_000, 30_000, 39.9, k)),
+      item('claude-sonnet-5-5', usoMock(70, 30_000, 5_000, 200_000, 10_000, 8.3, k)),
+    ],
+    ferramentas: [{ ferramenta: 'Read', usos: 420 * k }, { ferramenta: 'Edit', usos: 260 * k }, { ferramenta: 'Bash', usos: 180 * k }, { ferramenta: 'Grep', usos: 75 * k }],
+    atualizadoEm: new Date().toISOString(),
+  };
+}
+
 function validarAgente(corpo: Record<string, unknown>): Record<string, string[]> {
   const erros: Record<string, string[]> = {};
   const cor = /^#[0-9a-fA-F]{6}$/;
@@ -593,6 +636,11 @@ function responder(req: HttpRequest<unknown>, url: URL): Observable<HttpResponse
 
   // ---- Sessões do Claude Code ----
   if (c === '/api/v1/sessoes/ao-vivo' && req.method === 'GET') return ok(aoVivoMock());
+  if (c === '/api/v1/sessoes/painel' && req.method === 'GET') {
+    const todos = url.searchParams.get('escopo') === 'TODOS';
+    if (todos && !ehAdmin(req)) return erro(403, 'Sessoes.SemPermissao', 'Só o administrador vê as sessões de todos os usuários.');
+    return ok(painelClaudeCodeMock(todos));
+  }
   if (c === '/api/v1/sessoes/tokens' && req.method === 'GET') return ok(tokensIngestao);
   if (c === '/api/v1/sessoes/tokens' && req.method === 'POST') {
     const nome = String(corpo['nome'] ?? '').trim();

@@ -1,6 +1,7 @@
 using System.IO.Compression;
 using System.Text.Json;
 using AgentDesk.Modules.Sessoes.Application.Ingestao;
+using AgentDesk.Modules.Sessoes.Application.Painel;
 using AgentDesk.Modules.Sessoes.Application.Sessoes;
 using AgentDesk.Modules.Sessoes.Application.Tokens;
 using AgentDesk.SharedKernel.Identidade;
@@ -56,6 +57,36 @@ public sealed class SessoesController(IUsuarioAtual usuarioAtual) : ControllerBa
     [ProducesResponseType<AoVivoDto>(StatusCodes.Status200OK)]
     public async Task<IActionResult> AoVivo([FromServices] IQueryHandler<ObterAoVivoQuery, AoVivoDto> handler, CancellationToken ct)
         => Responder(await handler.Handle(new ObterAoVivoQuery(usuarioAtual.UsuarioId), ct));
+
+    /// <summary>
+    /// Painel de tokens do Claude Code (totais, gráfico por dia, rankings, cache e ferramentas). <c>?escopo=TODOS</c> soma todos os
+    /// usuários e é só do ADMIN (403 <c>Sessoes.SemPermissao</c>).
+    /// </summary>
+    [HttpGet("painel")]
+    [ProducesResponseType<PainelClaudeCodeDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> Painel(
+        [FromQuery] EscopoSessoes? escopo, [FromQuery] int? dias,
+        [FromServices] IQueryHandler<ObterPainelQuery, PainelClaudeCodeDto> handler, CancellationToken ct)
+    {
+        if (!Escopo(escopo, out var usuarioId, out var erro)) return this.ToProblem(erro);
+        return Responder(await handler.Handle(new ObterPainelQuery(usuarioId, dias ?? ObterPainelHandler.DiasPadrao), ct));
+    }
+
+    /// <summary>MEU → o usuário do token; TODOS → null (todos), só para ADMIN.</summary>
+    private bool Escopo(EscopoSessoes? escopo, out Guid? usuarioId, out Error erro)
+    {
+        erro = Error.None;
+        usuarioId = usuarioAtual.UsuarioId;
+        if (escopo != EscopoSessoes.Todos) return true;
+        if (usuarioAtual.Perfil != PerfilUsuario.Admin)
+        {
+            erro = Error.Forbidden("Sessoes.SemPermissao", "Só o administrador vê as sessões de todos os usuários.");
+            return false;
+        }
+        usuarioId = null;
+        return true;
+    }
 
     /// <summary>Um evento de hook (vem do coletor no PC). 202 = aceito (inclusive evento desconhecido, que é ignorado).</summary>
     [HttpPost("eventos")]

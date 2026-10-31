@@ -1,4 +1,5 @@
 using AgentDesk.Modules.Sessoes.Application.Ingestao;
+using AgentDesk.Modules.Sessoes.Application.Painel;
 using AgentDesk.Modules.Sessoes.Application.Sessoes;
 using AgentDesk.Modules.Sessoes.Application.Tokens;
 using AgentDesk.Modules.Sessoes.Domain;
@@ -23,6 +24,7 @@ public sealed class SessoesModule : IModule
     {
         services.AddScoped<ITokensRepository, TokensRepository>();
         services.AddScoped<ISessoesRepository, SessoesRepository>();
+        services.AddScoped<ISessoesConsultas, SessoesConsultasRepository>();
 
         services.AddScoped<IValidator<CriarTokenCommand>, CriarTokenValidator>();
         services.AddScoped<IValidator<IngerirEventoCommand>, IngerirEventoValidator>();
@@ -33,6 +35,7 @@ public sealed class SessoesModule : IModule
         services.AddCommandHandler<IngerirEventoCommand, bool, IngerirEventoHandler>();
         services.AddCommandHandler<IngerirTelemetriaCommand, int, IngerirTelemetriaHandler>();
         services.AddQueryHandler<ObterAoVivoQuery, AoVivoDto, ObterAoVivoHandler>();
+        services.AddQueryHandler<ObterPainelQuery, PainelClaudeCodeDto, ObterPainelHandler>();
 
         // Rotina diária de limpeza; nos testes fica desligada (Sessoes__RotinaLimpezaHabilitada=false)
         services.AddSingleton<LimpezaEventosRotina>();

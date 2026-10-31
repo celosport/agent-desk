@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { AuthStore } from '../../core/auth/auth.store';
 import { atualizarPeriodicamente } from '../../core/tempo-real/atualizacao-periodica';
@@ -6,6 +6,7 @@ import { formatarDataHora, formatarDolarCompacto, formatarNumero } from '../../s
 import { EscopoConsumo, Totais } from './data-access/consumo.models';
 import { PainelStore } from './data-access/painel.store';
 import { GraficoDias } from './grafico-dias.component';
+import { PainelClaudeCode } from './painel-claude-code.component';
 
 /** Intervalo do polling do painel (decisão do projeto: 10 s). */
 export const INTERVALO_PAINEL_MS = 10_000;
@@ -16,7 +17,7 @@ export const INTERVALO_PAINEL_MS = 10_000;
  */
 @Component({
   selector: 'app-painel-consumo',
-  imports: [RouterLink, GraficoDias],
+  imports: [RouterLink, GraficoDias, PainelClaudeCode],
   providers: [PainelStore],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -33,6 +34,17 @@ export const INTERVALO_PAINEL_MS = 10_000;
         </div>
       }
 
+      <div class="abas" role="tablist" aria-label="Origem do consumo">
+        <button type="button" role="tab" id="aba-api" aria-controls="painel-consumo" [attr.aria-selected]="aba() === 'api'"
+                (click)="aba.set('api')">Automações (API)</button>
+        <button type="button" role="tab" id="aba-cc" aria-controls="painel-consumo" [attr.aria-selected]="aba() === 'claude-code'"
+                (click)="aba.set('claude-code')">Claude Code (assinatura)</button>
+      </div>
+
+      <div id="painel-consumo" role="tabpanel" [attr.aria-labelledby]="aba() === 'api' ? 'aba-api' : 'aba-cc'">
+      @if (aba() === 'claude-code') {
+        <app-painel-claude-code [escopo]="store.escopo()" />
+      } @else {
       @if (store.erro()) {
         <p class="ui-erro" role="alert">{{ store.erro() }} Tentando de novo…</p>
       }
@@ -104,10 +116,16 @@ export const INTERVALO_PAINEL_MS = 10_000;
       } @else if (!store.erro()) {
         <p class="ui-suave">Carregando…</p>
       }
+      }
+      </div>
     </main>
   `,
   styles: `
     .cabecalho { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: var(--ui-e2); }
+    .abas { display: flex; gap: var(--ui-e1); border-bottom: 1px solid var(--ui-linha); margin-bottom: var(--ui-e4); overflow-x: auto; }
+    .abas button { padding: var(--ui-e2) var(--ui-e4); border: 0; border-bottom: 3px solid transparent; background: none; color: var(--ui-texto-2);
+      font: inherit; font-weight: 600; cursor: pointer; white-space: nowrap; }
+    .abas button[aria-selected='true'] { color: var(--ui-texto); border-bottom-color: var(--ui-marca); }
     .escopo { display: flex; gap: var(--ui-e2); margin-bottom: var(--ui-e4); }
     .escopo [aria-pressed='true'] { background: var(--ui-marca); color: var(--ui-marca-texto); border-color: var(--ui-marca); }
     h2 { font-size: var(--ui-t-sm); color: var(--ui-texto-2); font-weight: 600; }
@@ -134,6 +152,7 @@ export const INTERVALO_PAINEL_MS = 10_000;
 })
 export class PainelPage {
   protected readonly store = inject(PainelStore);
+  protected readonly aba = signal<'api' | 'claude-code'>('api');
   private readonly auth = inject(AuthStore);
 
   protected readonly ehAdmin = computed(() => this.auth.usuario()?.perfil === 'ADMIN');
