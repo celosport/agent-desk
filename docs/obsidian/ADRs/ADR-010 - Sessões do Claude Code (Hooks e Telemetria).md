@@ -51,3 +51,7 @@ statusline (`statusline.md`), sessões/transcripts (`sessions.md`).
 - % das janelas de 5 h e da semana só existe na entrada da statusline (Pro/Max): feito na Fase 6b-4, ver [[ADR-013 - Janelas de Uso da Assinatura (Statusline)]].
 
 Relacionados: [[00 - Dashboard]] · [[Módulo Sessoes]] · [[Escritório Animado]] · [[ADR-009 - Escritório em Canvas 2D com Motor Puro]]
+
+## Adendo (2026-10-31): ambientes de nuvem
+Sessões do Claude Code num ambiente remoto não passam pelos hooks do PC. O coletor aceita a conexão por variáveis de ambiente (`AGENTDESK_URL`, `AGENTDESK_TOKEN`, `AGENTDESK_MAQUINA`) e `instalar --sem-teste`, para rodar no script de preparação do ambiente; a tela de Configurações gera o script. Nada muda no repositório do projeto. Ver [[Módulo Sessoes]].
+

@@ -8,6 +8,8 @@
 //
 // Uso:
 //   node agentdesk-coletor.mjs instalar --url https://seu-app --token adk_... --maquina "Notebook"
+//   Claude Code na nuvem (ambiente remoto): defina AGENTDESK_URL, AGENTDESK_TOKEN e AGENTDESK_MAQUINA no ambiente e, no script de
+//   preparação:  node agentdesk-coletor.mjs instalar --sem-teste   (Configurações → Claude Code → "Nuvem" gera o script pronto)
 //   node agentdesk-coletor.mjs atualizar       (após baixar uma versão nova: reaplica tudo com a conexão já salva, sem outro token)
 //   node agentdesk-coletor.mjs testar          (manda uma sessão de teste: o robô aparece no Escritório)
 //   node agentdesk-coletor.mjs desinstalar     (tira os hooks, a telemetria e a statusline do ~/.claude/settings.json)
@@ -458,8 +460,10 @@ async function principal() {
     // "atualizar" reaproveita a conexão já salva (url, token e nome da máquina): não precisa de outro token
     const salva = modo === 'atualizar' ? lerJson(CONFIG, {}) : {};
     if (modo === 'atualizar' && (!salva.url || !salva.token)) throw new Error('Nada instalado ainda: rode "instalar" com --url e --token.');
-    const url = String(o.url || salva.url || '').replace(/\/+$/, '');
-    const tokenInformado = String(o.token || salva.token || '');
+    // Ambiente de nuvem (Claude Code remoto): a conexão vem de variáveis de ambiente, sem o token na linha de comando
+    const env = process.env;
+    const url = String(o.url || salva.url || env.AGENTDESK_URL || '').replace(/\/+$/, '');
+    const tokenInformado = String(o.token || salva.token || env.AGENTDESK_TOKEN || '');
     if (!/^https:\/\/|^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?/.test(url)) throw new Error('Informe --url com https:// (ou http://localhost).');
     if (!tokenInformado.startsWith('adk_')) throw new Error('Informe --token com o token gerado em Configurações → Claude Code (começa com adk_).');
 
@@ -469,7 +473,7 @@ async function principal() {
     const comandoControle = `node "${script}" controle`;
     // Controle remoto ligado por padrão; --sem-controle (ou a escolha salva) deixa só a observação
     const semControle = o['sem-controle'] === true || (salva.semControle === true && o['com-controle'] !== true);
-    const config = { url, token: tokenInformado, maquina: String(o.maquina || salva.maquina || 'Computador') };
+    const config = { url, token: tokenInformado, maquina: String(o.maquina || salva.maquina || env.AGENTDESK_MAQUINA || 'Computador') };
 
     mkdirSync(PASTA, { recursive: true });
     mkdirSync(dirname(SETTINGS), { recursive: true });
@@ -492,7 +496,8 @@ async function principal() {
     console.log(semControle ? '• Controle remoto DESLIGADO (--sem-controle): só observa.' : '• Controle remoto ligado: Parar e Aprovar/Negar pelo app (sem resposta, o Claude Code pergunta no terminal).');
     if (statuslineDefinida) console.log('• Statusline ligada: a barra do Claude Code mostra "AgentDesk · 5h … · semana …" (planos Pro/Max).');
     avisos.forEach((a) => console.log(`⚠ ${a}`));
-    await modoTestar(config);
+    // --sem-teste: ambientes que sobem e descem toda hora não precisam do robô de teste
+    if (o['sem-teste'] !== true) await modoTestar(config);
     console.log('Pronto! As sessões NOVAS do Claude Code já aparecem (as que estavam abertas: reinicie-as).');
     return;
   }
@@ -508,7 +513,7 @@ async function principal() {
     return;
   }
 
-  console.log('Modos: instalar --url URL --token adk_... --maquina NOME [--forcar] [--statusline] [--sem-controle] · atualizar [--com-controle] · testar · desinstalar');
+  console.log('Modos: instalar --url URL --token adk_... --maquina NOME [--forcar] [--statusline] [--sem-controle] [--sem-teste] (ou as variáveis AGENTDESK_URL, AGENTDESK_TOKEN e AGENTDESK_MAQUINA) · atualizar [--com-controle] · testar · desinstalar');
 }
 
 /** Só executa quando chamado direto (o teste importa as funções sem rodar nada). No Windows, maiúsculas e barras variam. */

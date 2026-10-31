@@ -1,6 +1,6 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
-import { ConexaoClaudeApi, ConexaoClaudeStore, comandosDeAtualizacao, comandosDeInstalacao } from './conexao-claude';
+import { ConexaoClaudeApi, ConexaoClaudeStore, comandosDeAtualizacao, comandosDeInstalacao, configuracaoDeNuvem } from './conexao-claude';
 
 describe('conexão do Claude Code', () => {
   it('comandos de instalação para Windows e macOS/Linux, com URL e token', () => {
@@ -36,5 +36,16 @@ describe('conexão do Claude Code', () => {
     expect(c.windows).toContain('Invoke-WebRequest "https://app.exemplo.com/coletor/agentdesk-coletor.mjs"');
     expect(c.windows.endsWith('agentdesk-coletor.mjs" atualizar')).toBe(true);
     expect(c.windows + c.unix).not.toContain('adk_');
+  });
+
+  it('nuvem: variáveis do ambiente e script que lê o token da variável (nunca da linha de comando)', () => {
+    const n = configuracaoDeNuvem('https://app.exemplo.com/', 'adk_abc', 'PulseFit "nuvem" $x');
+
+    expect(n.variaveis).toBe('AGENTDESK_URL=https://app.exemplo.com\nAGENTDESK_TOKEN=adk_abc\nAGENTDESK_MAQUINA=PulseFit nuvem x');
+    expect(n.script).toContain('curl -fsSL "$AGENTDESK_URL/coletor/agentdesk-coletor.mjs"');
+    expect(n.script).toContain('instalar --sem-teste');
+    expect(n.script.endsWith('|| true')).toBe(true); // o ambiente sobe mesmo se o AgentDesk estiver inacessível
+    expect(n.script).not.toContain('adk_abc');
+    expect(configuracaoDeNuvem('http://a', 't', '  ').variaveis).toContain('AGENTDESK_MAQUINA=Nuvem');
   });
 });
