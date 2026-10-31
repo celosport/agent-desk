@@ -1,0 +1,46 @@
+# AgentDesk — rodar por conta própria (API + app + PostgreSQL), um comando:
+#   cp .env.example .env   # preencha as duas senhas
+#   docker compose -f docker-compose.selfhost.yml up -d --build
+# Abra http://localhost:8080, crie a sua conta e, em Configurações, cadastre a SUA chave da Anthropic (fica cifrada no seu banco).
+# Para o app aceitar HTTPS de fora (domínio próprio), ponha um proxy na frente (Caddy, Traefik, Nginx) — veja docs/obsidian/Rodar por Conta Própria.md
+name: agentdesk-selfhost
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: agentdesk
+      POSTGRES_USER: agentdesk
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Preencha POSTGRES_PASSWORD no .env}
+      PGTZ: UTC
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U agentdesk -d agentdesk"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      ConnectionStrings__AgentDeskDb: "Host=postgres;Port=5432;Database=agentdesk;Username=agentdesk;Password=${POSTGRES_PASSWORD}"
+      Jwt__ChaveSecreta: ${JWT_CHAVE_SECRETA:?Preencha JWT_CHAVE_SECRETA no .env}
+      Banco__AplicarScripts: "true"   # aplica o database/schema.sql ao subir (idempotente)
+      PORT: "8080"
+    ports:
+      - "${PORTA_HTTP:-8080}:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
+
+volumes:
+  pgdata:

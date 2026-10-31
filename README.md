@@ -1,16 +1,39 @@
 # AgentDesk
 
-Esqueleto padrão: monólito modular **.NET 8 + Dapper + PostgreSQL 16** + app **Angular 22 PWA**, com documentação em cofre do **Obsidian**.
-Regras: [CLAUDE.md](CLAUDE.md) · Documentação: abra `docs/obsidian` no Obsidian (entrada: `00 - Dashboard.md`).
+Painel de **consumo e automações com a API da Claude**, com um **escritório animado** onde cada agente é um robô — e acompanhamento ao vivo
+das suas sessões do **Claude Code** (o que cada uma está fazendo, tokens, custo, e Parar/Aprovar/Negar pelo app).
 
-## Criar um projeto a partir daqui
+> Projeto independente. Não é um produto oficial da Anthropic; "Claude" é marca da Anthropic.
+
+## O que faz
+- **Automações** (resumir, analisar código, relatório…) chamando a Claude com a **sua** chave da API — a chave fica **cifrada** no seu banco e nunca volta para o navegador.
+- **Consumo**: tokens e custo de hoje, do mês e acumulado, gráfico por dia, ranking, histórico com o resultado de cada chamada, limite mensal.
+- **Escritório animado** (pixel art desenhada por código): cada automação e cada sessão do Claude Code vira um robô, com nome e visual que você personaliza.
+- **Claude Code ao vivo** (assinatura Pro/Max): um coletor leve no seu PC manda só **metadados** (nome da pasta, ferramenta, tokens) — nunca código nem prompts.
+  Painel de tokens por projeto e modelo, taxa de cache, dicas para gastar menos, histórico de sessões, barras de uso de 5 h e da semana.
+- **Controle**: **Parar** uma sessão e **Aprovar/Negar** pedidos de permissão pelo app (sem resposta, o Claude Code pergunta no terminal — nada é aprovado sozinho).
+- **Moedas**: valores em US$, R$, € ou £ (cotação PTAX do Banco Central).
+
+## Rodar por conta própria (Docker)
 ```bash
-./scripts/novo-projeto.sh            # Git Bash no Windows; faz as perguntas-chave e cria o projeto em outra pasta
+cp .env.example .env          # preencha POSTGRES_PASSWORD e JWT_CHAVE_SECRETA
+docker compose -f docker-compose.selfhost.yml up -d --build
 ```
-O script troca `AgentDesk` pelo nome do projeto, aplica nome de exibição, descrição, cor e portas, e registra as demais respostas
-em `docs/obsidian/Perguntas para Novo Projeto.md` e no `CLAUDE.md` para o Claude Code aplicar na primeira sessão.
+Abra `http://localhost:8080`, crie a conta e cadastre a sua chave da Anthropic em **Configurações**. Para virar administrador:
+`database/manutencao/promover-admin.sql`. Guia completo (HTTPS, atualização, backup, coletor do Claude Code):
+[`docs/obsidian/Rodar por Conta Própria.md`](docs/obsidian/Rodar%20por%20Conta%20Pr%C3%B3pria.md).
 
-## Rodar local
+## Privacidade e segurança
+- Cada pessoa usa a própria chave da Anthropic; ela é cifrada (Data Protection) e nunca exibida de volta.
+- O coletor do Claude Code envia **só metadados**; o código-fonte e o texto dos prompts não saem do seu computador.
+- Reporte vulnerabilidades em privado: veja [SECURITY.md](SECURITY.md). Para contribuir: [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Para quem desenvolve
+Monólito modular **.NET 8 + Dapper + PostgreSQL 16** e app **Angular 22 PWA**. As regras de arquitetura estão no [CLAUDE.md](CLAUDE.md) e a
+documentação num cofre do **Obsidian** em `docs/obsidian` (entrada: `00 - Dashboard.md`).
+
+### Rodar local (desenvolvimento)
+Primeiro copie `src/Host/AgentDesk.API/appsettings.Development.example.json` para `appsettings.Development.json` (fica fora do Git: pode pôr ali a sua connection string).
 ```bash
 docker compose up -d                        # PostgreSQL já com o schema (+ pgAdmin :5050, Mailpit :8025)
 dotnet run --project src/Host/AgentDesk.API    # API (https://localhost:52480) E o app (http://localhost:4210) juntos
@@ -38,3 +61,7 @@ Siga `docs/obsidian/Receita - Novo Módulo (API + App).md` (banco → API → te
 
 ## Deploy
 `docs/obsidian/Deploy (Railway).md` (um serviço por branch; a imagem já leva o app em `wwwroot`).
+
+
+## Licença
+A licença do código ainda será definida; até lá, todos os direitos reservados.
