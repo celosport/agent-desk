@@ -4,7 +4,7 @@ import { RouterLink } from '@angular/router';
 import { API_BASE_URL } from '../../core/config/api.config';
 import { Avisos } from '../../core/ui/avisos.service';
 import { formatarDataHora, formatarHaQuanto } from '../../shared/util/formatos';
-import { ConexaoClaudeStore, comandosDeAtualizacao, comandosDeInstalacao } from './data-access/conexao-claude';
+import { ConexaoClaudeStore, comandosDeAtualizacao, comandosDeInstalacao, configuracaoDeNuvem } from './data-access/conexao-claude';
 
 /**
  * Conectar o Claude Code do computador ao AgentDesk: gera um token (mostrado uma vez) e o comando que instala o coletor
@@ -33,7 +33,26 @@ import { ConexaoClaudeStore, comandosDeAtualizacao, comandosDeInstalacao } from 
           <div class="sistemas" role="group" aria-label="Sistema">
             <button type="button" class="ui-botao" [attr.aria-pressed]="sistema() === 'windows'" (click)="sistema.set('windows')">Windows (PowerShell)</button>
             <button type="button" class="ui-botao" [attr.aria-pressed]="sistema() === 'unix'" (click)="sistema.set('unix')">macOS / Linux</button>
+            <button type="button" class="ui-botao" [attr.aria-pressed]="sistema() === 'nuvem'" (click)="sistema.set('nuvem')">Nuvem (Claude Code remoto)</button>
           </div>
+          @if (sistema() === 'nuvem') {
+            <p class="ui-suave">Para quando o Claude Code roda num <strong>ambiente de nuvem</strong> (ícone de nuvem no app): ele não enxerga o seu computador.</p>
+            <h3>1. Variáveis de ambiente</h3>
+            <pre class="comando" data-testid="nuvem-variaveis">{{ nuvem().variaveis }}</pre>
+            <div class="acoes"><button type="button" class="ui-botao" (click)="copiar(nuvem().variaveis)">Copiar variáveis</button></div>
+            <h3>2. Script de preparação</h3>
+            <pre class="comando" data-testid="nuvem-script">{{ nuvem().script }}</pre>
+            <div class="acoes">
+              <button type="button" class="ui-botao ui-botao--primario" (click)="copiar(nuvem().script)">Copiar script</button>
+              <button type="button" class="ui-botao ui-botao--fantasma" (click)="store.esconderSegredo()">Já configurei</button>
+            </div>
+            <ol class="ui-suave passos">
+              <li>No app Claude, abra o ambiente (a engrenagem ao lado do nome do ambiente) e cole as <strong>variáveis</strong> e o <strong>script de preparação</strong>.</li>
+              <li>Deixe o ambiente acessar a internet para o endereço do AgentDesk (acesso de rede liberado ou o domínio na lista permitida).</li>
+              <li>Abra uma <strong>sessão nova</strong> nesse ambiente: o robô aparece no Escritório → Claude Code, na sala com o nome da pasta do projeto.</li>
+              <li>O token é seu: guarde-o só nas variáveis do ambiente, nunca num repositório.</li>
+            </ol>
+          } @else {
           <pre class="comando" data-testid="comando-instalacao">{{ comando() }}</pre>
           <div class="acoes">
             <button type="button" class="ui-botao ui-botao--primario" (click)="copiar(comando())">Copiar comando</button>
@@ -44,6 +63,7 @@ import { ConexaoClaudeStore, comandosDeAtualizacao, comandosDeInstalacao } from 
             <li>Cole o comando e tecle Enter. Ele faz uma cópia do seu <code>~/.claude/settings.json</code> antes de mexer.</li>
             <li>Abra uma sessão nova do Claude Code e veja o robô aparecer no Escritório → Claude Code.</li>
           </ol>
+          }
         </div>
       }
 
@@ -125,12 +145,16 @@ export class ConexaoClaude {
   protected readonly form = inject(NonNullableFormBuilder).group({ nome: [''] });
   protected readonly criando = signal(false);
   protected readonly erro = signal<string | null>(null);
-  protected readonly sistema = signal<'windows' | 'unix'>(navigator.userAgent.includes('Windows') ? 'windows' : 'unix');
+  protected readonly sistema = signal<'windows' | 'unix' | 'nuvem'>(navigator.userAgent.includes('Windows') ? 'windows' : 'unix');
   protected readonly comando = computed(() => {
     const c = this.store.criado();
-    return c ? comandosDeInstalacao(location.origin, this.urlApi, c.segredo, c.token.nome)[this.sistema()] : '';
+    return c ? comandosDeInstalacao(location.origin, this.urlApi, c.segredo, c.token.nome)[this.sistema() === 'windows' ? 'windows' : 'unix'] : '';
   });
-  protected readonly comandoAtualizacao = computed(() => comandosDeAtualizacao(location.origin)[this.sistema()]);
+  protected readonly nuvem = computed(() => {
+    const c = this.store.criado();
+    return c ? configuracaoDeNuvem(this.urlApi, c.segredo, c.token.nome) : { variaveis: '', script: '' };
+  });
+  protected readonly comandoAtualizacao = computed(() => comandosDeAtualizacao(location.origin)[this.sistema() === 'windows' ? 'windows' : 'unix']);
   protected readonly dataHora = formatarDataHora;
   protected readonly haQuanto = (iso: string) => formatarHaQuanto(iso);
 

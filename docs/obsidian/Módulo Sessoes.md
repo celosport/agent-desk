@@ -105,3 +105,11 @@ Decisão: [[ADR-015 - Parar e Aprovar-Negar Sessões do Claude Code]]. Tabelas `
 `GET /ao-vivo` ganha `permissaoPendente` e `pararSolicitado` por sessão. No app: cartão "✋ Pedidos de permissão" (todas as salas) com Aprovar/Negar,
 e botão **Parar** na sessão selecionada.
 
+## Claude Code na nuvem (ambiente remoto)
+Os hooks do coletor vivem no `~/.claude/settings.json` **do computador onde o Claude Code roda**. Um ambiente de nuvem (ícone de nuvem no app Claude, ex.: `/home/user/<projeto>`) é outra máquina: não enxerga o seu PC, então não aparece no Escritório até ter o próprio coletor.
+
+- Configurações → Claude Code → **Nuvem (Claude Code remoto)** gera dois blocos: as **variáveis de ambiente** (`AGENTDESK_URL`, `AGENTDESK_TOKEN`, `AGENTDESK_MAQUINA`) e o **script de preparação** (baixa o coletor e roda `instalar --sem-teste || true`).
+- O coletor lê a conexão das variáveis (o token nunca vai na linha de comando); sem as variáveis, `instalar` pede `--url`/`--token`. `--sem-teste` pula a sessão de teste (ambientes sobem e descem toda hora).
+- O ambiente precisa de **acesso de rede** ao endereço do AgentDesk. O token é pessoal: só nas variáveis do ambiente, nunca num repositório.
+- A sala usa o nome da pasta do projeto na nuvem; o hash do caminho difere do local, então o mesmo projeto aparece como outra sala.
+

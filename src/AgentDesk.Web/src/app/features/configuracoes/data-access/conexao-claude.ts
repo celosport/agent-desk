@@ -48,6 +48,24 @@ export function comandosDeInstalacao(urlApp: string, urlApi: string, token: stri
   };
 }
 
+/** Para um ambiente de Claude Code na nuvem: as variáveis do ambiente e o script de preparação (o token não vai na linha de comando). */
+export interface ConfiguracaoNuvem {
+  variaveis: string;
+  script: string;
+}
+
+export function configuracaoDeNuvem(urlApi: string, token: string, maquina: string): ConfiguracaoNuvem {
+  const api = urlApi.replace(/\/+$/, '');
+  const nome = maquina.replace(/["'`$\\\n]/g, '').trim() || 'Nuvem';
+  return {
+    variaveis: `AGENTDESK_URL=${api}\nAGENTDESK_TOKEN=${token}\nAGENTDESK_MAQUINA=${nome}`,
+    // "|| true": se o AgentDesk estiver fora do ar ou bloqueado pela rede do ambiente, o ambiente sobe normalmente
+    script:
+      `mkdir -p ~/.agentdesk && curl -fsSL "$AGENTDESK_URL/coletor/agentdesk-coletor.mjs" -o ~/.agentdesk/agentdesk-coletor.mjs && ` +
+      `node ~/.agentdesk/agentdesk-coletor.mjs instalar --sem-teste || true`,
+  };
+}
+
 /**
  * Quem já instalou antes baixa o coletor novo e roda "atualizar": reaproveita a conexão salva (sem outro token) e liga a statusline
  * com as barras de 5 h e da semana. [[ADR-013 - Janelas de Uso da Assinatura (Statusline)]]

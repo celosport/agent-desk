@@ -1,7 +1,7 @@
 // Testes do coletor (node --test). Garantem o principal: NADA de conteúdo sai do PC e o settings.json do usuário é preservado.
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -325,3 +325,45 @@ test('controle (hook): ninguém decidiu no app → sem saída (o Claude Code per
     assert.deepEqual(await rodarHook(casa, { hook_event_name: 'PermissionRequest', session_id: 's1', tool_name: 'Edit' }), { codigo: 0, saida: '' });
   });
 });
+
+function rodarComando(casa, args, env = {}) {
+  return new Promise((resolver) => {
+    const filho = spawn(process.execPath, [SCRIPT, ...args], { env: { ...process.env, HOME: casa, USERPROFILE: casa, ...env } });
+    let saida = '';
+    filho.stdout.on('data', (d) => (saida += d));
+    filho.stderr.on('data', (d) => (saida += d));
+    filho.on('close', (codigo) => resolver({ codigo, saida }));
+  });
+}
+
+test('nuvem: instalar pelas variáveis de ambiente (sem token na linha de comando) e sem mandar sessão de teste', async () => {
+  await comServidor(() => ({ status: 200, json: {} }), async (casa, pedidos) => {
+    rmSync(join(casa, '.agentdesk'), { recursive: true, force: true }); // ambiente de nuvem novo: nada instalado
+    const r = await rodarComando(casa, ['instalar', '--sem-teste'], {
+      AGENTDESK_URL: 'http://127.0.0.1:9', AGENTDESK_TOKEN: 'adk_da_nuvem', AGENTDESK_MAQUINA: 'PulseFit (nuvem)',
+    });
+    assert.equal(r.codigo, 0, r.saida);
+    assert.match(r.saida, /Hooks do AgentDesk adicionados/);
+    assert.doesNotMatch(r.saida, /adk_da_nuvem/); // o token não é impresso
+
+    const config = JSON.parse(readFileSync(join(casa, '.agentdesk', 'config.json'), 'utf8'));
+    assert.deepEqual([config.url, config.token, config.maquina], ['http://127.0.0.1:9', 'adk_da_nuvem', 'PulseFit (nuvem)']);
+    const settings = JSON.parse(readFileSync(join(casa, '.claude', 'settings.json'), 'utf8'));
+    for (const evento of EVENTOS) assert.ok(settings.hooks[evento], evento);
+    assert.equal(settings.env.OTEL_EXPORTER_OTLP_LOGS_HEADERS, 'X-AgentDesk-Token=adk_da_nuvem');
+    assert.equal(pedidos.length, 0); // --sem-teste: nenhuma sessão de teste foi enviada
+  });
+});
+
+test('nuvem: sem URL ou token (nem nas variáveis) o instalar explica o que falta e não mexe em nada', async () => {
+  const casa = mkdtempSync(join(tmpdir(), 'adk-'));
+  try {
+    const r = await rodarComando(casa, ['instalar', '--sem-teste'], { AGENTDESK_URL: '', AGENTDESK_TOKEN: '' });
+    assert.notEqual(r.codigo, 0);
+    assert.match(r.saida, /--url/);
+    assert.equal(existsSync(join(casa, '.claude', 'settings.json')), false);
+  } finally {
+    rmSync(casa, { recursive: true, force: true });
+  }
+});
+
