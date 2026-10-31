@@ -15,3 +15,9 @@ test-results/
 docs/obsidian/.obsidian/workspace.json
 docs/obsidian/.obsidian/workspaces.json
 docs/obsidian/.trash/
+
+# Configuração local com segredos (connection string, chave do JWT): copie o .example.json e preencha. NUNCA versionar.
+src/Host/AgentDesk.API/appsettings.Development.json
+.env
+.env.*
+!.env.example

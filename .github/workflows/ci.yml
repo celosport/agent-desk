@@ -89,3 +89,15 @@ jobs:
           name: playwright-report
           path: src/AgentDesk.Web/playwright-report
           retention-days: 7
+
+  # A imagem de quem roda por conta própria (docker-compose.selfhost.yml) precisa continuar construindo
+  docker-build:
+    name: Imagem Docker (self-host)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Valida o compose
+        run: POSTGRES_PASSWORD=x JWT_CHAVE_SECRETA=y docker compose -f docker-compose.selfhost.yml config -q
+      - name: Constrói a imagem
+        run: docker build -t agentdesk:ci .

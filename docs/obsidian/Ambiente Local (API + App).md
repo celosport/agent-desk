@@ -45,6 +45,7 @@ Perfil **"AgentDesk.API (somente API)"**: sobe só a API e abre o Swagger.
 
 ## Problemas comuns
 - **"Couldn't start the SPA development server"** → olhe a janela do app (Node antigo, `npm install` falhou, porta 4200 ocupada).
+- **Configuração local**: copie `appsettings.Development.example.json` para `appsettings.Development.json` (ignorado pelo Git — nunca versione segredos).
 - **CORS** no navegador → a origem do app precisa estar em `Cors:Origins` do `appsettings.Development.json`.
 - **Certificado inválido** nas chamadas do app para a API → `dotnet dev-certs https --trust` e reabra o navegador.
 - **Porta ocupada** por outro projeto do esqueleto → mude as portas (pergunta do `novo-projeto.sh`).
