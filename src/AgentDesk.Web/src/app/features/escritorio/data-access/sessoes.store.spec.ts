@@ -7,7 +7,7 @@ import { AoVivo, SessaoAoVivo } from './sessoes.models';
 import { SessoesStore } from './sessoes.store';
 
 describe('SessoesStore', () => {
-  const api = { aoVivo: vi.fn() };
+  const api = { aoVivo: vi.fn(), parar: vi.fn(), decidir: vi.fn() };
   const apiEquipe = { listar: vi.fn().mockResolvedValue([]), salvar: vi.fn(), restaurar: vi.fn() };
   const sessao = (sessaoId: string, status: SessaoAoVivo['status'], atividade?: string): SessaoAoVivo => ({
     sessaoId,
@@ -34,7 +34,9 @@ describe('SessoesStore', () => {
     return store;
   };
 
-  beforeEach(() => api.aoVivo.mockReset());
+  beforeEach(() => {
+    Object.values(api).forEach((f) => f.mockReset());
+  });
 
   it('abre na sala que precisa de você e põe um robô por sessão, cada um no seu lugar', async () => {
     api.aoVivo.mockResolvedValue(
@@ -97,5 +99,68 @@ describe('SessoesStore', () => {
     const store = criar();
     await expect(store.atualizar()).rejects.toBeTruthy();
     expect(store.erro()).toContain('Sem conexão');
+  });
+
+  describe('controle: Parar e Aprovar/Negar', () => {
+    const comPermissao = (sessaoId: string): SessaoAoVivo => ({
+      ...sessao(sessaoId, 'ESPERANDO_VOCE', '✋ Precisa de você'),
+      permissaoPendente: { permissaoId: 'perm-1', ferramenta: 'Bash', resumo: 'npm test', criadaEm: '2026-10-31T12:00:00Z', expiraEm: '2026-10-31T12:00:55Z' },
+    });
+
+    it('junta os pedidos de permissão de todas as salas e avisa quem pede (uma vez só)', async () => {
+      api.aoVivo.mockResolvedValue(aoVivo(['loja', [comPermissao('a')]], ['app', [sessao('b', 'TRABALHANDO')]]));
+      const store = criar();
+      await store.atualizar();
+
+      expect(store.permissoes()).toHaveLength(1);
+      expect(store.permissoes()[0]).toMatchObject({ sessaoId: 'a', projeto: 'loja', permissao: { ferramenta: 'Bash', resumo: 'npm test' } });
+      expect(store.anuncio()).toContain('pede permissão para usar Bash: npm test');
+
+      store.anuncio.set('');
+      await store.atualizar(); // o mesmo pedido de novo (polling): não repete o aviso
+      expect(store.anuncio()).toBe('');
+    });
+
+    it('Aprovar e Negar mandam a decisão e atualizam a lista na hora', async () => {
+      api.aoVivo.mockResolvedValueOnce(aoVivo(['app', [comPermissao('a')]]));
+      const store = criar();
+      await store.atualizar();
+      api.decidir.mockResolvedValue(undefined);
+      api.aoVivo.mockResolvedValueOnce(aoVivo(['app', [sessao('a', 'TRABALHANDO')]])); // depois de decidir, o pedido sumiu
+
+      await store.decidir('perm-1', 'APROVAR');
+
+      expect(api.decidir).toHaveBeenCalledWith('perm-1', 'APROVAR');
+      expect(store.permissoes()).toEqual([]);
+      expect(store.erroControle()).toBeNull();
+    });
+
+    it('pedido que já venceu (404) mostra o erro do servidor e a lista segue atualizada', async () => {
+      api.aoVivo.mockResolvedValue(aoVivo(['app', [sessao('a', 'TRABALHANDO')]]));
+      const store = criar();
+      await store.atualizar();
+      api.decidir.mockRejectedValue(
+        new HttpErrorResponse({ status: 404, error: { code: 'Sessoes.PermissaoNaoEncontrada', title: 'Este pedido de permissão não existe mais.' } }),
+      );
+
+      await store.decidir('perm-velha', 'NEGAR');
+
+      expect(store.erroControle()).toBe('Este pedido de permissão não existe mais.');
+    });
+
+    it('Parar pede a parada da sessão e relê o estado; falha vira mensagem', async () => {
+      api.aoVivo.mockResolvedValue(aoVivo(['app', [sessao('a', 'TRABALHANDO')]]));
+      const store = criar();
+      await store.atualizar();
+      api.parar.mockResolvedValueOnce(undefined);
+
+      await store.parar('a');
+      expect(api.parar).toHaveBeenCalledWith('a');
+      expect(api.aoVivo).toHaveBeenCalledTimes(2);
+
+      api.parar.mockRejectedValueOnce(new HttpErrorResponse({ status: 404, error: { code: 'Sessoes.SessaoNaoEncontrada', title: 'Sessão não encontrada.' } }));
+      await store.parar('a');
+      expect(store.erroControle()).toBe('Sessão não encontrada.');
+    });
   });
 });

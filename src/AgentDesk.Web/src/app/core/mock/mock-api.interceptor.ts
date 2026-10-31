@@ -89,6 +89,12 @@ const ROTEIROS: { projeto: string; chave: string; sessaoId: string; maquina: str
   },
 ];
 
+/** Controle das sessões (mock): um pedido de permissão de demonstração e o Parar guardado até recarregar. */
+const paradasMock = new Set<string>();
+let permissoesMock: { permissaoId: string; sessaoId: string; ferramenta: string; resumo?: string }[] = [
+  { permissaoId: 'a1111111-1111-4111-8111-111111111111', sessaoId: 'demo-sessao-3', ferramenta: 'Bash', resumo: 'npm test' },
+];
+
 function aoVivoMock() {
   const passo = Math.floor((Date.now() - agora) / 4000);
   const sessoes = ROTEIROS.map((r, i) => {
@@ -109,6 +115,10 @@ function aoVivoMock() {
         pedidos,
         iniciadaEm: new Date(agora - (i + 1) * 1_800_000).toISOString(),
         ultimaAtividadeEm: new Date(Date.now() - 5000).toISOString(),
+        pararSolicitado: paradasMock.has(r.sessaoId),
+        permissaoPendente: permissoesMock.filter((p) => p.sessaoId === r.sessaoId).map((p) => ({
+          ...p, criadaEm: new Date().toISOString(), expiraEm: new Date(Date.now() + 55_000).toISOString(),
+        }))[0],
       },
     };
   });
@@ -695,6 +705,21 @@ function responder(req: HttpRequest<unknown>, url: URL): Observable<HttpResponse
 
   // ---- Sessões do Claude Code ----
   if (c === '/api/v1/sessoes/ao-vivo' && req.method === 'GET') return ok(aoVivoMock());
+  const parar = c.match(/^\/api\/v1\/sessoes\/([^/]+)\/parar$/);
+  if (parar && req.method === 'POST') {
+    const id = decodeURIComponent(parar[1]);
+    if (!ROTEIROS.some((r) => r.sessaoId === id)) return erro(404, 'Sessoes.SessaoNaoEncontrada', 'Sessão não encontrada.');
+    paradasMock.add(id);
+    return ok(null, 202);
+  }
+  const decidir = c.match(/^\/api\/v1\/sessoes\/permissoes\/([^/]+)\/decidir$/);
+  if (decidir && req.method === 'POST') {
+    if (!['APROVAR', 'NEGAR'].includes(String(corpo['decisao']))) return invalido({ decisao: ['Decisão inválida: use APROVAR ou NEGAR.'] });
+    if (!permissoesMock.some((p) => p.permissaoId === decidir[1]))
+      return erro(404, 'Sessoes.PermissaoNaoEncontrada', 'Este pedido de permissão não existe mais (venceu ou já foi respondido no terminal).');
+    permissoesMock = permissoesMock.filter((p) => p.permissaoId !== decidir[1]);
+    return ok(null, 204);
+  }
   if (c === '/api/v1/sessoes/limites' && req.method === 'GET') {
     // 5 h renova daqui a 2 h 10 min e a semana daqui a 4 dias; "admin" não tem leitura (ex.: plano sem janelas)
     const limites: LimitesAssinatura = ehAdmin(req)

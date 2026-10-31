@@ -1,6 +1,7 @@
 using System.IO.Compression;
 using System.Text.Json;
 using AgentDesk.Modules.Sessoes.Application.Ingestao;
+using AgentDesk.Modules.Sessoes.Application.Controle;
 using AgentDesk.Modules.Sessoes.Application.Limites;
 using AgentDesk.Modules.Sessoes.Application.Painel;
 using AgentDesk.Modules.Sessoes.Application.Sessoes;
@@ -73,6 +74,72 @@ public sealed class SessoesController(IUsuarioAtual usuarioAtual) : ControllerBa
         if (!Escopo(escopo, out var usuarioId, out var erro)) return this.ToProblem(erro);
         return Responder(await handler.Handle(new ObterPainelQuery(usuarioId, dias ?? ObterPainelHandler.DiasPadrao), ct));
     }
+
+    // ---- controle das sessões: o app decide, o hook do coletor pergunta ----
+
+    /// <summary>Pede para parar a sessão: vale na próxima ferramenta que o Claude Code for usar (pedido expira em 2 minutos).</summary>
+    [HttpPost("{sessaoId}/parar")]
+    [ProducesResponseType(StatusCodes.Status202Accepted)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Parar(
+        string sessaoId, [FromServices] ICommandHandler<PararSessaoCommand, bool> handler, CancellationToken ct)
+    {
+        var result = await handler.Handle(new PararSessaoCommand(usuarioAtual.UsuarioId, sessaoId), ct);
+        return result.IsSuccess ? Accepted() : this.ToProblem(result.Error);
+    }
+
+    /// <summary>Aprova ou nega um pedido de permissão do Claude Code (<c>{ "decisao": "APROVAR" | "NEGAR" }</c>).</summary>
+    [HttpPost("permissoes/{permissaoId:guid}/decidir")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> Decidir(
+        Guid permissaoId, [FromBody] DecidirPermissaoRequestDto corpo,
+        [FromServices] ICommandHandler<DecidirPermissaoCommand, bool> handler, CancellationToken ct)
+    {
+        var result = await handler.Handle(new DecidirPermissaoCommand(usuarioAtual.UsuarioId, permissaoId, corpo.Decisao), ct);
+        return result.IsSuccess ? NoContent() : this.ToProblem(result.Error);
+    }
+
+    /// <summary>Hook de ferramenta (coletor): há pedido de parada para a sessão? Consome o pedido.</summary>
+    [HttpGet("controle/parada")]
+    [AllowAnonymous]
+    [ProducesResponseType<ParadaDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> ConsultarParada(
+        [FromHeader(Name = HeaderToken)] string? token, [FromQuery] string? sessaoId,
+        [FromServices] ICommandHandler<ConsultarParadaCommand, bool> handler, CancellationToken ct)
+    {
+        var result = await handler.Handle(new ConsultarParadaCommand(token, sessaoId), ct);
+        return result.IsSuccess ? Ok(new ParadaDto(result.Value)) : this.ToProblem(result.Error);
+    }
+
+    /// <summary>Hook PermissionRequest (coletor): registra o pedido de permissão para o app mostrar Aprovar/Negar.</summary>
+    [HttpPost("controle/permissoes")]
+    [AllowAnonymous]
+    [RequestSizeLimit(4 * 1024)]
+    [ProducesResponseType<PermissaoCriadaDto>(StatusCodes.Status201Created)]
+    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> SolicitarPermissao(
+        [FromHeader(Name = HeaderToken)] string? token, [FromBody] PermissaoRequestDto corpo,
+        [FromServices] ICommandHandler<SolicitarPermissaoCommand, PermissaoCriadaDto> handler, CancellationToken ct)
+    {
+        var result = await handler.Handle(new SolicitarPermissaoCommand(token, corpo), ct);
+        return result.IsSuccess ? StatusCode(StatusCodes.Status201Created, result.Value) : this.ToProblem(result.Error);
+    }
+
+    /// <summary>Espera (até 50 s) a decisão do app. <c>decisao</c> nulo = ninguém decidiu: o Claude Code pergunta no terminal.</summary>
+    [HttpGet("controle/permissoes/{permissaoId:guid}")]
+    [AllowAnonymous]
+    [ProducesResponseType<DecisaoDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> AguardarPermissao(
+        Guid permissaoId, [FromHeader(Name = HeaderToken)] string? token, [FromQuery] int? espera,
+        [FromServices] IQueryHandler<AguardarPermissaoQuery, DecisaoDto> handler, CancellationToken ct)
+        => Responder(await handler.Handle(new AguardarPermissaoQuery(token, permissaoId, espera ?? 0), ct));
 
     /// <summary>Janelas de 5 horas e da semana da assinatura (a última leitura da statusline). Uma janela que já renovou não aparece.</summary>
     [HttpGet("limites")]
@@ -200,3 +267,7 @@ public sealed class SessoesController(IUsuarioAtual usuarioAtual) : ControllerBa
 
     private IActionResult Responder<T>(Result<T> result) => result.IsSuccess ? Ok(result.Value) : this.ToProblem(result.Error);
 }
+
+public sealed record DecidirPermissaoRequestDto(string? Decisao);
+
+public sealed record ParadaDto(bool Parar);

@@ -91,3 +91,17 @@ Tabela `cc_limites` (usuário × janela). Decisão: [[ADR-013 - Janelas de Uso d
 
 Coletor: modos `statusline` e `atualizar` (`src/AgentDesk.Web/coletor`). O painel (aba Claude Code) mostra as barras e quando renovam.
 
+## Controle: Parar e Aprovar/Negar (Fase 6c)
+Decisão: [[ADR-015 - Parar e Aprovar-Negar Sessões do Claude Code]]. Tabelas `cc_paradas` e `cc_permissoes`.
+
+| Método | Rota | Acesso | Resposta / erros |
+|---|---|---|---|
+| POST | `/api/v1/sessoes/{sessaoId}/parar` | logado (dono) | 202 · 404 `Sessoes.SessaoNaoEncontrada` |
+| POST | `/api/v1/sessoes/permissoes/{id}/decidir` | logado (dono) | 204 · 400 (`decisao` ≠ APROVAR/NEGAR) · 404 `Sessoes.PermissaoNaoEncontrada` (venceu) · 409 `Sessoes.PermissaoJaDecidida` |
+| GET | `/api/v1/sessoes/controle/parada?sessaoId=` | token de ingestão | 200 `{ parar }` (consome o pedido) |
+| POST | `/api/v1/sessoes/controle/permissoes` | token de ingestão | 201 `{ permissaoId, expiraEm }` · 409 `Sessoes.PermissoesPendentesDemais` |
+| GET | `/api/v1/sessoes/controle/permissoes/{id}?espera=45` | token de ingestão | 200 `{ decisao }` (nulo = sem decisão) |
+
+`GET /ao-vivo` ganha `permissaoPendente` e `pararSolicitado` por sessão. No app: cartão "✋ Pedidos de permissão" (todas as salas) com Aprovar/Negar,
+e botão **Parar** na sessão selecionada.
+

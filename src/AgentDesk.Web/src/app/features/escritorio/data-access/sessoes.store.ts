@@ -6,7 +6,7 @@ import { MAXIMO_AGENTES, Personagem, lugarDe } from '../motor/personagens';
 import { StatusSessao, sincronizarSessao } from '../motor/sessao';
 import { EquipeStore } from './equipe.store';
 import { SessoesApi } from './sessoes.api';
-import { ProjetoAoVivo, SessaoAoVivo } from './sessoes.models';
+import { PermissaoPendente, ProjetoAoVivo, SessaoAoVivo } from './sessoes.models';
 
 /**
  * Sessões do Claude Code ao vivo. Cada projeto é uma sala; a sala escolhida mostra até 8 robôs (um por sessão), cada um com um
@@ -27,6 +27,8 @@ export class SessoesStore implements FonteCena {
   readonly projetoSelecionado = signal<string | null>(null);
   readonly selecionado = signal<string | null>(null);
   readonly versao = signal(0);
+  /** Erro de Parar/Aprovar/Negar (ex.: o pedido de permissão venceu): aparece junto dos botões. */
+  readonly erroControle = signal<string | null>(null);
   /** Para a região aria-live: o último robô que passou a precisar de você. */
   readonly anuncio = signal('');
 
@@ -37,6 +39,14 @@ export class SessoesStore implements FonteCena {
 
   readonly projeto = computed(() => this.projetos().find((p) => p.chave === this.projetoSelecionado()) ?? null);
   readonly sessoes = computed(() => this.projeto()?.sessoes ?? []);
+  /** Pedidos de permissão esperando você, de TODAS as salas (é urgente: o Claude Code espera ~50 s). */
+  readonly permissoes = computed(() =>
+    this.projetos().flatMap((p) =>
+      p.sessoes
+        .filter((s): s is SessaoAoVivo & { permissaoPendente: PermissaoPendente } => !!s.permissaoPendente)
+        .map((s) => ({ sessaoId: s.sessaoId, projeto: p.nome, permissao: s.permissaoPendente, noProjetoAtual: p.chave === this.projetoSelecionado() })),
+    ),
+  );
   readonly foraDaSala = computed(() => Math.max(0, this.sessoes().length - MAXIMO_AGENTES));
   readonly esperandoVoce = computed(() => this.projetos().flatMap((p) => p.sessoes).filter((s) => s.status === 'ESPERANDO_VOCE').length);
   readonly descricao = computed(() => {
@@ -53,6 +63,32 @@ export class SessoesStore implements FonteCena {
   /** A equipe do projeto (se houver) vale pelo lugar do robô na sala; senão, o nome e a cor automáticos. */
   visualDe(sessaoId: string): Personagem {
     return this.equipe.visualSessao(this.projetoSelecionado(), this.lugares.get(sessaoId), sessaoId);
+  }
+
+  /** Nome para mostrar: o da sala atual, ou o projeto (as outras salas não têm lugar definido). */
+  nomeParaPedido(sessaoId: string, projeto: string, noProjetoAtual: boolean): string {
+    return noProjetoAtual ? this.apelido(sessaoId) : `Sessão de ${projeto}`;
+  }
+
+  /** Pede para parar a sessão (vale na próxima ferramenta). */
+  async parar(sessaoId: string): Promise<void> {
+    this.erroControle.set(null);
+    try {
+      await this.api.parar(sessaoId);
+      await this.atualizar().catch(() => undefined);
+    } catch (e) {
+      this.erroControle.set(mensagemDeErro(e));
+    }
+  }
+
+  async decidir(permissaoId: string, decisao: 'APROVAR' | 'NEGAR'): Promise<void> {
+    this.erroControle.set(null);
+    try {
+      await this.api.decidir(permissaoId, decisao);
+    } catch (e) {
+      this.erroControle.set(mensagemDeErro(e));
+    }
+    await this.atualizar().catch(() => undefined); // o pedido some da lista na hora (ou já tinha vencido)
   }
 
   /** O agente da equipe do projeto que esta sessão representa (a posição dela na sala); null se a sessão não está na sala. */
@@ -131,7 +167,16 @@ export class SessoesStore implements FonteCena {
     return novoAgente(s.sessaoId, canto, mesa);
   }
 
+  private permissoesAvisadas = new Set<string>();
+
   private avisarSePrecisaDeVoce(s: SessaoAoVivo): void {
+    const permissao = s.permissaoPendente;
+    if (permissao && !this.permissoesAvisadas.has(permissao.permissaoId)) {
+      this.permissoesAvisadas.add(permissao.permissaoId);
+      this.anuncio.set(`${this.apelido(s.sessaoId)} pede permissão para usar ${permissao.ferramenta}${permissao.resumo ? `: ${permissao.resumo}` : ''}`);
+      this.statusAnterior.set(s.sessaoId, s.status);
+      return; // o pedido de permissão é o aviso mais específico: não o sobrescreve com o genérico "precisa de você"
+    }
     const antes = this.statusAnterior.get(s.sessaoId);
     this.statusAnterior.set(s.sessaoId, s.status);
     if (s.status === 'ESPERANDO_VOCE' && antes !== 'ESPERANDO_VOCE') {

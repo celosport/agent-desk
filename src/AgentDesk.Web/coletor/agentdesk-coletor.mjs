@@ -13,6 +13,12 @@
 //   node agentdesk-coletor.mjs desinstalar     (tira os hooks, a telemetria e a statusline do ~/.claude/settings.json)
 //   node agentdesk-coletor.mjs evento          (uso interno: os hooks chamam com o JSON do evento no stdin)
 //   node agentdesk-coletor.mjs statusline      (uso interno: a statusline do Claude Code chama; mostra 5h/semana e avisa o AgentDesk)
+//   node agentdesk-coletor.mjs controle        (uso interno: hooks SÍNCRONOS de PreToolUse e PermissionRequest: Parar e Aprovar/Negar)
+//
+// Controle (Parar e Aprovar/Negar pelo app): antes de cada ferramenta o coletor pergunta ao AgentDesk se você pediu para parar a
+// sessão (1 consulta curta, 2,5 s no máximo) e, quando o Claude Code pede permissão, espera até 45 s a sua resposta no app. Sem
+// resposta, erro ou rede fora: NADA muda e o Claude Code pergunta no terminal como sempre — nunca se aprova sozinho.
+// Não quer isso? Instale com --sem-controle (só observa, sem hooks síncronos).
 //
 // Statusline: só o percentual das janelas de 5 h e da semana (e quando renovam) sai do PC, no máximo 1 vez por minuto, e só
 // para quem tem plano Pro/Max (o Claude Code só informa isso a eles). Se você já tiver uma statusline própria, ela é mantida
@@ -45,6 +51,9 @@ const PASTA = join(homedir(), '.agentdesk');
 const CONFIG = join(PASTA, 'config.json');
 const LOG = join(PASTA, 'coletor.log');
 const SETTINGS = join(process.env.CLAUDE_CONFIG_DIR || join(homedir(), '.claude'), 'settings.json');
+export const EVENTOS_CONTROLE = ['PreToolUse', 'PermissionRequest'];
+/** Quanto o hook de permissão espera pela decisão do app (o servidor vence o pedido em ~55 s; o hook tem 60 s). */
+export const ESPERA_PERMISSAO_S = 45;
 const ESTADO_STATUSLINE = join(PASTA, 'statusline-estado.json');
 
 /** Intervalo mínimo entre dois envios das janelas ao AgentDesk. */
@@ -165,6 +174,24 @@ export function deveEnviarLimites(ultimoEnvioMs, agoraMs) {
   return !Number.isFinite(ultimoEnvioMs) || agoraMs - ultimoEnvioMs >= INTERVALO_LIMITES_MS;
 }
 
+/** Saída do hook de ferramenta quando o app pediu para parar: bloqueia a ferramenta e interrompe o turno do Claude Code. */
+export function saidaDeParada(motivo = 'Parado pelo AgentDesk') {
+  return {
+    continue: false,
+    stopReason: motivo,
+    hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'deny', permissionDecisionReason: motivo },
+  };
+}
+
+/** Saída do hook PermissionRequest para a decisão do app; qualquer outra coisa = null (sem saída: o Claude Code pergunta no terminal). */
+export function saidaDePermissao(decisao) {
+  if (decisao === 'APROVAR') return { hookSpecificOutput: { hookEventName: 'PermissionRequest', decision: { behavior: 'allow' } } };
+  if (decisao === 'NEGAR') {
+    return { hookSpecificOutput: { hookEventName: 'PermissionRequest', decision: { behavior: 'deny', message: 'Negado pelo AgentDesk' } } };
+  }
+  return null;
+}
+
 /** Variáveis da telemetria (só logs, em JSON, com o token no header; prompts continuam redigidos — o padrão). */
 export function variaveisTelemetria(url, token) {
   return {
@@ -183,13 +210,22 @@ export function variaveisTelemetria(url, token) {
  * antigas do coletor antes de pôr as novas. Se já houver uma telemetria de outra ferramenta, não mexe (a não ser com forcar).
  * Devolve { settings, envDefinido, avisos }.
  */
-export function mesclarSettings(atual, { comando, url, token, forcar = false, comandoStatusline, forcarStatusline = false }) {
+export function mesclarSettings(atual, { comando, url, token, forcar = false, comandoStatusline, forcarStatusline = false, comandoControle }) {
   const settings = removerDoSettings(structuredClone(atual || {}), []).settings;
   settings.hooks = settings.hooks || {};
   for (const evento of EVENTOS) {
     // SessionEnd tem 1,5 s de prazo e hooks assíncronos podem não chegar com a sessão fechando: este vai síncrono e curto
     const handler = evento === 'SessionEnd' ? { type: 'command', command: comando, timeout: 3 } : { type: 'command', command: comando, async: true, timeout: 10 };
     settings.hooks[evento] = [...(settings.hooks[evento] || []), { hooks: [handler] }];
+  }
+
+  // Controle: hooks SÍNCRONOS (sem async) que consultam o app; só entram se o comando de controle foi informado
+  if (comandoControle) {
+    settings.hooks.PreToolUse = [...(settings.hooks.PreToolUse || []), { hooks: [{ type: 'command', command: comandoControle, timeout: 5 }] }];
+    settings.hooks.PermissionRequest = [
+      ...(settings.hooks.PermissionRequest || []),
+      { hooks: [{ type: 'command', command: comandoControle, timeout: 60 }] },
+    ];
   }
 
   const avisos = [];
@@ -324,6 +360,49 @@ async function modoStatusline() {
   }
 }
 
+async function consultar(config, caminho, opcoes, prazoMs) {
+  const resposta = await fetch(`${config.url}/api/v1/sessoes/${caminho}`, {
+    ...opcoes,
+    headers: { 'Content-Type': 'application/json', 'X-AgentDesk-Token': config.token },
+    signal: AbortSignal.timeout(prazoMs),
+  });
+  if (!resposta.ok) throw new Error(`HTTP ${resposta.status}`);
+  return resposta.json();
+}
+
+/**
+ * Hook SÍNCRONO. PreToolUse: o app pediu para parar? PermissionRequest: espera a decisão do app. Só o necessário sai do PC (nome da
+ * ferramenta e o mesmo resumo seguro dos outros hooks). Qualquer falha = sem saída = Claude Code segue o fluxo normal.
+ */
+async function modoControle() {
+  try {
+    const config = lerJson(CONFIG, null);
+    if (!config?.url || !config?.token) return;
+    const hook = JSON.parse((await lerStdin(2000)) || '{}');
+    if (!hook?.session_id) return;
+    const sessaoId = corte(String(hook.session_id), 100);
+
+    if (hook.hook_event_name === 'PreToolUse') {
+      const r = await consultar(config, `controle/parada?sessaoId=${encodeURIComponent(sessaoId)}`, { method: 'GET' }, 2500);
+      if (r?.parar) console.log(JSON.stringify(saidaDeParada()));
+      return;
+    }
+
+    if (hook.hook_event_name === 'PermissionRequest') {
+      const corpo = { sessaoId, ferramenta: corte(String(hook.tool_name || 'ferramenta'), 80) };
+      const resumo = resumoDaFerramenta(hook.tool_name, hook.tool_input);
+      if (resumo) corpo.resumo = resumo;
+      const criada = await consultar(config, 'controle/permissoes', { method: 'POST', body: JSON.stringify(corpo) }, 3000);
+      const r = await consultar(config, `controle/permissoes/${criada.permissaoId}?espera=${ESPERA_PERMISSAO_S}`, { method: 'GET' },
+        (ESPERA_PERMISSAO_S + 8) * 1000);
+      const saida = saidaDePermissao(r?.decisao);
+      if (saida) console.log(JSON.stringify(saida));
+    }
+  } catch (e) {
+    registrar(`controle: ${e?.message ?? e}`);
+  }
+}
+
 async function modoEvento() {
   try {
     const config = lerJson(CONFIG, null);
@@ -366,6 +445,7 @@ async function principal() {
   const [modo, ...resto] = process.argv.slice(2);
   if (modo === 'evento' || !modo) return modoEvento();
   if (modo === 'statusline') return modoStatusline();
+  if (modo === 'controle') return modoControle();
 
   const [maior] = process.versions.node.split('.').map(Number);
   if (maior < 18) {
@@ -386,6 +466,9 @@ async function principal() {
     const script = fileURLToPath(import.meta.url).replace(/\\/g, '/');
     const comando = `node "${script}" evento`;
     const comandoStatusline = `node "${script}" statusline`;
+    const comandoControle = `node "${script}" controle`;
+    // Controle remoto ligado por padrão; --sem-controle (ou a escolha salva) deixa só a observação
+    const semControle = o['sem-controle'] === true || (salva.semControle === true && o['com-controle'] !== true);
     const config = { url, token: tokenInformado, maquina: String(o.maquina || salva.maquina || 'Computador') };
 
     mkdirSync(PASTA, { recursive: true });
@@ -400,11 +483,13 @@ async function principal() {
     const limpo = removerDoSettings(atual, anterior.envDefinido || []).settings;
     const { settings, envDefinido, avisos, statuslineDefinida } = mesclarSettings(limpo, {
       comando, url, token: config.token, forcar: !!o.forcar, comandoStatusline, forcarStatusline: !!o.statusline,
+      comandoControle: semControle ? undefined : comandoControle,
     });
     writeFileSync(SETTINGS, `${JSON.stringify(settings, null, 2)}\n`);
-    writeFileSync(CONFIG, `${JSON.stringify({ ...config, envDefinido }, null, 2)}\n`, { mode: 0o600 });
+    writeFileSync(CONFIG, `${JSON.stringify({ ...config, envDefinido, semControle }, null, 2)}\n`, { mode: 0o600 });
     console.log(`• Hooks do AgentDesk adicionados em ${SETTINGS}`);
     console.log(envDefinido.length ? '• Telemetria (tokens e custo) ligada, com prompts redigidos.' : '• Telemetria NÃO alterada.');
+    console.log(semControle ? '• Controle remoto DESLIGADO (--sem-controle): só observa.' : '• Controle remoto ligado: Parar e Aprovar/Negar pelo app (sem resposta, o Claude Code pergunta no terminal).');
     if (statuslineDefinida) console.log('• Statusline ligada: a barra do Claude Code mostra "AgentDesk · 5h … · semana …" (planos Pro/Max).');
     avisos.forEach((a) => console.log(`⚠ ${a}`));
     await modoTestar(config);
@@ -423,7 +508,7 @@ async function principal() {
     return;
   }
 
-  console.log('Modos: instalar --url URL --token adk_... --maquina NOME [--forcar] [--statusline] · atualizar · testar · desinstalar');
+  console.log('Modos: instalar --url URL --token adk_... --maquina NOME [--forcar] [--statusline] [--sem-controle] · atualizar [--com-controle] · testar · desinstalar');
 }
 
 /** Só executa quando chamado direto (o teste importa as funções sem rodar nada). No Windows, maiúsculas e barras variam. */
@@ -438,7 +523,7 @@ function chamadoDireto() {
 }
 
 if (chamadoDireto()) {
-  const evento = !process.argv[2] || process.argv[2] === 'evento' || process.argv[2] === 'statusline';
+  const evento = !process.argv[2] || process.argv[2] === 'evento' || process.argv[2] === 'statusline' || process.argv[2] === 'controle';
   principal()
     // O stdin pode ficar aberto: sai explicitamente, sempre com 0 no modo evento (nunca atrapalha o Claude Code)
     .then(() => evento && process.exit(0))

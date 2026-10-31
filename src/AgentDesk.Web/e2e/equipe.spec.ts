@@ -59,7 +59,7 @@ test('a equipe de um projeto vale para as sessões, na ordem em que chegam à sa
   await expect(page.getByLabel('Posição na equipe').locator('option').first()).toHaveText('1º · Lia');
 
   await page.getByRole('tab', { name: 'Claude Code (ao vivo)' }).click();
-  await page.getByRole('button', { name: /app-mobile/ }).click();
+  await page.getByRole('group', { name: 'Projetos' }).getByRole('button', { name: /app-mobile/ }).click();
   await expect(page.getByRole('list', { name: 'Sessões' }).getByRole('button').filter({ hasText: 'Lia' })).toHaveCount(1);
 });
 
@@ -81,7 +81,7 @@ test('"Personalizar" numa sessão do Claude Code abre a equipe do projeto na pos
   await entrarComo(page, 'usuario');
   await page.getByRole('navigation', { name: 'Principal' }).getByRole('link', { name: 'Escritório' }).click();
 
-  await page.getByRole('button', { name: /app-mobile/ }).click();
+  await page.getByRole('group', { name: 'Projetos' }).getByRole('button', { name: /app-mobile/ }).click();
   await page.getByRole('list', { name: 'Sessões' }).getByRole('button').nth(1).click(); // a 2ª a chegar à sala: posição 2
   await page.getByRole('button', { name: /^Personalizar / }).click();
 
