@@ -1,6 +1,7 @@
 using System.IO.Compression;
 using System.Text.Json;
 using AgentDesk.Modules.Sessoes.Application.Ingestao;
+using AgentDesk.Modules.Sessoes.Application.Limites;
 using AgentDesk.Modules.Sessoes.Application.Painel;
 using AgentDesk.Modules.Sessoes.Application.Sessoes;
 using AgentDesk.Modules.Sessoes.Application.Tokens;
@@ -71,6 +72,27 @@ public sealed class SessoesController(IUsuarioAtual usuarioAtual) : ControllerBa
     {
         if (!Escopo(escopo, out var usuarioId, out var erro)) return this.ToProblem(erro);
         return Responder(await handler.Handle(new ObterPainelQuery(usuarioId, dias ?? ObterPainelHandler.DiasPadrao), ct));
+    }
+
+    /// <summary>Janelas de 5 horas e da semana da assinatura (a última leitura da statusline). Uma janela que já renovou não aparece.</summary>
+    [HttpGet("limites")]
+    [ProducesResponseType<LimitesDto>(StatusCodes.Status200OK)]
+    public async Task<IActionResult> Limites([FromServices] IQueryHandler<ObterLimitesQuery, LimitesDto> handler, CancellationToken ct)
+        => Responder(await handler.Handle(new ObterLimitesQuery(usuarioAtual.UsuarioId), ct));
+
+    /// <summary>A statusline do Claude Code (via coletor, no máximo 1 vez por minuto) informa quanto das janelas já foi usado.</summary>
+    [HttpPost("limites")]
+    [AllowAnonymous]
+    [RequestSizeLimit(4 * 1024)]
+    [ProducesResponseType(StatusCodes.Status202Accepted)]
+    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> InformarLimites(
+        [FromHeader(Name = HeaderToken)] string? token, [FromBody] LimitesRequestDto corpo,
+        [FromServices] ICommandHandler<InformarLimitesCommand, bool> handler, CancellationToken ct)
+    {
+        var result = await handler.Handle(new InformarLimitesCommand(token, corpo), ct);
+        return result.IsSuccess ? Accepted() : this.ToProblem(result.Error);
     }
 
     /// <summary>Dicas para gastar menos tokens (5 regras sobre os últimos 7 dias), com a economia estimada.</summary>

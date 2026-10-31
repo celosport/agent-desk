@@ -10,6 +10,7 @@ import {
   formatarMoeda,
   formatarNumero,
   formatarPercentual,
+  formatarRenovacao,
 } from './formatos';
 
 describe('formatos pt-BR', () => {
@@ -70,5 +71,14 @@ describe('formatos pt-BR', () => {
     expect(formatarPercentual(0.723)).toBe('72%');
     expect(formatarPercentual(1)).toBe('100%');
     expect(formatarPercentual(undefined)).toBe('');
+  });
+
+  it('renovação da janela: hoje, amanhã ou a data, com quanto falta', () => {
+    const agora = Date.parse('2026-10-31T15:00:00Z'); // 12:00 em Brasília
+    expect(formatarRenovacao('2026-10-31T17:10:00Z', agora)).toBe('hoje às 14:10 · em 2 h 10 min');
+    expect(formatarRenovacao('2026-11-01T12:00:00Z', agora)).toBe('amanhã às 09:00 · em 21 h 00 min');
+    expect(formatarRenovacao('2026-11-04T12:00:00Z', agora)).toBe('04/11 às 09:00 · em 93 h 00 min');
+    expect(formatarRenovacao('2026-10-31T14:59:00Z', agora)).toBe('renovando');
+    expect(formatarRenovacao(undefined, agora)).toBe('');
   });
 });

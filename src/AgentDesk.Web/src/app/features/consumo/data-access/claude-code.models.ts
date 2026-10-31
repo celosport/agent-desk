@@ -127,3 +127,16 @@ export interface FiltroHistoricoSessoes {
   pagina: number;
   tamanho: number;
 }
+
+export interface JanelaUso {
+  /** De 0 a 100. */
+  percentual: number;
+  renovaEm: string;
+}
+
+/** As janelas da assinatura que a statusline do Claude Code informou (Pro/Max). Uma janela que já renovou não vem. */
+export interface LimitesAssinatura {
+  cincoHoras?: JanelaUso;
+  semana?: JanelaUso;
+  atualizadoEm?: string;
+}

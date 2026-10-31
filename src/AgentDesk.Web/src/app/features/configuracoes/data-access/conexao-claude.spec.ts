@@ -1,6 +1,6 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
-import { ConexaoClaudeApi, ConexaoClaudeStore, comandosDeInstalacao } from './conexao-claude';
+import { ConexaoClaudeApi, ConexaoClaudeStore, comandosDeAtualizacao, comandosDeInstalacao } from './conexao-claude';
 
 describe('conexão do Claude Code', () => {
   it('comandos de instalação para Windows e macOS/Linux, com URL e token', () => {
@@ -28,5 +28,13 @@ describe('conexão do Claude Code', () => {
 
     api.criar.mockRejectedValue(new HttpErrorResponse({ status: 409, error: { code: 'Sessoes.LimiteDeTokens', title: 'Você já tem 10 tokens ativos.' } }));
     expect(await store.criar('Mais um')).toBe('Você já tem 10 tokens ativos.');
+  });
+
+  it('comando de atualização baixa o coletor e roda "atualizar", sem token', () => {
+    const c = comandosDeAtualizacao('https://app.exemplo.com/');
+    expect(c.unix).toBe('curl -fsSL "https://app.exemplo.com/coletor/agentdesk-coletor.mjs" -o ~/.agentdesk/agentdesk-coletor.mjs && node ~/.agentdesk/agentdesk-coletor.mjs atualizar');
+    expect(c.windows).toContain('Invoke-WebRequest "https://app.exemplo.com/coletor/agentdesk-coletor.mjs"');
+    expect(c.windows.endsWith('agentdesk-coletor.mjs" atualizar')).toBe(true);
+    expect(c.windows + c.unix).not.toContain('adk_');
   });
 });

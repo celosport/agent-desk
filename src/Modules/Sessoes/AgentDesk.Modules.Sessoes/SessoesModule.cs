@@ -1,4 +1,5 @@
 using AgentDesk.Modules.Sessoes.Application.Ingestao;
+using AgentDesk.Modules.Sessoes.Application.Limites;
 using AgentDesk.Modules.Sessoes.Application.Painel;
 using AgentDesk.Modules.Sessoes.Application.Sessoes;
 using AgentDesk.Modules.Sessoes.Application.Tokens;
@@ -25,6 +26,8 @@ public sealed class SessoesModule : IModule
         services.AddScoped<ITokensRepository, TokensRepository>();
         services.AddScoped<ISessoesRepository, SessoesRepository>();
         services.AddScoped<ISessoesConsultas, SessoesConsultasRepository>();
+        services.AddScoped<ILimitesRepository, LimitesRepository>();
+        services.AddScoped<IValidator<InformarLimitesCommand>, InformarLimitesValidator>();
 
         services.AddScoped<IValidator<CriarTokenCommand>, CriarTokenValidator>();
         services.AddScoped<IValidator<IngerirEventoCommand>, IngerirEventoValidator>();
@@ -37,6 +40,8 @@ public sealed class SessoesModule : IModule
         services.AddQueryHandler<ObterAoVivoQuery, AoVivoDto, ObterAoVivoHandler>();
         services.AddQueryHandler<ObterPainelQuery, PainelClaudeCodeDto, ObterPainelHandler>();
         services.AddQueryHandler<ObterDicasQuery, DicasDto, ObterDicasHandler>();
+        services.AddCommandHandler<InformarLimitesCommand, bool, InformarLimitesHandler>();
+        services.AddQueryHandler<ObterLimitesQuery, LimitesDto, ObterLimitesHandler>();
         services.AddQueryHandler<ListarHistoricoSessoesQuery, PaginaHistoricoSessoesDto, ListarHistoricoSessoesHandler>();
         services.AddQueryHandler<ObterLinhaDoTempoQuery, LinhaDoTempoDto, ObterLinhaDoTempoHandler>();
 

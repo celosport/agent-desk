@@ -81,3 +81,13 @@ Calculadas no servidor (`Domain/Dicas.cs`, funções puras testadas sem banco). 
 
 A linha do tempo agrupa hora a hora (Brasília) e esconde `PostToolUse` (ruído).
 
+## Janelas de 5 h e da semana (Fase 6b-4)
+Tabela `cc_limites` (usuário × janela). Decisão: [[ADR-013 - Janelas de Uso da Assinatura (Statusline)]].
+
+| Método | Rota | Acesso | Resposta / erros |
+|---|---|---|---|
+| POST | `/api/v1/sessoes/limites` | token de ingestão (`X-AgentDesk-Token`) | 202 · 400 (percentual fora de 0–100, nenhuma janela) · 401 `Sessoes.TokenInvalido` |
+| GET | `/api/v1/sessoes/limites` | logado (só as próprias) | 200 `{ cincoHoras?, semana?, atualizadoEm? }` |
+
+Coletor: modos `statusline` e `atualizar` (`src/AgentDesk.Web/coletor`). O painel (aba Claude Code) mostra as barras e quando renovam.
+

@@ -2,7 +2,7 @@ import { NgTemplateOutlet } from '@angular/common';
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { atualizarPeriodicamente } from '../../core/tempo-real/atualizacao-periodica';
-import { formatarData, formatarDataHora, formatarDolarCompacto, formatarNumero, formatarPercentual } from '../../shared/util/formatos';
+import { formatarData, formatarDataHora, formatarDolarCompacto, formatarNumero, formatarPercentual, formatarRenovacao } from '../../shared/util/formatos';
 import { ClaudeCodeStore } from './data-access/claude-code.store';
 import { EscopoClaudeCode, ItemClaudeCode, UsoClaudeCode } from './data-access/claude-code.models';
 import { GraficoDias } from './grafico-dias.component';
@@ -34,6 +34,29 @@ export const INTERVALO_CLAUDE_CODE_MS = 10_000;
             <p class="ui-suave">{{ numero(k.uso.tokens) }} tokens · {{ k.uso.pedidos }} pedido{{ k.uso.pedidos === 1 ? '' : 's' }}</p>
             <p [class]="'cache ' + (k.uso.cacheBaixo ? 'baixo' : 'ok')">{{ textoCache(k.uso) }}</p>
           </article>
+        }
+      </section>
+
+      <section class="ui-cartao janelas" aria-labelledby="titulo-janelas">
+        <h3 id="titulo-janelas">Uso da assinatura</h3>
+        @if (barras().length) {
+          <ul class="lista-janelas">
+            @for (b of barras(); track b.rotulo) {
+              <li>
+                <div class="linha"><strong>{{ b.rotulo }}</strong><span><strong>{{ b.percentual }}%</strong> usado</span></div>
+                <div class="trilho" role="progressbar" [attr.aria-label]="'Uso da janela de ' + b.rotulo" aria-valuemin="0" aria-valuemax="100"
+                     [attr.aria-valuenow]="b.percentual">
+                  <div [class]="'uso ' + b.nivel" [style.width.%]="b.percentual"></div>
+                </div>
+                <small class="ui-suave">Renova {{ b.renova }}</small>
+              </li>
+            }
+          </ul>
+        } @else {
+          <p class="ui-suave">
+            Sem leitura das janelas de 5 horas e da semana. Elas vêm da statusline do Claude Code e só existem nos planos Pro/Max.
+            <a routerLink="/configuracoes" fragment="claude-code">Ligar a statusline</a>
+          </p>
         }
       </section>
 
@@ -176,6 +199,12 @@ export const INTERVALO_CLAUDE_CODE_MS = 10_000;
     .lista-simples { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--ui-e2); }
     .lista-simples li { display: flex; justify-content: space-between; gap: var(--ui-e2); }
     .dica { font-size: var(--ui-t-xs); margin-top: var(--ui-e3); }
+    .janelas { margin-bottom: var(--ui-e4); display: grid; gap: var(--ui-e2); }
+    .janelas h3 { margin: 0; }
+    .lista-janelas { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--ui-e3); grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); }
+    .lista-janelas li { display: grid; gap: 4px; }
+    .uso.atencao { background: #f08c00; }
+    .uso.critico { background: #c92a2a; }
     .dicas { margin-bottom: var(--ui-e4); display: grid; gap: var(--ui-e2); }
     .dicas h3 { margin: 0; }
     .lista-dicas { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--ui-e3); }
@@ -191,6 +220,16 @@ export class PainelClaudeCode {
   protected readonly kpis = computed(() => {
     const p = this.store.painel();
     return p ? [{ rotulo: 'Hoje', uso: p.hoje }, { rotulo: 'Este mês', uso: p.mes }, { rotulo: 'Acumulado', uso: p.acumulado }] : [];
+  });
+  /** Barras de uso: só as janelas que o Claude Code informou e que ainda não renovaram. */
+  protected readonly barras = computed(() => {
+    const l = this.store.limites();
+    const nivel = (p: number) => (p >= 90 ? 'critico' : p >= 70 ? 'atencao' : 'ok');
+    const lista: { rotulo: string; percentual: number; nivel: string; renova: string }[] = [];
+    for (const [rotulo, j] of [['5 horas', l?.cincoHoras], ['semana', l?.semana]] as const) {
+      if (j) lista.push({ rotulo, percentual: Math.round(j.percentual), nivel: nivel(j.percentual), renova: formatarRenovacao(j.renovaEm) });
+    }
+    return lista;
   });
   private readonly maiorFerramenta = computed(() => Math.max(0, ...(this.store.painel()?.ferramentas.map((f) => f.usos) ?? [])));
 

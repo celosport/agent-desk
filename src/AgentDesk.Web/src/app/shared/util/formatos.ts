@@ -43,6 +43,19 @@ export function formatarIntervalo(inicioIso: string, fimIso: string): string {
   return `${formatarHora(inicioIso)} → ${formatarHora(fimIso)} · ${formatarDuracao(new Date(fimIso).getTime() - new Date(inicioIso).getTime())}`;
 }
 
+/** "hoje às 18:30 · em 2 h 10 min" (a janela renova; horário de Brasília). Já passou → "renovando". */
+export function formatarRenovacao(iso: string | null | undefined, agora: number = Date.now(), fuso = FUSO_PADRAO): string {
+  if (!iso) return '';
+  const alvo = new Date(iso).getTime();
+  if (alvo <= agora) return 'renovando';
+  const dia = (t: number) => new Intl.DateTimeFormat('en-CA', { timeZone: fuso, year: 'numeric', month: '2-digit', day: '2-digit' }).format(t);
+  const hora = new Intl.DateTimeFormat('pt-BR', { timeZone: fuso, hour: '2-digit', minute: '2-digit', hour12: false }).format(alvo);
+  const hoje = dia(agora);
+  const amanha = dia(agora + 86_400_000);
+  const quando = dia(alvo) === hoje ? 'hoje' : dia(alvo) === amanha ? 'amanhã' : formatarData(iso, fuso).slice(0, 5);
+  return `${quando} às ${hora} · em ${formatarDuracao(alvo - agora)}`;
+}
+
 /** "R$ 1.234,50" */
 export function formatarMoeda(valor: number | null | undefined): string {
   if (valor === null || valor === undefined) return '';

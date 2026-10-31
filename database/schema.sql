@@ -248,6 +248,17 @@ CREATE TABLE IF NOT EXISTS cc_consumo_diario (
     PRIMARY KEY (usuario_id, dia, projeto, modelo)
 );
 
+-- Janelas de uso da assinatura (5 horas e semana): só a statusline do Claude Code (Pro/Max) informa. O coletor manda no máximo 1 vez por minuto.
+-- Uma linha por usuário e janela (a última leitura); a janela que já renovou não vale mais. [[ADR-013 - Janelas de Uso da Assinatura (Statusline)]]
+CREATE TABLE IF NOT EXISTS cc_limites (
+    usuario_id     UUID          NOT NULL REFERENCES usuarios(usuario_id) ON DELETE CASCADE,
+    janela         VARCHAR(20)   NOT NULL CHECK (janela IN ('CINCO_HORAS', 'SEMANA')),
+    percentual     NUMERIC(5,2)  NOT NULL CHECK (percentual BETWEEN 0 AND 100),
+    renova_em      TIMESTAMPTZ   NOT NULL,
+    atualizado_em  TIMESTAMPTZ   NOT NULL,
+    PRIMARY KEY (usuario_id, janela)
+);
+
 -- 9. Equipe: nome e aparência dos agentes de cada usuário (módulo Equipe) — [[ADR-011 - Equipe Personalizada (Nome e Aparência dos Agentes)]]
 --    alvo AUTOMACAO: chave = código da automação (ordem 0). alvo PROJETO: chave = projeto_chave das sessões; ordem = posição na equipe
 --    (a 1ª sessão a chegar na sala usa o agente de ordem 0, e assim por diante).
