@@ -23,6 +23,10 @@ das suas sessões do **Claude Code** (o que cada uma está fazendo, tokens, cust
 
 ![Escritório com as sessões do Claude Code ao vivo e um pedido de permissão](docs/imagens/escritorio-claude-code.png)
 
+**Controle** — aprovar um pedido de permissão e pedir para parar uma sessão (sem resposta, o Claude Code pergunta no terminal; nada é aprovado sozinho):
+
+![Aprovando um pedido de permissão e pedindo para parar uma sessão do Claude Code](docs/imagens/controle.gif)
+
 **Equipe** — nome e aparência de cada agente, com pré-visualização:
 
 ![Editor de equipe: nome, cores, acessório, antena e expressão](docs/imagens/equipe.png)
