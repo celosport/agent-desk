@@ -66,7 +66,7 @@ interface ItemMenu {
     .usuario strong { font-size: var(--ui-t-sm); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 12rem; }
     .usuario small { font-size: var(--ui-t-xs); color: var(--ui-texto-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 12rem; }
     .acoes .ui-botao { padding: 0 var(--ui-e3); }
-    @media (max-width: 720px) {
+    @media (max-width: 900px) {
       .usuario small { display: none; }
       .usuario strong { max-width: 6rem; }
       /* Celular: marca e ações na 1ª linha, o menu rolável na 2ª (não cabe tudo numa linha só) */

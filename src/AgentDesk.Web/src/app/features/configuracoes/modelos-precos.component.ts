@@ -28,10 +28,10 @@ import { ConfiguracoesStore } from './data-access/configuracoes.store';
           <thead>
             <tr role="row">
               <th role="columnheader" scope="col">Modelo</th>
-              <th role="columnheader" scope="col">Entrada</th>
-              <th role="columnheader" scope="col">Saída</th>
-              <th role="columnheader" scope="col">Cache (leitura)</th>
-              <th role="columnheader" scope="col">Cache (escrita)</th>
+              <th role="columnheader" scope="col" class="num">Entrada</th>
+              <th role="columnheader" scope="col" class="num">Saída</th>
+              <th role="columnheader" scope="col" class="num">Cache (leitura)</th>
+              <th role="columnheader" scope="col" class="num">Cache (escrita)</th>
               <th role="columnheader" scope="col">Fallback</th>
               <th role="columnheader" scope="col">Situação</th>
               <th role="columnheader" scope="col"><span class="ui-visualmente-oculto">Ações</span></th>
@@ -64,16 +64,17 @@ import { ConfiguracoesStore } from './data-access/configuracoes.store';
               } @else {
                 <tr role="row" [class.inativo]="!m.ativo">
                   <td role="cell">
-                    <strong>{{ m.nomeExibicao }}</strong><br />
-                    <small class="ui-suave">{{ m.modeloId }} · atualizado em {{ dataHora(m.atualizadoEm) }}</small>
+                    <strong>{{ m.nomeExibicao }}</strong>
+                    <small class="ui-suave id">{{ m.modeloId }}</small>
+                    <small class="ui-suave">atualizado em {{ dataHora(m.atualizadoEm) }}</small>
                   </td>
-                  <td role="cell" data-rotulo="Entrada">{{ dolar(m.precoEntradaMTok) }}</td>
-                  <td role="cell" data-rotulo="Saída">{{ dolar(m.precoSaidaMTok) }}</td>
-                  <td role="cell" data-rotulo="Cache (leitura)">{{ m.precoCacheLeituraMTok === undefined ? '—' : dolar(m.precoCacheLeituraMTok) }}</td>
-                  <td role="cell" data-rotulo="Cache (escrita)">{{ m.precoCacheEscritaMTok === undefined ? '—' : dolar(m.precoCacheEscritaMTok) }}</td>
+                  <td role="cell" data-rotulo="Entrada" class="num">{{ dolar(m.precoEntradaMTok) }}</td>
+                  <td role="cell" data-rotulo="Saída" class="num">{{ dolar(m.precoSaidaMTok) }}</td>
+                  <td role="cell" data-rotulo="Cache (leitura)" class="num">{{ m.precoCacheLeituraMTok === undefined ? '—' : dolar(m.precoCacheLeituraMTok) }}</td>
+                  <td role="cell" data-rotulo="Cache (escrita)" class="num">{{ m.precoCacheEscritaMTok === undefined ? '—' : dolar(m.precoCacheEscritaMTok) }}</td>
                   <td role="cell" data-rotulo="Fallback">{{ m.fallbackRecusa ? 'Sim' : 'Não' }}</td>
-                  <td role="cell" data-rotulo="Situação">{{ m.ativo ? 'Ativo' : 'Inativo' }}</td>
-                  <td role="cell">
+                  <td role="cell" data-rotulo="Situação"><span [class]="'selo ' + (m.ativo ? 'ativo' : 'inativo')">{{ m.ativo ? 'Ativo' : 'Inativo' }}</span></td>
+                  <td role="cell" class="acoes">
                     <button type="button" class="ui-botao" [attr.aria-label]="'Editar ' + m.nomeExibicao" (click)="editar(m)">Editar</button>
                   </td>
                 </tr>
@@ -113,19 +114,31 @@ import { ConfiguracoesStore } from './data-access/configuracoes.store';
     h2 { font-size: var(--ui-t-lg); }
     h3 { font-size: var(--ui-t-md); margin-top: var(--ui-e3); }
     .rolagem { overflow-x: auto; }
-    table { width: 100%; border-collapse: collapse; font-size: var(--ui-t-sm); }
-    th, td { padding: var(--ui-e2); border-bottom: 1px solid var(--ui-linha); text-align: left; vertical-align: middle; }
+    table { width: 100%; min-width: 48rem; border-collapse: collapse; font-size: var(--ui-t-sm); }
+    th, td { padding: var(--ui-e3) var(--ui-e2); border-bottom: 1px solid var(--ui-linha); text-align: left; vertical-align: middle; }
+    td:first-child, th:first-child { min-width: 14rem; padding-left: 0; }
+    td:first-child small { display: block; }
+    td:first-child .id { overflow-wrap: anywhere; }
+    .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .selo { display: inline-block; padding: 2px var(--ui-e2); border-radius: 999px; font-size: var(--ui-t-xs); font-weight: 600;
+      background: var(--ui-superficie-2); color: var(--ui-texto-2); }
+    .selo.ativo { background: color-mix(in srgb, var(--ui-verde) 18%, transparent); color: var(--ui-verde); }
     th { color: var(--ui-texto-2); font-weight: 600; white-space: nowrap; }
     td .ui-entrada { min-width: 6.5rem; }
     .inativo { color: var(--ui-texto-3); }
-    .acoes { display: flex; gap: var(--ui-e1); }
+    .acoes { white-space: nowrap; text-align: right; }
+    .acoes .ui-botao + .ui-botao { margin-left: var(--ui-e1); }
     .opcao { display: flex; gap: var(--ui-e1); align-items: center; white-space: nowrap; }
     /*
      * Celular: cada modelo vira um cartão (rótulo à esquerda, valor à direita). Uma tabela larga, mesmo dentro de um
      * contêiner com rolagem, alargava o layout da página no Chrome do celular (o toque caía no lugar errado).
      */
     @media (max-width: 640px) {
+      table { min-width: 0; }
       table, tbody, tr, td { display: block; }
+      td.num { text-align: left; }
+      td.acoes { text-align: left; }
+      td:first-child { padding-left: 0; min-width: 0; }
       thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
       tr { padding: var(--ui-e3) 0; border-bottom: 1px solid var(--ui-linha); }
       td { display: flex; justify-content: space-between; align-items: center; gap: var(--ui-e3); padding: var(--ui-e1) 0; border: 0; }

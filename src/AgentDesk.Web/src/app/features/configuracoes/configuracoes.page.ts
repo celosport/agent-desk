@@ -17,7 +17,7 @@ import { ModelosPrecos, numero } from './modelos-precos.component';
   providers: [ConfiguracoesStore],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <main class="ui-pagina">
+    <main class="ui-pagina larga">
       <h1 class="ui-titulo-pagina">Configurações</h1>
 
       @if (store.carregando() && !store.configuracao()) {
@@ -26,6 +26,7 @@ import { ModelosPrecos, numero } from './modelos-precos.component';
         <p class="ui-erro" role="alert">{{ store.erro() }}</p>
         <button type="button" class="ui-botao" (click)="store.carregar()">Tentar de novo</button>
       } @else if (store.configuracao(); as config) {
+        <div class="topo-grade">
         <section class="ui-cartao bloco" aria-labelledby="titulo-chave">
           <h2 id="titulo-chave">Chave da API da Anthropic</h2>
           <p class="ui-suave">
@@ -101,6 +102,7 @@ import { ModelosPrecos, numero } from './modelos-precos.component';
             <p class="ui-erro" role="alert">{{ erroPreferencias() }}</p>
           }
         </section>
+        </div>
 
         <app-conexao-claude />
 
@@ -111,12 +113,16 @@ import { ModelosPrecos, numero } from './modelos-precos.component';
     </main>
   `,
   styles: `
+    .larga { max-width: min(76rem, 100%); }
+    /* Chave da API e preferências lado a lado (uma coluna no celular); o resto ocupa a largura toda */
+    .topo-grade { display: grid; gap: var(--ui-e4); grid-template-columns: repeat(auto-fit, minmax(min(100%, 26rem), 1fr)); align-items: start; margin-bottom: var(--ui-e5); }
+    .topo-grade .bloco { margin-bottom: 0; }
     .bloco { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--ui-e3); margin-bottom: var(--ui-e5); }
     h2 { font-size: var(--ui-t-lg); }
     .chave-salva code { font-weight: 600; }
     .acoes, .linha { display: flex; flex-wrap: wrap; gap: var(--ui-e2); align-items: end; }
     .crescer { flex: 1 1 18rem; }
-    .grade { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--ui-e4); max-width: 36rem; }
+    .grade { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--ui-e4); }
     .opcao { display: flex; gap: var(--ui-e2); align-items: flex-start; }
     .dica { font-size: var(--ui-t-xs); }
     .teste { font-weight: 600; }
