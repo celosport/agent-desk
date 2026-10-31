@@ -32,6 +32,8 @@ internal sealed class LimpezaEventosRotina(IServiceScopeFactory escopos, TimePro
             using var escopo = escopos.CreateScope();
             var sessoes = escopo.ServiceProvider.GetRequiredService<ISessoesRepository>();
             var apagados = await sessoes.LimparEventosAntesDeAsync(clock.GetUtcNow() - Retencao, cancellationToken);
+            // Pedidos de permissão e de parada vencidos há mais de um dia não servem mais a ninguém
+            await escopo.ServiceProvider.GetRequiredService<IControleRepository>().LimparAsync(clock.GetUtcNow() - TimeSpan.FromDays(1), cancellationToken);
             if (apagados > 0) log.LogInformation("Sessoes: {Apagados} eventos com mais de 90 dias apagados.", apagados);
             return apagados;
         }

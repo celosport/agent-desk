@@ -1,5 +1,11 @@
 // Testes do coletor (node --test). Garantem o principal: NADA de conteúdo sai do PC e o settings.json do usuário é preservado.
 import assert from 'node:assert/strict';
+import { spawn } from 'node:child_process';
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { createServer } from 'node:http';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
 import {
   EVENTOS,
@@ -7,6 +13,9 @@ import {
   MARCA,
   comandoCurto,
   deveEnviarLimites,
+  EVENTOS_CONTROLE,
+  saidaDeParada,
+  saidaDePermissao,
   limitesDaStatusline,
   mesclarSettings,
   projetoDe,
@@ -183,4 +192,136 @@ test('statusline do usuário é mantida, a não ser com --statusline; desinstala
 
   const trocada = mesclarSettings({ statusLine: minha }, { ...opcoes, forcarStatusline: true });
   assert.equal(trocada.settings.statusLine.command, comandoStatusline);
+});
+
+const comandoControle = `node "/home/ana/.agentdesk/${MARCA}.mjs" controle`;
+
+test('controle: saída que PARA o Claude Code e saída de aprovar/negar', () => {
+  const parar = saidaDeParada();
+  assert.equal(parar.continue, false);
+  assert.equal(parar.stopReason, 'Parado pelo AgentDesk');
+  assert.equal(parar.hookSpecificOutput.hookEventName, 'PreToolUse');
+  assert.equal(parar.hookSpecificOutput.permissionDecision, 'deny'); // a ferramenta daquela vez também não roda
+
+  assert.deepEqual(saidaDePermissao('APROVAR'), { hookSpecificOutput: { hookEventName: 'PermissionRequest', decision: { behavior: 'allow' } } });
+  assert.equal(saidaDePermissao('NEGAR').hookSpecificOutput.decision.behavior, 'deny');
+  // Sem decisão (ou qualquer valor estranho): sem saída, o Claude Code pergunta no terminal — nunca aprova sozinho
+  for (const d of [null, undefined, '', 'TALVEZ', 'aprovar']) assert.equal(saidaDePermissao(d), null);
+});
+
+test('controle: hooks síncronos de PreToolUse e PermissionRequest, idempotentes e removíveis', () => {
+  const opcoes = { comando, url: 'https://app', token: 'adk_x', comandoControle };
+  const uma = mesclarSettings({ hooks: { PreToolUse: [{ matcher: 'Bash', hooks: [{ type: 'command', command: 'meu-lint.sh' }] }] } }, opcoes);
+  const duas = mesclarSettings(uma.settings, opcoes);
+
+  assert.deepEqual(duas.settings, uma.settings);
+  for (const evento of EVENTOS_CONTROLE) {
+    const sincronos = uma.settings.hooks[evento].flatMap((g) => g.hooks).filter((h) => h.command === comandoControle);
+    assert.equal(sincronos.length, 1);
+    assert.equal(sincronos[0].async, undefined); // precisa responder antes de o Claude Code seguir
+  }
+  assert.equal(uma.settings.hooks.PreToolUse.flatMap((g) => g.hooks).find((h) => h.command === comandoControle).timeout, 5);
+  assert.equal(uma.settings.hooks.PermissionRequest[0].hooks[0].timeout, 60);
+  assert.ok(uma.settings.hooks.PreToolUse.some((g) => g.hooks[0].command === 'meu-lint.sh')); // o hook do usuário continua
+
+  const { settings } = removerDoSettings(uma.settings, uma.envDefinido);
+  assert.equal(settings.hooks.PermissionRequest, undefined);
+  assert.deepEqual(settings.hooks.PreToolUse, [{ matcher: 'Bash', hooks: [{ type: 'command', command: 'meu-lint.sh' }] }]);
+});
+
+test('sem comando de controle (--sem-controle) só observa: nenhum hook de PermissionRequest', () => {
+  const r = mesclarSettings({}, { comando, url: 'https://app', token: 'adk_x' });
+  assert.equal(r.settings.hooks.PermissionRequest, undefined);
+  assert.ok(r.settings.hooks.PreToolUse.every((g) => g.hooks.every((h) => h.async === true))); // só o evento assíncrono de observação
+});
+
+// ---- o modo "controle" de ponta a ponta, contra um servidor falso ----
+
+const SCRIPT = fileURLToPath(new URL('./agentdesk-coletor.mjs', import.meta.url));
+
+/** Roda o hook como o Claude Code roda: JSON no stdin, saída no stdout. */
+function rodarHook(casa, hook) {
+  return new Promise((resolver) => {
+    const filho = spawn(process.execPath, [SCRIPT, 'controle'], { env: { ...process.env, HOME: casa, USERPROFILE: casa } });
+    let saida = '';
+    filho.stdout.on('data', (d) => (saida += d));
+    filho.on('close', (codigo) => resolver({ codigo, saida: saida.trim() }));
+    filho.stdin.end(JSON.stringify(hook));
+  });
+}
+
+async function comServidor(respostas, corpo) {
+  const pedidos = [];
+  const servidor = createServer((req, res) => {
+    let dados = '';
+    req.on('data', (c) => (dados += c));
+    req.on('end', () => {
+      pedidos.push({ metodo: req.method, url: req.url, token: req.headers['x-agentdesk-token'], corpo: dados });
+      const r = respostas(req) ?? { status: 404, json: {} };
+      res.writeHead(r.status, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(r.json));
+    });
+  });
+  await new Promise((ok) => servidor.listen(0, '127.0.0.1', ok));
+  const casa = mkdtempSync(join(tmpdir(), 'adk-'));
+  mkdirSync(join(casa, '.agentdesk'));
+  writeFileSync(join(casa, '.agentdesk', 'config.json'), JSON.stringify({ url: `http://127.0.0.1:${servidor.address().port}`, token: 'adk_teste', maquina: 'N' }));
+  try {
+    return await corpo(casa, pedidos);
+  } finally {
+    servidor.close();
+    rmSync(casa, { recursive: true, force: true });
+  }
+}
+
+test('controle (hook): app pediu para parar → o hook interrompe o Claude Code', async () => {
+  await comServidor((req) => (req.url.startsWith('/api/v1/sessoes/controle/parada') ? { status: 200, json: { parar: true } } : null), async (casa, pedidos) => {
+    const r = await rodarHook(casa, { hook_event_name: 'PreToolUse', session_id: 's1', tool_name: 'Bash', tool_input: { command: 'rm -rf x' } });
+    assert.equal(r.codigo, 0);
+    assert.equal(JSON.parse(r.saida).continue, false);
+    assert.equal(pedidos[0].token, 'adk_teste');
+    assert.match(pedidos[0].url, /sessaoId=s1/);
+    assert.ok(!pedidos[0].corpo.includes('rm')); // nada do comando sai do PC
+  });
+});
+
+test('controle (hook): sem pedido de parada, servidor fora do ar ou erro → sem saída e código 0 (o Claude Code segue)', async () => {
+  await comServidor(() => ({ status: 200, json: { parar: false } }), async (casa) => {
+    const r = await rodarHook(casa, { hook_event_name: 'PreToolUse', session_id: 's1', tool_name: 'Read' });
+    assert.deepEqual(r, { codigo: 0, saida: '' });
+  });
+  await comServidor(() => ({ status: 500, json: {} }), async (casa) => {
+    assert.deepEqual(await rodarHook(casa, { hook_event_name: 'PreToolUse', session_id: 's1', tool_name: 'Read' }), { codigo: 0, saida: '' });
+  });
+  const semConfig = mkdtempSync(join(tmpdir(), 'adk-'));
+  try {
+    assert.deepEqual(await rodarHook(semConfig, { hook_event_name: 'PreToolUse', session_id: 's1' }), { codigo: 0, saida: '' });
+  } finally {
+    rmSync(semConfig, { recursive: true, force: true });
+  }
+});
+
+test('controle (hook): permissão aprovada ou negada no app vira a decisão do Claude Code; só ferramenta e resumo seguro saem', async () => {
+  for (const [decisao, esperado] of [['APROVAR', 'allow'], ['NEGAR', 'deny']]) {
+    await comServidor((req) => {
+      if (req.method === 'POST') return { status: 201, json: { permissaoId: '11111111-1111-1111-1111-111111111111' } };
+      return { status: 200, json: { decisao } };
+    }, async (casa, pedidos) => {
+      const r = await rodarHook(casa, {
+        hook_event_name: 'PermissionRequest', session_id: 's1', tool_name: 'Bash', tool_input: { command: 'npm test -- --token=segredo123' },
+      });
+      assert.equal(JSON.parse(r.saida).hookSpecificOutput.decision.behavior, esperado);
+      const enviado = JSON.parse(pedidos[0].corpo);
+      assert.equal(enviado.ferramenta, 'Bash');
+      assert.equal(enviado.resumo, 'npm test');
+      assert.ok(!pedidos[0].corpo.includes('segredo123'));
+      assert.match(pedidos[1].url, /controle\/permissoes\/11111111-1111-1111-1111-111111111111\?espera=45/);
+    });
+  }
+});
+
+test('controle (hook): ninguém decidiu no app → sem saída (o Claude Code pergunta no terminal)', async () => {
+  await comServidor((req) => (req.method === 'POST' ? { status: 201, json: { permissaoId: '22222222-2222-2222-2222-222222222222' } } : { status: 200, json: {} }), async (casa) => {
+    assert.deepEqual(await rodarHook(casa, { hook_event_name: 'PermissionRequest', session_id: 's1', tool_name: 'Edit' }), { codigo: 0, saida: '' });
+  });
 });

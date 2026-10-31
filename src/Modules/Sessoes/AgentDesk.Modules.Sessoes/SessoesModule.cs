@@ -1,4 +1,5 @@
 using AgentDesk.Modules.Sessoes.Application.Ingestao;
+using AgentDesk.Modules.Sessoes.Application.Controle;
 using AgentDesk.Modules.Sessoes.Application.Limites;
 using AgentDesk.Modules.Sessoes.Application.Painel;
 using AgentDesk.Modules.Sessoes.Application.Sessoes;
@@ -27,6 +28,9 @@ public sealed class SessoesModule : IModule
         services.AddScoped<ISessoesRepository, SessoesRepository>();
         services.AddScoped<ISessoesConsultas, SessoesConsultasRepository>();
         services.AddScoped<ILimitesRepository, LimitesRepository>();
+        services.AddScoped<IControleRepository, ControleRepository>();
+        services.AddScoped<IValidator<DecidirPermissaoCommand>, DecidirPermissaoValidator>();
+        services.AddScoped<IValidator<SolicitarPermissaoCommand>, SolicitarPermissaoValidator>();
         services.AddScoped<IValidator<InformarLimitesCommand>, InformarLimitesValidator>();
 
         services.AddScoped<IValidator<CriarTokenCommand>, CriarTokenValidator>();
@@ -41,6 +45,11 @@ public sealed class SessoesModule : IModule
         services.AddQueryHandler<ObterPainelQuery, PainelClaudeCodeDto, ObterPainelHandler>();
         services.AddQueryHandler<ObterDicasQuery, DicasDto, ObterDicasHandler>();
         services.AddCommandHandler<InformarLimitesCommand, bool, InformarLimitesHandler>();
+        services.AddCommandHandler<PararSessaoCommand, bool, PararSessaoHandler>();
+        services.AddCommandHandler<DecidirPermissaoCommand, bool, DecidirPermissaoHandler>();
+        services.AddCommandHandler<ConsultarParadaCommand, bool, ConsultarParadaHandler>();
+        services.AddCommandHandler<SolicitarPermissaoCommand, PermissaoCriadaDto, SolicitarPermissaoHandler>();
+        services.AddQueryHandler<AguardarPermissaoQuery, DecisaoDto, AguardarPermissaoHandler>();
         services.AddQueryHandler<ObterLimitesQuery, LimitesDto, ObterLimitesHandler>();
         services.AddQueryHandler<ListarHistoricoSessoesQuery, PaginaHistoricoSessoesDto, ListarHistoricoSessoesHandler>();
         services.AddQueryHandler<ObterLinhaDoTempoQuery, LinhaDoTempoDto, ObterLinhaDoTempoHandler>();

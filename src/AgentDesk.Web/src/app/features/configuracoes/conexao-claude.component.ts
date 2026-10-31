@@ -54,6 +54,11 @@ import { ConexaoClaudeStore, comandosDeAtualizacao, comandosDeInstalacao } from 
           percentuais, no máximo 1 vez por minuto. Só planos Pro/Max informam isso. Se você já tem uma statusline, a sua é mantida
           (acrescente <code>--statusline</code> ao final para trocar). Não precisa de outro token.
         </p>
+        <p class="ui-suave">
+          Também liga o <strong>controle remoto</strong>: <em>Parar</em> uma sessão e <em>Aprovar/Negar</em> pedidos de permissão pelo app. Antes de
+          cada ferramenta o coletor faz uma consulta rápida ao AgentDesk; sem resposta no app, o Claude Code pergunta no terminal como sempre.
+          Prefere só observar? Acrescente <code>--sem-controle</code> ao final do comando.
+        </p>
         <pre class="comando" data-testid="comando-atualizacao">{{ comandoAtualizacao() }}</pre>
         <button type="button" class="ui-botao" (click)="copiar(comandoAtualizacao())">Copiar comando de atualização</button>
       </details>

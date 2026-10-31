@@ -248,6 +248,30 @@ CREATE TABLE IF NOT EXISTS cc_consumo_diario (
     PRIMARY KEY (usuario_id, dia, projeto, modelo)
 );
 
+-- Controle das sessões pelo app (Parar e Aprovar/Negar): o hook do coletor pergunta ao servidor. [[ADR-015 - Parar e Aprovar-Negar Sessões do Claude Code]]
+-- Pedido de parada: vale para a próxima ferramenta da sessão e expira sozinho (uma por sessão).
+CREATE TABLE IF NOT EXISTS cc_paradas (
+    usuario_id     UUID          NOT NULL REFERENCES usuarios(usuario_id) ON DELETE CASCADE,
+    sessao_id      VARCHAR(100)  NOT NULL,
+    solicitada_em  TIMESTAMPTZ   NOT NULL,
+    expira_em      TIMESTAMPTZ   NOT NULL,
+    PRIMARY KEY (usuario_id, sessao_id)
+);
+
+-- Pedido de permissão que o Claude Code fez (hook PermissionRequest): só metadados (ferramenta e resumo curto). Espera a decisão do app.
+CREATE TABLE IF NOT EXISTS cc_permissoes (
+    permissao_id   UUID          PRIMARY KEY,
+    usuario_id     UUID          NOT NULL REFERENCES usuarios(usuario_id) ON DELETE CASCADE,
+    sessao_id      VARCHAR(100)  NOT NULL,
+    ferramenta     VARCHAR(80)   NOT NULL,
+    resumo         VARCHAR(120),
+    criada_em      TIMESTAMPTZ   NOT NULL,
+    expira_em      TIMESTAMPTZ   NOT NULL,
+    decisao        VARCHAR(10)   CHECK (decisao IN ('APROVAR', 'NEGAR')),
+    decidida_em    TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS ix_cc_permissoes_usuario ON cc_permissoes (usuario_id, expira_em DESC);
+
 -- Janelas de uso da assinatura (5 horas e semana): só a statusline do Claude Code (Pro/Max) informa. O coletor manda no máximo 1 vez por minuto.
 -- Uma linha por usuário e janela (a última leitura); a janela que já renovou não vale mais. [[ADR-013 - Janelas de Uso da Assinatura (Statusline)]]
 CREATE TABLE IF NOT EXISTS cc_limites (

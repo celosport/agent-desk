@@ -41,6 +41,32 @@ const ROTULO: Record<StatusSessao, string> = {
       <p class="ui-erro" role="alert">{{ store.erro() }} Tentando de novo…</p>
     }
 
+    @if (store.permissoes().length) {
+      <section class="ui-cartao permissoes" aria-labelledby="titulo-permissoes">
+        <h2 id="titulo-permissoes">✋ Pedidos de permissão</h2>
+        <ul>
+          @for (p of store.permissoes(); track p.permissao.permissaoId) {
+            <li>
+              <p>
+                <strong>{{ store.nomeParaPedido(p.sessaoId, p.projeto, p.noProjetoAtual) }}</strong> ({{ p.projeto }}) quer usar
+                <code>{{ p.permissao.ferramenta }}</code>@if (p.permissao.resumo) {: <code>{{ p.permissao.resumo }}</code>}
+              </p>
+              <div class="acoes">
+                <button type="button" class="ui-botao ui-botao--primario" [attr.aria-label]="'Aprovar ' + p.permissao.ferramenta + ' de ' + p.projeto"
+                        (click)="store.decidir(p.permissao.permissaoId, 'APROVAR')">Aprovar</button>
+                <button type="button" class="ui-botao" [attr.aria-label]="'Negar ' + p.permissao.ferramenta + ' de ' + p.projeto"
+                        (click)="store.decidir(p.permissao.permissaoId, 'NEGAR')">Negar</button>
+              </div>
+            </li>
+          }
+        </ul>
+        <p class="ui-suave dica">Sem resposta em cerca de 50 s, o Claude Code volta a perguntar no terminal. Nada é aprovado sozinho.</p>
+      </section>
+    }
+    @if (store.erroControle()) {
+      <p class="ui-erro" role="alert">{{ store.erroControle() }}</p>
+    }
+
     @if (!store.carregado() && !store.erro()) {
       <p class="ui-suave">Carregando…</p>
     } @else if (store.carregado() && !store.projetos().length) {
@@ -89,7 +115,18 @@ const ROTULO: Record<StatusSessao, string> = {
           </ul>
           @if (store.selecionado(); as selecionada) {
             @if (store.agenteDaSessao(selecionada); as agente) {
-              <button type="button" class="ui-botao" (click)="equipe.pedirEdicao(agente)">Personalizar {{ store.apelido(selecionada) }}</button>
+              <div class="acoes">
+                <button type="button" class="ui-botao" (click)="equipe.pedirEdicao(agente)">Personalizar {{ store.apelido(selecionada) }}</button>
+                @if (sessaoDe(selecionada); as sessao) {
+                  @if (sessao.pararSolicitado) {
+                    <span class="ui-suave" role="status">⏹ Parada pedida: vale na próxima ferramenta de {{ store.apelido(selecionada) }}.</span>
+                  } @else {
+                    <button type="button" class="ui-botao" [disabled]="sessao.status === 'ENCERRADA'"
+                            [attr.aria-label]="'Parar ' + store.apelido(selecionada)" (click)="store.parar(selecionada)">Parar {{ store.apelido(selecionada) }}</button>
+                  }
+                }
+              </div>
+              <p class="ui-suave dica">Parar interrompe o Claude Code na próxima ferramenta que ele for usar (não no meio de um pensamento). Precisa do coletor atualizado, com o controle ligado.</p>
             }
           }
           <p class="ui-suave dica">≈ valor = quanto as chamadas custariam na API (convertido pela moeda escolhida no topo); na assinatura você não paga por token.</p>
@@ -122,6 +159,10 @@ const ROTULO: Record<StatusSessao, string> = {
     .status.trabalhando { color: var(--ui-marca-tinta); }
     .status.esperando_voce { color: #e67700; }
     .status.ociosa, .status.encerrada { color: var(--ui-texto-3); }
+    .permissoes { margin-bottom: var(--ui-e3); display: grid; gap: var(--ui-e2); background: var(--ui-alerta-fundo); }
+    .permissoes ul { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--ui-e3); }
+    .permissoes code { overflow-wrap: anywhere; }
+    .acoes { display: flex; flex-wrap: wrap; gap: var(--ui-e2); align-items: center; }
     .atividade, .numeros { grid-column: 2 / -1; overflow-wrap: anywhere; }
     .numeros { font-size: var(--ui-t-xs); }
   `,
@@ -129,6 +170,8 @@ const ROTULO: Record<StatusSessao, string> = {
 export class SalaClaudeCode {
   protected readonly store = inject(SessoesStore);
   protected readonly equipe = inject(EquipeStore);
+  protected readonly sessaoDe = (sessaoId: string): SessaoAoVivo | undefined =>
+    this.store.sessoes().find((s) => s.sessaoId === sessaoId);
   protected readonly rotulo = ROTULO;
   protected readonly numero = formatarNumero;
   protected readonly dolar = formatarDolarCompacto;
