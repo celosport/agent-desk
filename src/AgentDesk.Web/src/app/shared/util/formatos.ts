@@ -80,6 +80,12 @@ export function formatarHaQuanto(iso: string | null | undefined, agora: number =
   return `há ${dias} dia${dias === 1 ? '' : 's'}`;
 }
 
+/** Fração de 0 a 1 como percentual inteiro: 0,723 → "72%". */
+export function formatarPercentual(fracao: number | null | undefined): string {
+  if (fracao === null || fracao === undefined) return '';
+  return `${Math.round(fracao * 100)}%`;
+}
+
 /** "1.234.567" */
 export function formatarNumero(valor: number | null | undefined): string {
   if (valor === null || valor === undefined) return '';

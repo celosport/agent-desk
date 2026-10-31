@@ -9,6 +9,7 @@ import {
   formatarIntervalo,
   formatarMoeda,
   formatarNumero,
+  formatarPercentual,
 } from './formatos';
 
 describe('formatos pt-BR', () => {
@@ -63,5 +64,11 @@ describe('formatos pt-BR', () => {
 
   it('intervalo mostra início, fim e quanto demorou', () => {
     expect(formatarIntervalo('2026-10-30T11:15:02Z', '2026-10-30T11:15:09Z')).toBe('08:15:02 → 08:15:09 · 7 s');
+  });
+
+  it('percentual inteiro a partir de uma fração', () => {
+    expect(formatarPercentual(0.723)).toBe('72%');
+    expect(formatarPercentual(1)).toBe('100%');
+    expect(formatarPercentual(undefined)).toBe('');
   });
 });
