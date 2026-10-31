@@ -62,3 +62,31 @@ test('a equipe de um projeto vale para as sessões, na ordem em que chegam à sa
   await page.getByRole('button', { name: /app-mobile/ }).click();
   await expect(page.getByRole('list', { name: 'Sessões' }).getByRole('button').filter({ hasText: 'Lia' })).toHaveCount(1);
 });
+
+test('"Personalizar" no robô da automação abre o editor já nele', async ({ page }) => {
+  await entrarComo(page, 'usuario');
+  await page.getByRole('navigation', { name: 'Principal' }).getByRole('link', { name: 'Escritório' }).click();
+  await page.getByRole('tab', { name: 'Automações' }).click();
+
+  await page.getByRole('list', { name: 'Agentes' }).getByRole('button', { name: /^Bit/ }).click();
+  await page.getByRole('button', { name: 'Personalizar Bit' }).click();
+
+  await expect(page.getByRole('heading', { name: 'Aparência' })).toBeVisible();
+  await expect(page.getByLabel('Tipo de agente')).toHaveValue('AUTOMACAO');
+  await expect(page.getByLabel('Automação', { exact: true })).toHaveValue('analisar-codigo');
+  await expect(page.getByLabel('Nome', { exact: true })).toHaveValue('Bit');
+});
+
+test('"Personalizar" numa sessão do Claude Code abre a equipe do projeto na posição dela', async ({ page }) => {
+  await entrarComo(page, 'usuario');
+  await page.getByRole('navigation', { name: 'Principal' }).getByRole('link', { name: 'Escritório' }).click();
+
+  await page.getByRole('button', { name: /app-mobile/ }).click();
+  await page.getByRole('list', { name: 'Sessões' }).getByRole('button').nth(1).click(); // a 2ª a chegar à sala: posição 2
+  await page.getByRole('button', { name: /^Personalizar / }).click();
+
+  await expect(page.getByRole('heading', { name: 'Aparência' })).toBeVisible();
+  await expect(page.getByLabel('Tipo de agente')).toHaveValue('PROJETO');
+  await expect(page.getByLabel('Projeto', { exact: true })).toHaveValue('a0b1c2d3e4f5');
+  await expect(page.getByLabel('Posição na equipe')).toHaveValue('1');
+});

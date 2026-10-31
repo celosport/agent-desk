@@ -3,6 +3,7 @@ import { RouterLink } from '@angular/router';
 import { atualizarPeriodicamente } from '../../core/tempo-real/atualizacao-periodica';
 import { formatarDolarCompacto, formatarDuracao, formatarHaQuanto, formatarHora, formatarIntervalo, formatarNumero } from '../../shared/util/formatos';
 import { CenaEscritorio } from './cena-escritorio.component';
+import { EquipeStore } from './data-access/equipe.store';
 import { SessaoAoVivo } from './data-access/sessoes.models';
 import { SessoesStore } from './data-access/sessoes.store';
 import { acompanharMovimentoReduzido } from './movimento-reduzido';
@@ -86,6 +87,11 @@ const ROTULO: Record<StatusSessao, string> = {
               </li>
             }
           </ul>
+          @if (store.selecionado(); as selecionada) {
+            @if (store.agenteDaSessao(selecionada); as agente) {
+              <button type="button" class="ui-botao" (click)="equipe.pedirEdicao(agente)">Personalizar {{ store.apelido(selecionada) }}</button>
+            }
+          }
           <p class="ui-suave dica">≈ US$ = quanto as chamadas custariam na API; na assinatura você não paga por token.</p>
         </section>
       </div>
@@ -122,6 +128,7 @@ const ROTULO: Record<StatusSessao, string> = {
 })
 export class SalaClaudeCode {
   protected readonly store = inject(SessoesStore);
+  protected readonly equipe = inject(EquipeStore);
   protected readonly rotulo = ROTULO;
   protected readonly numero = formatarNumero;
   protected readonly dolar = formatarDolarCompacto;

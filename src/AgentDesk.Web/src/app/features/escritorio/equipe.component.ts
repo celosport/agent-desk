@@ -55,7 +55,7 @@ const ROTULO_EXPRESSAO: Record<(typeof EXPRESSOES)[number], string> = { NORMAL: 
               <label for="automacao">Automação</label>
               <select id="automacao" class="ui-entrada" [value]="automacaoSel()" (change)="escolherAutomacao($any($event.target).value)">
                 @for (a of automacoes(); track a.codigo) {
-                  <option [value]="a.codigo">{{ nomeDe(a) }}</option>
+                  <option [value]="a.codigo" [selected]="a.codigo === automacaoSel()">{{ nomeDe(a) }}</option>
                 }
               </select>
             </div>
@@ -66,7 +66,7 @@ const ROTULO_EXPRESSAO: Record<(typeof EXPRESSOES)[number], string> = { NORMAL: 
               <label for="projeto">Projeto</label>
               <select id="projeto" class="ui-entrada" [value]="projetoSel()" (change)="escolherProjeto($any($event.target).value)">
                 @for (p of projetos(); track p.chave) {
-                  <option [value]="p.chave">{{ p.nome }}</option>
+                  <option [value]="p.chave" [selected]="p.chave === projetoSel()">{{ p.nome }}</option>
                 }
               </select>
             </div>
@@ -74,7 +74,7 @@ const ROTULO_EXPRESSAO: Record<(typeof EXPRESSOES)[number], string> = { NORMAL: 
               <label for="posicao">Posição na equipe</label>
               <select id="posicao" class="ui-entrada" [value]="ordem()" (change)="escolherOrdem(+$any($event.target).value)">
                 @for (i of posicoes; track i) {
-                  <option [value]="i">{{ i + 1 }}º · {{ nomeDaPosicao(i) }}</option>
+                  <option [value]="i" [selected]="i === ordem()">{{ i + 1 }}º · {{ nomeDaPosicao(i) }}</option>
                 }
               </select>
             </div>
@@ -232,6 +232,7 @@ export class EquipeComponent {
     void this.iniciar();
   }
 
+  // Os <option> usam [selected] (e não só [value] no <select>): as opções chegam depois do select e o navegador ignoraria o valor
   private async iniciar(): Promise<void> {
     await this.equipe.carregar();
     const [automacoes, aoVivo] = await Promise.all([
@@ -243,7 +244,21 @@ export class EquipeComponent {
     this.automacaoSel.set(automacoes[0]?.codigo ?? '');
     this.projetoSel.set(this.projetos()[0]?.chave ?? '');
     this.carregando.set(false);
+    this.aplicarPedido();
     this.carregarForm();
+  }
+
+  /** Veio de "Personalizar" numa sala: já abre no agente certo (e limpa o pedido). */
+  private aplicarPedido(): void {
+    const pedido = this.equipe.pedido();
+    if (!pedido) return;
+    this.equipe.pedido.set(null);
+    this.alvo.set(pedido.alvo);
+    if (pedido.alvo === 'AUTOMACAO') this.automacaoSel.set(pedido.chave);
+    else {
+      this.projetoSel.set(pedido.chave);
+      this.ordem.set(pedido.ordem);
+    }
   }
 
   protected nomeDe(a: AutomacaoAgente): string {
