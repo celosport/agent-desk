@@ -56,6 +56,7 @@ public sealed class AgentDeskApiFactory : WebApplicationFactory<Program>, IAsync
         Environment.SetEnvironmentVariable("Jwt__ChaveSecreta", ChaveJwtTeste);
         Environment.SetEnvironmentVariable("RateLimit__AutenticacaoPorMinuto", "1000");
         Environment.SetEnvironmentVariable("Sessoes__RotinaLimpezaHabilitada", "false"); // rotinas em segundo plano: desligadas nos testes
+        Environment.SetEnvironmentVariable("Configuracoes__CotacoesRotinaHabilitada", "false"); // nada de chamada real ao Banco Central
     }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)

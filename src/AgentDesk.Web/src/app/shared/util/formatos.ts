@@ -1,3 +1,5 @@
+import { moedaEfetiva } from './moeda-ativa';
+
 // Formatos pt-BR como funções puras (fáceis de testar). A API manda datas em UTC (ISO 8601); a tela mostra no fuso do Brasil.
 
 export const FUSO_PADRAO = 'America/Sao_Paulo';
@@ -64,9 +66,10 @@ export function formatarMoeda(valor: number | null | undefined): string {
 
 /**
  * "US$ 4,00" — custos e preços da API da Claude são em dólar. Valores pequenos (preço por token, custo de uma chamada barata)
- * ganham casas extras em vez de virar "US$ 0,00": até `casasMaximas` (padrão 4).
+ * ganham casas extras em vez de virar "US$ 0,00": até `casasMaximas` (padrão 4). Sempre em dólar: use onde o valor é DEFINIDO em
+ * dólar (tabela de preços dos modelos, limite mensal).
  */
-export function formatarDolar(valor: number | null | undefined, casasMaximas = 4): string {
+export function formatarDolarFixo(valor: number | null | undefined, casasMaximas = 4): string {
   if (valor === null || valor === undefined) return '';
   return new Intl.NumberFormat('pt-BR', {
     style: 'currency',
@@ -76,10 +79,26 @@ export function formatarDolar(valor: number | null | undefined, casasMaximas = 4
   }).format(valor);
 }
 
+/**
+ * O custo (calculado em dólar) na moeda que o usuário escolheu — "R$ 21,60", "€ 3,60", "£ 3,00" — pela cotação PTAX do Banco Central;
+ * sem cotação ou com o dólar escolhido, "US$ 4,00". Mesmas casas extras para valores pequenos.
+ */
+export function formatarDolar(valor: number | null | undefined, casasMaximas = 4): string {
+  if (valor === null || valor === undefined) return '';
+  const { moeda, taxa } = moedaEfetiva();
+  if (moeda === 'USD') return formatarDolarFixo(valor, casasMaximas);
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: moeda,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: casasMaximas,
+  }).format(valor * taxa);
+}
+
 /** Painéis e totais: "US$ 12,35" a partir de US$ 1 e "US$ 0,5703" abaixo (o custo de uma chamada usa formatarDolar com 6). */
 export function formatarDolarCompacto(valor: number | null | undefined): string {
   if (valor === null || valor === undefined) return '';
-  return formatarDolar(valor, Math.abs(valor) >= 1 ? 2 : 4);
+  return formatarDolar(valor, Math.abs(valor * moedaEfetiva().taxa) >= 1 ? 2 : 4);
 }
 
 /** "agora", "há 3 min", "há 2 h", "há 3 dias" (sem converter fuso: é uma diferença de tempo). */

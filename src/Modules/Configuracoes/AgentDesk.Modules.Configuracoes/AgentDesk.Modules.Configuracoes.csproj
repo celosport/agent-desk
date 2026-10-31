@@ -1,6 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <!-- MODULO: Configuracoes (API key cifrada, modelo padrão, limite de gasto e tabela de modelos/preços). Módulos NUNCA referenciam outros módulos: comunicação apenas via SharedKernel/contratos. -->
   <ItemGroup>
+    <InternalsVisibleTo Include="AgentDesk.IntegrationTests" />
+  </ItemGroup>
+  <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
   <ItemGroup>

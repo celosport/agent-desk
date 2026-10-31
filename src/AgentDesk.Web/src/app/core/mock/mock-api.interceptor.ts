@@ -651,6 +651,17 @@ function responder(req: HttpRequest<unknown>, url: URL): Observable<HttpResponse
     return ok(atualizada);
   }
 
+  // ---- Cotações (PTAX do Banco Central, guardada pelo servidor): 1 US$ = 5,40 R$ = 0,90 € = 0,75 £ ----
+  if (c === '/api/v1/cotacoes' && req.method === 'GET') {
+    return ok({
+      base: 'USD',
+      taxas: { USD: 1, BRL: 5.4, EUR: 0.9, GBP: 0.75 },
+      dataCotacao: new Date(Date.now() - 86_400_000).toISOString().slice(0, 10),
+      fonte: 'PTAX do Banco Central (venda)',
+      atualizadaEm: new Date().toISOString(),
+    });
+  }
+
   // ---- Equipe (nome e aparência dos agentes) ----
   if (c === '/api/v1/equipe' && req.method === 'GET') return ok(equipe);
   if (c === '/api/v1/equipe' && req.method === 'PUT') {

@@ -259,6 +259,15 @@ CREATE TABLE IF NOT EXISTS cc_limites (
     PRIMARY KEY (usuario_id, janela)
 );
 
+-- Cotações para mostrar os valores em R$, € e £ (módulo Configuracoes). Fonte: PTAX do Banco Central (venda), guardada com a data.
+-- brl_por_unidade = quantos reais vale 1 unidade da moeda (USD, EUR, GBP). O app converte a partir do dólar. [[ADR-014 - Moedas (Cotação PTAX do Banco Central)]]
+CREATE TABLE IF NOT EXISTS cotacoes_moeda (
+    moeda           CHAR(3)        PRIMARY KEY CHECK (moeda IN ('USD', 'EUR', 'GBP')),
+    brl_por_unidade NUMERIC(14,6)  NOT NULL CHECK (brl_por_unidade > 0),
+    data_cotacao    DATE           NOT NULL,
+    buscada_em      TIMESTAMPTZ    NOT NULL
+);
+
 -- 9. Equipe: nome e aparência dos agentes de cada usuário (módulo Equipe) — [[ADR-011 - Equipe Personalizada (Nome e Aparência dos Agentes)]]
 --    alvo AUTOMACAO: chave = código da automação (ordem 0). alvo PROJETO: chave = projeto_chave das sessões; ordem = posição na equipe
 --    (a 1ª sessão a chegar na sala usa o agente de ordem 0, e assim por diante).

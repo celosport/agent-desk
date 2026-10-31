@@ -41,6 +41,7 @@ tags: [painel]
 |---|---|
 | 2026-10-30 | Projeto criado a partir do esqueleto |
 | 2026-10-30 | Perguntas respondidas; ADR-005 a 007; **Fase 1**: módulo Configuracoes + tabela de modelos e preços |
+| 2026-10-31 | **Fase 7**: moedas (R$, € e £) pela PTAX do Banco Central, seletor no topo, conversão só na exibição, ADR-014 |
 | 2026-10-31 | **Fase 6b-4**: statusline do coletor (barras de 5 h e da semana), modo `atualizar`, `cc_limites`, ADR-013 |
 | 2026-10-31 | **Fase 6b-3**: dicas automáticas (5 regras, 7 dias), histórico de sessões de 90 dias e linha do tempo hora a hora |
 | 2026-10-31 | **Fase 6b-2**: painel de tokens do Claude Code (aba em Consumo: totais, gráfico, rankings, taxa de cache, ferramentas; Meu/Todos) |

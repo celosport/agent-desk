@@ -49,3 +49,14 @@ Voltar: [[00 - Dashboard]] · Receita: [[Receita - Novo Módulo (API + App)]]
 - [ ] Preço por faixa (ex.: Haiku 5.5 acima de 100K tokens) não é modelado.
 
 Criado em 2026-10-30.
+
+## Cotações das moedas (Fase 7)
+Tabela `cotacoes_moeda`. Decisão: [[ADR-014 - Moedas (Cotação PTAX do Banco Central)]].
+
+| Método | Rota | Acesso | Resposta / erros |
+|---|---|---|---|
+| GET | `/api/v1/cotacoes` | logado | 200 `{ base: "USD", taxas: { USD, BRL, EUR, GBP }, dataCotacao, fonte, atualizadaEm }` · 503 `Cotacoes.Indisponivel` |
+
+- PTAX de venda (fechamento) do Banco Central, buscada ao subir e a cada 6 h; `taxas` = quanto vale 1 US$ em cada moeda.
+- App: seletor no topo (`core/moeda/moeda.ts`); `formatarDolar`/`formatarDolarCompacto` convertem, `formatarDolarFixo` não.
+
