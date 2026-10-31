@@ -14,4 +14,8 @@ Obrigado pelo interesse! Antes de começar:
    ```
 6. **Nenhum segredo no Git** (senha de banco, chaves da API, tokens). Use `appsettings.Development.example.json` como modelo.
 
+## Licença das contribuições
+O projeto é **AGPL-3.0** ([LICENSE](LICENSE)). Ao abrir um pull request você declara que o trabalho é seu (ou que pode enviá-lo) e concorda que ele seja
+distribuído sob a AGPL-3.0 **e** que o mantenedor possa oferecê-lo também sob outra licença (por exemplo, comercial). Se isso não serve para você, abra uma issue antes.
+
 Dúvidas de segurança: [SECURITY.md](SECURITY.md).
