@@ -3,7 +3,7 @@ import { Observable, delay, of, throwError } from 'rxjs';
 import { Configuracao, Modelo } from '../../features/configuracoes/data-access/configuracoes.models';
 import { Automacao, Execucao } from '../../features/automacoes/data-access/automacoes.models';
 import { Chamada, StatusChamada } from '../../features/consumo/data-access/consumo.models';
-import { Dicas, DiaClaudeCode, EventoLinha, ItemClaudeCode, LinhaDoTempo, PaginaHistoricoSessoes, PainelClaudeCode, SessaoHistorico, UsoClaudeCode } from '../../features/consumo/data-access/claude-code.models';
+import { Dicas, DiaClaudeCode, LimitesAssinatura, EventoLinha, ItemClaudeCode, LinhaDoTempo, PaginaHistoricoSessoes, PainelClaudeCode, SessaoHistorico, UsoClaudeCode } from '../../features/consumo/data-access/claude-code.models';
 import { AgenteEquipe } from '../../features/escritorio/data-access/equipe.models';
 
 /**
@@ -684,6 +684,14 @@ function responder(req: HttpRequest<unknown>, url: URL): Observable<HttpResponse
 
   // ---- Sessões do Claude Code ----
   if (c === '/api/v1/sessoes/ao-vivo' && req.method === 'GET') return ok(aoVivoMock());
+  if (c === '/api/v1/sessoes/limites' && req.method === 'GET') {
+    // 5 h renova daqui a 2 h 10 min e a semana daqui a 4 dias; "admin" não tem leitura (ex.: plano sem janelas)
+    const limites: LimitesAssinatura = ehAdmin(req)
+      ? {}
+      : { cincoHoras: { percentual: 34.2, renovaEm: new Date(Date.now() + 130 * 60_000).toISOString() },
+          semana: { percentual: 92, renovaEm: new Date(Date.now() + 4 * 86_400_000).toISOString() }, atualizadoEm: new Date().toISOString() };
+    return ok(limites);
+  }
   if (c === '/api/v1/sessoes/dicas' && req.method === 'GET') {
     const todos = url.searchParams.get('escopo') === 'TODOS';
     if (todos && !ehAdmin(req)) return erro(403, 'Sessoes.SemPermissao', 'Só o administrador vê as sessões de todos os usuários.');

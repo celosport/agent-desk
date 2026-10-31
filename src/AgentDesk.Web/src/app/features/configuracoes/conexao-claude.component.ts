@@ -4,7 +4,7 @@ import { RouterLink } from '@angular/router';
 import { API_BASE_URL } from '../../core/config/api.config';
 import { Avisos } from '../../core/ui/avisos.service';
 import { formatarDataHora, formatarHaQuanto } from '../../shared/util/formatos';
-import { ConexaoClaudeStore, comandosDeInstalacao } from './data-access/conexao-claude';
+import { ConexaoClaudeStore, comandosDeAtualizacao, comandosDeInstalacao } from './data-access/conexao-claude';
 
 /**
  * Conectar o Claude Code do computador ao AgentDesk: gera um token (mostrado uma vez) e o comando que instala o coletor
@@ -47,6 +47,17 @@ import { ConexaoClaudeStore, comandosDeInstalacao } from './data-access/conexao-
         </div>
       }
 
+      <details class="atualizar">
+        <summary>Já conectei antes: ligar as barras de uso de 5 h e da semana</summary>
+        <p class="ui-suave">
+          Baixa o coletor novo e liga uma statusline no Claude Code (<code>AgentDesk · 5h 34% · semana 38%</code>), que envia só esses dois
+          percentuais, no máximo 1 vez por minuto. Só planos Pro/Max informam isso. Se você já tem uma statusline, a sua é mantida
+          (acrescente <code>--statusline</code> ao final para trocar). Não precisa de outro token.
+        </p>
+        <pre class="comando" data-testid="comando-atualizacao">{{ comandoAtualizacao() }}</pre>
+        <button type="button" class="ui-botao" (click)="copiar(comandoAtualizacao())">Copiar comando de atualização</button>
+      </details>
+
       <form class="linha" [formGroup]="form" (ngSubmit)="criar()" novalidate>
         <div class="ui-campo crescer">
           <label for="nome-maquina">Nome do computador</label>
@@ -88,6 +99,8 @@ import { ConexaoClaudeStore, comandosDeInstalacao } from './data-access/conexao-
     .segredo { display: grid; gap: var(--ui-e3); padding: var(--ui-e3); border-radius: var(--ui-raio-controle); background: var(--ui-alerta-fundo); }
     .sistemas, .acoes { display: flex; flex-wrap: wrap; gap: var(--ui-e2); }
     .sistemas [aria-pressed='true'] { background: var(--ui-marca); color: var(--ui-marca-texto); border-color: var(--ui-marca); }
+    .atualizar { margin-bottom: var(--ui-e4); display: grid; gap: var(--ui-e2); }
+    .atualizar summary { cursor: pointer; font-weight: 600; }
     .comando { margin: 0; padding: var(--ui-e3); border-radius: var(--ui-raio-controle); background: var(--ui-superficie);
       white-space: pre-wrap; overflow-wrap: anywhere; font-size: var(--ui-t-xs); }
     .passos { margin: 0; padding-left: var(--ui-e5); font-size: var(--ui-t-sm); display: grid; gap: var(--ui-e1); }
@@ -112,6 +125,7 @@ export class ConexaoClaude {
     const c = this.store.criado();
     return c ? comandosDeInstalacao(location.origin, this.urlApi, c.segredo, c.token.nome)[this.sistema()] : '';
   });
+  protected readonly comandoAtualizacao = computed(() => comandosDeAtualizacao(location.origin)[this.sistema()]);
   protected readonly dataHora = formatarDataHora;
   protected readonly haQuanto = (iso: string) => formatarHaQuanto(iso);
 

@@ -48,6 +48,6 @@ statusline (`statusline.md`), sessões/transcripts (`sessions.md`).
   um `Write` e um `curl` com segredos: nada chegou ao banco).
 - ⚠️ O token de ingestão fica no `~/.agentdesk/config.json` e no `env` do `~/.claude/settings.json` (header do OTLP). Vazou? Revogue.
 - ⚠️ Precisa de Node 18+ no PC. Sessões abertas antes da instalação só aparecem depois de reiniciadas.
-- ⚠️ % das janelas de 5 h e da semana só existe na entrada da statusline (Pro/Max): fica para a Fase 6.
+- % das janelas de 5 h e da semana só existe na entrada da statusline (Pro/Max): feito na Fase 6b-4, ver [[ADR-013 - Janelas de Uso da Assinatura (Statusline)]].
 
 Relacionados: [[00 - Dashboard]] · [[Módulo Sessoes]] · [[Escritório Animado]] · [[ADR-009 - Escritório em Canvas 2D com Motor Puro]]

@@ -2,7 +2,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { mensagemDeErro } from '../../../core/http/problema';
 import { ClaudeCodeApi } from './claude-code.api';
 import { ConsumoDia } from './consumo.models';
-import { Dicas, EscopoClaudeCode, PainelClaudeCode } from './claude-code.models';
+import { Dicas, EscopoClaudeCode, LimitesAssinatura, PainelClaudeCode } from './claude-code.models';
 
 /** Estado do painel do Claude Code: polling como o painel de automações (falha mantém os números e avisa). */
 @Injectable()
@@ -11,6 +11,8 @@ export class ClaudeCodeStore {
 
   readonly painel = signal<PainelClaudeCode | null>(null);
   readonly dicas = signal<Dicas | null>(null);
+  /** Barras de 5 h e da semana; null até a primeira resposta. */
+  readonly limites = signal<LimitesAssinatura | null>(null);
   readonly erro = signal<string | null>(null);
   private escopo: EscopoClaudeCode = 'MEU';
 
@@ -35,10 +37,15 @@ export class ClaudeCodeStore {
     }
     try {
       // As dicas são um extra: se falharem, o painel segue sem elas
-      const [painel, dicas] = await Promise.all([this.api.painel(escopo), this.api.dicas(escopo).catch(() => null)]);
+      const [painel, dicas, limites] = await Promise.all([
+        this.api.painel(escopo),
+        this.api.dicas(escopo).catch(() => null),
+        this.api.limites().catch(() => null),
+      ]);
       if (escopo !== this.escopo) return; // trocaram o escopo no meio: a resposta é velha
       this.painel.set(painel);
       this.dicas.set(dicas);
+      this.limites.set(limites);
       this.erro.set(null);
     } catch (e) {
       this.erro.set(mensagemDeErro(e));

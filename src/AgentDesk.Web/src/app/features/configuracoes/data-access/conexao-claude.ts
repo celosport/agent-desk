@@ -48,6 +48,22 @@ export function comandosDeInstalacao(urlApp: string, urlApi: string, token: stri
   };
 }
 
+/**
+ * Quem já instalou antes baixa o coletor novo e roda "atualizar": reaproveita a conexão salva (sem outro token) e liga a statusline
+ * com as barras de 5 h e da semana. [[ADR-013 - Janelas de Uso da Assinatura (Statusline)]]
+ */
+export function comandosDeAtualizacao(urlApp: string): ComandosInstalacao {
+  const app = urlApp.replace(/\/+$/, '');
+  return {
+    windows:
+      `Invoke-WebRequest "${app}/coletor/agentdesk-coletor.mjs" -OutFile "$HOME\\.agentdesk\\agentdesk-coletor.mjs"; ` +
+      `node "$HOME\\.agentdesk\\agentdesk-coletor.mjs" atualizar`,
+    unix:
+      `curl -fsSL "${app}/coletor/agentdesk-coletor.mjs" -o ~/.agentdesk/agentdesk-coletor.mjs && ` +
+      `node ~/.agentdesk/agentdesk-coletor.mjs atualizar`,
+  };
+}
+
 @Injectable({ providedIn: 'root' })
 export class ConexaoClaudeApi {
   private readonly http = inject(HttpClient);

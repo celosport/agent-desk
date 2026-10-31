@@ -1,7 +1,20 @@
 // Testes do coletor (node --test). Garantem o principal: NADA de conteúdo sai do PC e o settings.json do usuário é preservado.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { EVENTOS, MARCA, comandoCurto, mesclarSettings, projetoDe, removerDoSettings, resumirEvento, resumoDaFerramenta } from './agentdesk-coletor.mjs';
+import {
+  EVENTOS,
+  INTERVALO_LIMITES_MS,
+  MARCA,
+  comandoCurto,
+  deveEnviarLimites,
+  limitesDaStatusline,
+  mesclarSettings,
+  projetoDe,
+  removerDoSettings,
+  resumirEvento,
+  resumoDaFerramenta,
+  textoDaStatusline,
+} from './agentdesk-coletor.mjs';
 
 const comando = `node "/home/ana/.agentdesk/${MARCA}.mjs" evento`;
 
@@ -107,4 +120,67 @@ test('desinstalar tira só o que o coletor pôs', () => {
   const { settings, removidos } = removerDoSettings(instalado.settings, instalado.envDefinido);
   assert.deepEqual(settings, doUsuario);
   assert.equal(removidos, EVENTOS.length);
+});
+
+const comandoStatusline = `node "/home/ana/.agentdesk/${MARCA}.mjs" statusline`;
+
+test('statusline: lê as janelas de 5 h e da semana (percentual 0 a 100 e renovação em segundos Unix)', () => {
+  const limites = limitesDaStatusline({
+    session_id: 's1',
+    rate_limits: { five_hour: { used_percentage: 23.46, resets_at: 1738425600 }, seven_day: { used_percentage: 41.2, resets_at: 1738857600 } },
+  });
+  assert.deepEqual(limites, {
+    cincoHoras: { percentual: 23.5, renovaEm: '2025-02-01T16:00:00.000Z' },
+    semana: { percentual: 41.2, renovaEm: '2025-02-06T16:00:00.000Z' },
+  });
+});
+
+test('statusline: plano sem janelas, janela só de um lado ou dado estranho não quebram', () => {
+  assert.deepEqual(limitesDaStatusline({}), {});
+  assert.deepEqual(limitesDaStatusline(null), {});
+  assert.deepEqual(limitesDaStatusline({ rate_limits: {} }), {});
+  assert.deepEqual(limitesDaStatusline({ rate_limits: { five_hour: { used_percentage: 'x', resets_at: 1738425600 } } }), {});
+  assert.deepEqual(limitesDaStatusline({ rate_limits: { five_hour: { used_percentage: 10 } } }), {}); // sem renovação
+  const so = limitesDaStatusline({ rate_limits: { seven_day: { used_percentage: 150, resets_at: 1738857600 } } });
+  assert.equal(so.cincoHoras, undefined);
+  assert.equal(so.semana.percentual, 100); // limitado a 100
+  assert.equal(limitesDaStatusline({ rate_limits: { five_hour: { used_percentage: -5, resets_at: 1738425600 } } }).cincoHoras.percentual, 0);
+});
+
+test('statusline: o texto da barra', () => {
+  assert.equal(textoDaStatusline({ cincoHoras: { percentual: 34.4 }, semana: { percentual: 38 } }), 'AgentDesk · 5h 34% · semana 38%');
+  assert.equal(textoDaStatusline({ semana: { percentual: 38 } }), 'AgentDesk · semana 38%');
+  assert.equal(textoDaStatusline({}), 'AgentDesk');
+});
+
+test('statusline: envia no máximo 1 vez por minuto', () => {
+  assert.equal(deveEnviarLimites(undefined, 1_000), true);
+  assert.equal(deveEnviarLimites(1_000, 1_000 + INTERVALO_LIMITES_MS - 1), false);
+  assert.equal(deveEnviarLimites(1_000, 1_000 + INTERVALO_LIMITES_MS), true);
+});
+
+test('instalar liga a statusline, é idempotente e desinstalar tira só a nossa', () => {
+  const opcoes = { comando, url: 'https://app', token: 'adk_x', comandoStatusline };
+  const uma = mesclarSettings({ model: 'opus' }, opcoes);
+  const duas = mesclarSettings(uma.settings, opcoes);
+
+  assert.equal(uma.statuslineDefinida, true);
+  assert.deepEqual(uma.settings.statusLine, { type: 'command', command: comandoStatusline });
+  assert.deepEqual(duas.settings, uma.settings);
+  const { settings } = removerDoSettings(uma.settings, uma.envDefinido);
+  assert.deepEqual(settings, { model: 'opus' });
+});
+
+test('statusline do usuário é mantida, a não ser com --statusline; desinstalar não mexe nela', () => {
+  const minha = { type: 'command', command: '~/.claude/minha-statusline.sh' };
+  const opcoes = { comando, url: 'https://app', token: 'adk_x', comandoStatusline };
+
+  const mantida = mesclarSettings({ statusLine: minha }, opcoes);
+  assert.deepEqual(mantida.settings.statusLine, minha);
+  assert.equal(mantida.statuslineDefinida, false);
+  assert.ok(mantida.avisos.some((a) => a.includes('statusline')));
+  assert.deepEqual(removerDoSettings(mantida.settings, mantida.envDefinido).settings.statusLine, minha);
+
+  const trocada = mesclarSettings({ statusLine: minha }, { ...opcoes, forcarStatusline: true });
+  assert.equal(trocada.settings.statusLine.command, comandoStatusline);
 });

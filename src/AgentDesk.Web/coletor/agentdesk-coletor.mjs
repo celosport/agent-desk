@@ -8,9 +8,15 @@
 //
 // Uso:
 //   node agentdesk-coletor.mjs instalar --url https://seu-app --token adk_... --maquina "Notebook"
+//   node agentdesk-coletor.mjs atualizar       (após baixar uma versão nova: reaplica tudo com a conexão já salva, sem outro token)
 //   node agentdesk-coletor.mjs testar          (manda uma sessão de teste: o robô aparece no Escritório)
-//   node agentdesk-coletor.mjs desinstalar     (tira os hooks e a telemetria do ~/.claude/settings.json)
+//   node agentdesk-coletor.mjs desinstalar     (tira os hooks, a telemetria e a statusline do ~/.claude/settings.json)
 //   node agentdesk-coletor.mjs evento          (uso interno: os hooks chamam com o JSON do evento no stdin)
+//   node agentdesk-coletor.mjs statusline      (uso interno: a statusline do Claude Code chama; mostra 5h/semana e avisa o AgentDesk)
+//
+// Statusline: só o percentual das janelas de 5 h e da semana (e quando renovam) sai do PC, no máximo 1 vez por minuto, e só
+// para quem tem plano Pro/Max (o Claude Code só informa isso a eles). Se você já tiver uma statusline própria, ela é mantida
+// (use --statusline para trocar). [[ADR-013 - Janelas de Uso da Assinatura (Statusline)]]
 //
 // Sem dependências: Node 18+ (usa fetch). Sempre termina com código 0 no modo "evento" — nunca atrapalha o Claude Code.
 
@@ -39,6 +45,10 @@ const PASTA = join(homedir(), '.agentdesk');
 const CONFIG = join(PASTA, 'config.json');
 const LOG = join(PASTA, 'coletor.log');
 const SETTINGS = join(process.env.CLAUDE_CONFIG_DIR || join(homedir(), '.claude'), 'settings.json');
+const ESTADO_STATUSLINE = join(PASTA, 'statusline-estado.json');
+
+/** Intervalo mínimo entre dois envios das janelas ao AgentDesk. */
+export const INTERVALO_LIMITES_MS = 60_000;
 
 // ---------------------------------------------------------------------------------------------------------------------
 // Regras puras (testadas em agentdesk-coletor.spec.mjs)
@@ -118,6 +128,43 @@ export function resumirEvento(hook, maquina, agora = new Date()) {
   return evento;
 }
 
+/** Percentual de 0 a 100 com 1 casa; qualquer coisa que não seja número vira undefined. */
+function percentualValido(valor) {
+  const n = Number(valor);
+  return Number.isFinite(n) ? Math.min(100, Math.max(0, Math.round(n * 10) / 10)) : undefined;
+}
+
+/**
+ * Lê `rate_limits` do JSON que o Claude Code manda à statusline (Pro/Max, depois da 1ª resposta da sessão):
+ * `five_hour` e `seven_day` com `used_percentage` (0 a 100) e `resets_at` (segundos Unix). Janela ausente ou estranha é ignorada.
+ */
+export function limitesDaStatusline(entrada) {
+  const limites = entrada && typeof entrada === 'object' ? entrada.rate_limits : null;
+  const resultado = {};
+  if (!limites || typeof limites !== 'object') return resultado;
+  for (const [origem, destino] of [['five_hour', 'cincoHoras'], ['seven_day', 'semana']]) {
+    const janela = limites[origem];
+    const percentual = percentualValido(janela?.used_percentage);
+    const renovaSegundos = Number(janela?.resets_at);
+    if (percentual === undefined || !Number.isFinite(renovaSegundos) || renovaSegundos <= 0) continue;
+    resultado[destino] = { percentual, renovaEm: new Date(renovaSegundos * 1000).toISOString() };
+  }
+  return resultado;
+}
+
+/** O texto da barra do Claude Code: "AgentDesk · 5h 34% · semana 38%" (só a marca, se o plano não informa as janelas). */
+export function textoDaStatusline(limites) {
+  const partes = ['AgentDesk'];
+  if (limites?.cincoHoras) partes.push(`5h ${Math.round(limites.cincoHoras.percentual)}%`);
+  if (limites?.semana) partes.push(`semana ${Math.round(limites.semana.percentual)}%`);
+  return partes.join(' · ');
+}
+
+/** Envia no máximo 1 vez por minuto (a statusline roda a cada atualização da tela). */
+export function deveEnviarLimites(ultimoEnvioMs, agoraMs) {
+  return !Number.isFinite(ultimoEnvioMs) || agoraMs - ultimoEnvioMs >= INTERVALO_LIMITES_MS;
+}
+
 /** Variáveis da telemetria (só logs, em JSON, com o token no header; prompts continuam redigidos — o padrão). */
 export function variaveisTelemetria(url, token) {
   return {
@@ -136,7 +183,7 @@ export function variaveisTelemetria(url, token) {
  * antigas do coletor antes de pôr as novas. Se já houver uma telemetria de outra ferramenta, não mexe (a não ser com forcar).
  * Devolve { settings, envDefinido, avisos }.
  */
-export function mesclarSettings(atual, { comando, url, token, forcar = false }) {
+export function mesclarSettings(atual, { comando, url, token, forcar = false, comandoStatusline, forcarStatusline = false }) {
   const settings = removerDoSettings(structuredClone(atual || {}), []).settings;
   settings.hooks = settings.hooks || {};
   for (const evento of EVENTOS) {
@@ -147,6 +194,16 @@ export function mesclarSettings(atual, { comando, url, token, forcar = false }) 
 
   const avisos = [];
   const envDefinido = [];
+  let statuslineDefinida = false;
+  if (comandoStatusline) {
+    // Uma statusline que não é nossa fica como está, a não ser que peçam (--statusline): é do usuário
+    if (settings.statusLine && !forcarStatusline) {
+      avisos.push('Você já tem uma statusline: mantive a sua. As barras de 5 h e da semana não aparecem no AgentDesk (use --statusline para trocar).');
+    } else {
+      settings.statusLine = { type: 'command', command: comandoStatusline };
+      statuslineDefinida = true;
+    }
+  }
   const desejado = variaveisTelemetria(url, token);
   settings.env = settings.env || {};
   const outraTelemetria =
@@ -160,7 +217,7 @@ export function mesclarSettings(atual, { comando, url, token, forcar = false }) 
       envDefinido.push(chave);
     }
   }
-  return { settings, envDefinido, avisos };
+  return { settings, envDefinido, avisos, statuslineDefinida };
 }
 
 /** Tira do settings.json tudo o que o coletor pôs (hooks com a marca e as variáveis que ele definiu). */
@@ -176,6 +233,10 @@ export function removerDoSettings(atual, envDefinido) {
     else delete settings.hooks[evento];
   }
   if (settings.hooks && !Object.keys(settings.hooks).length) delete settings.hooks;
+  if (String(settings.statusLine?.command || '').includes(MARCA)) {
+    delete settings.statusLine;
+    removidos += 1;
+  }
   for (const chave of envDefinido || []) if (settings.env) delete settings.env[chave];
   if (settings.env && !Object.keys(settings.env).length) delete settings.env;
   return { settings, removidos };
@@ -230,6 +291,39 @@ async function lerStdin(prazoMs) {
   });
 }
 
+async function enviarLimites(config, limites, prazoMs) {
+  const resposta = await fetch(`${config.url}/api/v1/sessoes/limites`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-AgentDesk-Token': config.token },
+    body: JSON.stringify(limites),
+    signal: AbortSignal.timeout(prazoMs),
+  });
+  if (!resposta.ok) throw new Error(`HTTP ${resposta.status}`);
+}
+
+/** Chamado pela statusline do Claude Code: imprime a barra e, no máximo 1 vez por minuto, avisa o AgentDesk. Nunca falha. */
+async function modoStatusline() {
+  let limites = {};
+  try {
+    limites = limitesDaStatusline(JSON.parse((await lerStdin(1500)) || '{}'));
+  } catch {
+    /* sem JSON válido: só a marca */
+  }
+  console.log(textoDaStatusline(limites));
+  try {
+    const config = lerJson(CONFIG, null);
+    if (!config?.url || !config?.token || (!limites.cincoHoras && !limites.semana)) return;
+    const agora = Date.now();
+    if (!deveEnviarLimites(lerJson(ESTADO_STATUSLINE, {}).ultimoEnvioMs, agora)) return;
+    // Marca antes de enviar: se a rede falhar, tenta de novo só no próximo minuto (sem martelar o servidor)
+    mkdirSync(PASTA, { recursive: true });
+    writeFileSync(ESTADO_STATUSLINE, JSON.stringify({ ultimoEnvioMs: agora }));
+    await enviarLimites(config, limites, 3000);
+  } catch (e) {
+    registrar(`statusline: ${e?.message ?? e}`);
+  }
+}
+
 async function modoEvento() {
   try {
     const config = lerJson(CONFIG, null);
@@ -271,6 +365,7 @@ async function modoTestar(config) {
 async function principal() {
   const [modo, ...resto] = process.argv.slice(2);
   if (modo === 'evento' || !modo) return modoEvento();
+  if (modo === 'statusline') return modoStatusline();
 
   const [maior] = process.versions.node.split('.').map(Number);
   if (maior < 18) {
@@ -278,15 +373,20 @@ async function principal() {
     process.exit(1);
   }
 
-  if (modo === 'instalar') {
+  if (modo === 'instalar' || modo === 'atualizar') {
     const o = argumentos(resto);
-    const url = String(o.url || '').replace(/\/+$/, '');
+    // "atualizar" reaproveita a conexão já salva (url, token e nome da máquina): não precisa de outro token
+    const salva = modo === 'atualizar' ? lerJson(CONFIG, {}) : {};
+    if (modo === 'atualizar' && (!salva.url || !salva.token)) throw new Error('Nada instalado ainda: rode "instalar" com --url e --token.');
+    const url = String(o.url || salva.url || '').replace(/\/+$/, '');
+    const tokenInformado = String(o.token || salva.token || '');
     if (!/^https:\/\/|^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?/.test(url)) throw new Error('Informe --url com https:// (ou http://localhost).');
-    if (!String(o.token || '').startsWith('adk_')) throw new Error('Informe --token com o token gerado em Configurações → Claude Code (começa com adk_).');
+    if (!tokenInformado.startsWith('adk_')) throw new Error('Informe --token com o token gerado em Configurações → Claude Code (começa com adk_).');
 
     const script = fileURLToPath(import.meta.url).replace(/\\/g, '/');
     const comando = `node "${script}" evento`;
-    const config = { url, token: String(o.token), maquina: String(o.maquina || 'Computador') };
+    const comandoStatusline = `node "${script}" statusline`;
+    const config = { url, token: tokenInformado, maquina: String(o.maquina || salva.maquina || 'Computador') };
 
     mkdirSync(PASTA, { recursive: true });
     mkdirSync(dirname(SETTINGS), { recursive: true });
@@ -298,11 +398,14 @@ async function principal() {
       console.log(`• Cópia de segurança: ${copia}`);
     }
     const limpo = removerDoSettings(atual, anterior.envDefinido || []).settings;
-    const { settings, envDefinido, avisos } = mesclarSettings(limpo, { comando, url, token: config.token, forcar: !!o.forcar });
+    const { settings, envDefinido, avisos, statuslineDefinida } = mesclarSettings(limpo, {
+      comando, url, token: config.token, forcar: !!o.forcar, comandoStatusline, forcarStatusline: !!o.statusline,
+    });
     writeFileSync(SETTINGS, `${JSON.stringify(settings, null, 2)}\n`);
     writeFileSync(CONFIG, `${JSON.stringify({ ...config, envDefinido }, null, 2)}\n`, { mode: 0o600 });
     console.log(`• Hooks do AgentDesk adicionados em ${SETTINGS}`);
     console.log(envDefinido.length ? '• Telemetria (tokens e custo) ligada, com prompts redigidos.' : '• Telemetria NÃO alterada.');
+    if (statuslineDefinida) console.log('• Statusline ligada: a barra do Claude Code mostra "AgentDesk · 5h … · semana …" (planos Pro/Max).');
     avisos.forEach((a) => console.log(`⚠ ${a}`));
     await modoTestar(config);
     console.log('Pronto! As sessões NOVAS do Claude Code já aparecem (as que estavam abertas: reinicie-as).');
@@ -316,11 +419,11 @@ async function principal() {
     const { settings, removidos } = removerDoSettings(lerJson(SETTINGS, {}), config.envDefinido || []);
     writeFileSync(SETTINGS, `${JSON.stringify(settings, null, 2)}\n`);
     writeFileSync(CONFIG, `${JSON.stringify({ ...config, token: undefined, envDefinido: [] }, null, 2)}\n`);
-    console.log(`✔ ${removidos} hooks e a telemetria do AgentDesk removidos. Revogue o token em Configurações → Claude Code.`);
+    console.log(`✔ ${removidos} hooks e a telemetria (e a statusline, se era nossa) do AgentDesk removidos. Revogue o token em Configurações → Claude Code.`);
     return;
   }
 
-  console.log('Modos: instalar --url URL --token adk_... --maquina NOME [--forcar] · testar · desinstalar');
+  console.log('Modos: instalar --url URL --token adk_... --maquina NOME [--forcar] [--statusline] · atualizar · testar · desinstalar');
 }
 
 /** Só executa quando chamado direto (o teste importa as funções sem rodar nada). No Windows, maiúsculas e barras variam. */
@@ -335,7 +438,7 @@ function chamadoDireto() {
 }
 
 if (chamadoDireto()) {
-  const evento = !process.argv[2] || process.argv[2] === 'evento';
+  const evento = !process.argv[2] || process.argv[2] === 'evento' || process.argv[2] === 'statusline';
   principal()
     // O stdin pode ficar aberto: sai explicitamente, sempre com 0 no modo evento (nunca atrapalha o Claude Code)
     .then(() => evento && process.exit(0))

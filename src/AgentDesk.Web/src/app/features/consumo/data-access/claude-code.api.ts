@@ -2,13 +2,18 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { API_BASE_URL } from '../../../core/config/api.config';
-import { Dicas, EscopoClaudeCode, FiltroHistoricoSessoes, LinhaDoTempo, PaginaHistoricoSessoes, PainelClaudeCode } from './claude-code.models';
+import { Dicas, LimitesAssinatura, EscopoClaudeCode, FiltroHistoricoSessoes, LinhaDoTempo, PaginaHistoricoSessoes, PainelClaudeCode } from './claude-code.models';
 
 /** URLs do painel do Claude Code (dados do módulo Sessoes). */
 @Injectable({ providedIn: 'root' })
 export class ClaudeCodeApi {
   private readonly http = inject(HttpClient);
   private readonly base = `${inject(API_BASE_URL)}/api/v1/sessoes`;
+
+  /** Sempre as janelas do próprio usuário (a assinatura é pessoal; o ADMIN não vê as dos outros). */
+  limites(): Promise<LimitesAssinatura> {
+    return firstValueFrom(this.http.get<LimitesAssinatura>(`${this.base}/limites`));
+  }
 
   dicas(escopo: EscopoClaudeCode): Promise<Dicas> {
     return firstValueFrom(this.http.get<Dicas>(`${this.base}/dicas`, { params: { escopo } }));
