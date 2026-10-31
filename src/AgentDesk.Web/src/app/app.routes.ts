@@ -36,6 +36,11 @@ export const routes: Routes = [
         loadComponent: () => import('./features/consumo/historico.page').then((m) => m.HistoricoPage),
       },
       {
+        path: 'consumo/sessoes',
+        title: 'Histórico de sessões | Agent Desk',
+        loadComponent: () => import('./features/consumo/historico-sessoes.page').then((m) => m.HistoricoSessoesPage),
+      },
+      {
         path: 'escritorio',
         title: 'Escritório | Agent Desk',
         loadComponent: () => import('./features/escritorio/escritorio.page').then((m) => m.EscritorioPage),

@@ -36,6 +36,9 @@ public sealed class SessoesModule : IModule
         services.AddCommandHandler<IngerirTelemetriaCommand, int, IngerirTelemetriaHandler>();
         services.AddQueryHandler<ObterAoVivoQuery, AoVivoDto, ObterAoVivoHandler>();
         services.AddQueryHandler<ObterPainelQuery, PainelClaudeCodeDto, ObterPainelHandler>();
+        services.AddQueryHandler<ObterDicasQuery, DicasDto, ObterDicasHandler>();
+        services.AddQueryHandler<ListarHistoricoSessoesQuery, PaginaHistoricoSessoesDto, ListarHistoricoSessoesHandler>();
+        services.AddQueryHandler<ObterLinhaDoTempoQuery, LinhaDoTempoDto, ObterLinhaDoTempoHandler>();
 
         // Rotina diária de limpeza; nos testes fica desligada (Sessoes__RotinaLimpezaHabilitada=false)
         services.AddSingleton<LimpezaEventosRotina>();

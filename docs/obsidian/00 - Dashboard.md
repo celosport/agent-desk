@@ -41,6 +41,7 @@ tags: [painel]
 |---|---|
 | 2026-10-30 | Projeto criado a partir do esqueleto |
 | 2026-10-30 | Perguntas respondidas; ADR-005 a 007; **Fase 1**: módulo Configuracoes + tabela de modelos e preços |
+| 2026-10-31 | **Fase 6b-3**: dicas automáticas (5 regras, 7 dias), histórico de sessões de 90 dias e linha do tempo hora a hora |
 | 2026-10-31 | **Fase 6b-2**: painel de tokens do Claude Code (aba em Consumo: totais, gráfico, rankings, taxa de cache, ferramentas; Meu/Todos) |
 | 2026-10-31 | **Fase 6b-1**: cancelar tarefa do agente (`CANCELADA`), início/fim/duração, usuário logado no topo, ADR-012 |
 | 2026-10-31 | **Fase 6a**: módulo Equipe (API + aba Equipe no Escritório), robô em camadas, ADR-011 |

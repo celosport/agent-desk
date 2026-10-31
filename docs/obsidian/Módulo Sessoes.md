@@ -61,3 +61,23 @@ Aba **Claude Code (assinatura)** na tela Consumo (`features/consumo/painel-claud
 - **Ferramentas**: contagem de `PreToolUse` (hooks, 90 dias). A telemetria informa tokens por pedido ao modelo, **não por ferramenta**: não há rateio.
 - ≈ US$ é o que as chamadas custariam na API; na assinatura não se paga por token. Escopo TODOS soma todos os usuários.
 
+## Dicas e histórico de sessões (Fase 6b-3)
+Calculadas no servidor (`Domain/Dicas.cs`, funções puras testadas sem banco). Tela: `/consumo/sessoes` e o cartão de dicas na aba Claude Code.
+
+| Método | Rota | Acesso | Resposta / erros |
+|---|---|---|---|
+| GET | `/api/v1/sessoes/dicas?escopo=` | logado (`TODOS` só ADMIN) | 200 `DicasDto` · 403 `Sessoes.SemPermissao` |
+| GET | `/api/v1/sessoes/historico?escopo=&projeto=&de=&ate=&pagina=&tamanho=` | logado | 200 `PaginaHistoricoSessoesDto` (90 dias, 20 por página, máx. 100) |
+| GET | `/api/v1/sessoes/historico/{sessaoId}?escopo=` | dono (ADMIN com `TODOS`) | 200 `LinhaDoTempoDto` (até 1.000 eventos) · 404 `Sessoes.NaoEncontrada` |
+
+**As 5 regras (últimos 7 dias)** — a economia é uma *estimativa grosseira* (fatia do custo da sessão), sempre rotulada assim:
+| Regra | Dispara quando | Economia estimada |
+|---|---|---|
+| `CACHE_BAIXO` | sessão com 20+ pedidos e cache abaixo de 60% | custo × (80% − taxa) × 0,5 |
+| `SESSAO_GIGANTE` | 150+ pedidos ou 20 mi+ de tokens | 25% do custo |
+| `MUITAS_COMPACTACOES` | 3+ eventos `PreCompact` | 15% do custo |
+| `MODELO_CARO` | Opus/Fable, 10+ pedidos e no máximo 3 edições de arquivo | 60% do custo |
+| `DIA_FORA_DA_CURVA` | custo do dia > 2× a média dos outros dias com uso (3+ dias de uso, dia ≥ US$ 1) | custo do dia − média |
+
+A linha do tempo agrupa hora a hora (Brasília) e esconde `PostToolUse` (ruído).
+

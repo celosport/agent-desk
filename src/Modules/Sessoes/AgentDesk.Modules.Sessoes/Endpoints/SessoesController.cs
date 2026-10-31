@@ -73,6 +73,45 @@ public sealed class SessoesController(IUsuarioAtual usuarioAtual) : ControllerBa
         return Responder(await handler.Handle(new ObterPainelQuery(usuarioId, dias ?? ObterPainelHandler.DiasPadrao), ct));
     }
 
+    /// <summary>Dicas para gastar menos tokens (5 regras sobre os últimos 7 dias), com a economia estimada.</summary>
+    [HttpGet("dicas")]
+    [ProducesResponseType<DicasDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> Dicas(
+        [FromQuery] EscopoSessoes? escopo, [FromServices] IQueryHandler<ObterDicasQuery, DicasDto> handler, CancellationToken ct)
+    {
+        if (!Escopo(escopo, out var usuarioId, out var erro)) return this.ToProblem(erro);
+        return Responder(await handler.Handle(new ObterDicasQuery(usuarioId), ct));
+    }
+
+    /// <summary>Sessões dos últimos 90 dias (duração, pedidos, tokens, ≈ US$ e cache), com filtro por projeto e período.</summary>
+    [HttpGet("historico")]
+    [ProducesResponseType<PaginaHistoricoSessoesDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> Historico(
+        [FromQuery] EscopoSessoes? escopo, [FromQuery] string? projeto, [FromQuery] DateOnly? de, [FromQuery] DateOnly? ate,
+        [FromQuery] int? pagina, [FromQuery] int? tamanho,
+        [FromServices] IQueryHandler<ListarHistoricoSessoesQuery, PaginaHistoricoSessoesDto> handler, CancellationToken ct)
+    {
+        if (!Escopo(escopo, out var usuarioId, out var erro)) return this.ToProblem(erro);
+        return Responder(await handler.Handle(new ListarHistoricoSessoesQuery(usuarioId, projeto, de, ate, pagina ?? 1, tamanho ?? 0), ct));
+    }
+
+    /// <summary>
+    /// O que a sessão fez, hora a hora. O ADMIN abre a de qualquer usuário (<c>?escopo=TODOS</c>); os outros, só as próprias (senão 404).
+    /// </summary>
+    [HttpGet("historico/{sessaoId}")]
+    [ProducesResponseType<LinhaDoTempoDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> LinhaDoTempo(
+        string sessaoId, [FromQuery] EscopoSessoes? escopo,
+        [FromServices] IQueryHandler<ObterLinhaDoTempoQuery, LinhaDoTempoDto> handler, CancellationToken ct)
+    {
+        // Usuário comum nunca enxerga a sessão de outro: com escopo TODOS ele cai em 403 como nas outras rotas
+        if (!Escopo(escopo, out var usuarioId, out var erro)) return this.ToProblem(erro);
+        return Responder(await handler.Handle(new ObterLinhaDoTempoQuery(usuarioId, sessaoId), ct));
+    }
+
     /// <summary>MEU → o usuário do token; TODOS → null (todos), só para ADMIN.</summary>
     private bool Escopo(EscopoSessoes? escopo, out Guid? usuarioId, out Error erro)
     {
