@@ -1,11 +1,14 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
+import { EquipeApi } from './equipe.api';
+import { EquipeStore } from './equipe.store';
 import { SessoesApi } from './sessoes.api';
 import { AoVivo, SessaoAoVivo } from './sessoes.models';
 import { SessoesStore } from './sessoes.store';
 
 describe('SessoesStore', () => {
   const api = { aoVivo: vi.fn() };
+  const apiEquipe = { listar: vi.fn().mockResolvedValue([]), salvar: vi.fn(), restaurar: vi.fn() };
   const sessao = (sessaoId: string, status: SessaoAoVivo['status'], atividade?: string): SessaoAoVivo => ({
     sessaoId,
     maquina: 'Notebook',
@@ -24,7 +27,7 @@ describe('SessoesStore', () => {
   });
 
   const criar = () => {
-    TestBed.configureTestingModule({ providers: [SessoesStore, { provide: SessoesApi, useValue: api }] });
+    TestBed.configureTestingModule({ providers: [SessoesStore, EquipeStore, { provide: SessoesApi, useValue: api }, { provide: EquipeApi, useValue: apiEquipe }] });
     const store = TestBed.inject(SessoesStore);
     store.agora = () => 0;
     store.reduzido = true;
@@ -71,6 +74,22 @@ describe('SessoesStore', () => {
     store.escolherProjeto('chave-app');
     expect(store.agentes).toHaveLength(8);
     expect(store.foraDaSala()).toBe(2);
+  });
+
+  it('a equipe do projeto vale pelo lugar do robô na sala; sem equipe, o nome automático', async () => {
+    apiEquipe.listar.mockResolvedValueOnce([
+      { alvo: 'PROJETO', chave: 'chave-app', ordem: 0, nome: 'Zeca', corCabeca: '#111111', corCorpo: '#222222', corDetalhe: '#333333', corOlhos: '#444444',
+        acessorio: 'COROA', antena: 'DUPLA', expressao: 'FELIZ', atualizadoEm: '2026-10-31T12:00:00Z' },
+    ]);
+    api.aoVivo.mockResolvedValue(aoVivo(['app', [sessao('a', 'TRABALHANDO'), sessao('b', 'TRABALHANDO')]]));
+    const store = criar();
+    await TestBed.inject(EquipeStore).carregar();
+    await store.atualizar();
+
+    expect(store.apelido('a')).toBe('Zeca'); // a 1ª a chegar usa o agente de ordem 0
+    expect(store.visualDe('a').acessorio).toBe('COROA');
+    expect(store.apelido('b')).not.toBe('Zeca'); // a 2ª não tem agente configurado
+    expect(store.visualDe('b').acessorio).toBe('NENHUM');
   });
 
   it('falha no polling mostra o erro e propaga (o polling espera mais)', async () => {

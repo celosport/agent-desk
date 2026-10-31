@@ -6,7 +6,6 @@ import { CenaEscritorio } from './cena-escritorio.component';
 import { SessoesStore } from './data-access/sessoes.store';
 import { acompanharMovimentoReduzido } from './movimento-reduzido';
 import { StatusSessao } from './motor/sessao';
-import { personagemDe } from './motor/personagens';
 
 /** Polling do "ao vivo": rápido o bastante para o balão acompanhar o Claude Code, leve para o servidor. */
 export const INTERVALO_AO_VIVO_MS = 3000;
@@ -74,7 +73,7 @@ const ROTULO: Record<StatusSessao, string> = {
             @for (s of projeto.sessoes; track s.sessaoId) {
               <li>
                 <button type="button" class="sessao" [attr.aria-pressed]="s.sessaoId === store.selecionado()" (click)="store.selecionar(s.sessaoId)">
-                  <span class="cor" [style.background]="cor(s.sessaoId)" aria-hidden="true"></span>
+                  <span class="cor" [style.background]="store.visualDe(s.sessaoId).paleta.b" aria-hidden="true"></span>
                   <span class="nomes"><strong>{{ store.apelido(s.sessaoId) }}</strong> <span class="ui-suave">{{ s.maquina }}</span></span>
                   <span [class]="'status ' + s.status.toLowerCase()">{{ rotulo[s.status] }}</span>
                   <span class="atividade">{{ s.atividade ?? '—' }}</span>
@@ -126,7 +125,6 @@ export class SalaClaudeCode {
   protected readonly numero = formatarNumero;
   protected readonly dolar = formatarDolarCompacto;
   protected readonly haQuanto = (iso: string) => formatarHaQuanto(iso);
-  protected readonly cor = (sessaoId: string) => personagemDe(sessaoId).paleta.b;
   protected readonly temAlerta = (sessoes: { status: StatusSessao }[]) => sessoes.some((s) => s.status === 'ESPERANDO_VOCE');
 
   constructor() {

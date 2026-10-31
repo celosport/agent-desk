@@ -1,8 +1,10 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { CenaEscritorio, corDoAgente } from './cena-escritorio.component';
+import { CenaEscritorio } from './cena-escritorio.component';
+import { EquipeStore } from './data-access/equipe.store';
 import { EscritorioStore } from './data-access/escritorio.store';
+import { EquipeComponent } from './equipe.component';
 import { acompanharMovimentoReduzido } from './movimento-reduzido';
 import { SalaClaudeCode } from './sala-claude-code.component';
 
@@ -13,8 +15,8 @@ import { SalaClaudeCode } from './sala-claude-code.component';
  */
 @Component({
   selector: 'app-escritorio',
-  imports: [ReactiveFormsModule, RouterLink, CenaEscritorio, SalaClaudeCode],
-  providers: [EscritorioStore],
+  imports: [ReactiveFormsModule, RouterLink, CenaEscritorio, SalaClaudeCode, EquipeComponent],
+  providers: [EquipeStore, EscritorioStore],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <main class="ui-pagina larga">
@@ -25,11 +27,15 @@ import { SalaClaudeCode } from './sala-claude-code.component';
                 (click)="aba.set('claude')">Claude Code (ao vivo)</button>
         <button type="button" role="tab" id="aba-automacoes" aria-controls="painel-sala" [attr.aria-selected]="aba() === 'automacoes'"
                 (click)="aba.set('automacoes')">Automações</button>
+        <button type="button" role="tab" id="aba-equipe" aria-controls="painel-sala" [attr.aria-selected]="aba() === 'equipe'"
+                (click)="aba.set('equipe')">Equipe</button>
       </div>
 
-      <div id="painel-sala" role="tabpanel" [attr.aria-labelledby]="aba() === 'claude' ? 'aba-claude' : 'aba-automacoes'">
+      <div id="painel-sala" role="tabpanel" [attr.aria-labelledby]="'aba-' + (aba() === 'claude' ? 'claude' : aba() === 'equipe' ? 'equipe' : 'automacoes')">
       @if (aba() === 'claude') {
         <app-sala-claude-code />
+      } @else if (aba() === 'equipe') {
+        <app-equipe />
       } @else if (store.erro()) {
         <p class="ui-erro" role="alert">{{ store.erro() }}</p>
         <button type="button" class="ui-botao" (click)="store.carregar()">Tentar de novo</button>
@@ -48,7 +54,7 @@ import { SalaClaudeCode } from './sala-claude-code.component';
               @for (s of store.status(); track s.codigo) {
                 <li>
                   <button type="button" class="agente" [attr.aria-pressed]="s.codigo === store.selecionado()" (click)="store.selecionado.set(s.codigo)">
-                    <span class="cor" [style.background]="cor(s.codigo)" aria-hidden="true"></span>
+                    <span class="cor" [style.background]="store.visualDe(s.codigo).paleta.b" aria-hidden="true"></span>
                     <span class="nomes"><strong>{{ s.apelido }}</strong> <span class="ui-suave">{{ s.automacao }}</span></span>
                     <span class="status" [class.ocupado]="s.ocupado">{{ s.status }}</span>
                   </button>
@@ -114,14 +120,15 @@ import { SalaClaudeCode } from './sala-claude-code.component';
 })
 export class EscritorioPage {
   protected readonly store = inject(EscritorioStore);
+  private readonly equipe = inject(EquipeStore);
   protected readonly form = inject(NonNullableFormBuilder).group({ entrada: [''] });
-  protected readonly cor = corDoAgente;
   /** A sala do Claude Code abre primeiro: é onde está o trabalho de verdade. */
-  protected readonly aba = signal<'claude' | 'automacoes'>('claude');
+  protected readonly aba = signal<'claude' | 'automacoes' | 'equipe'>('claude');
 
   constructor() {
     // Movimento reduzido: o motor não anima a caminhada e o desenho não pisca
     acompanharMovimentoReduzido((r) => (this.store.reduzido = r), inject(DestroyRef));
+    void this.equipe.carregar();
     void this.store.carregar();
   }
 

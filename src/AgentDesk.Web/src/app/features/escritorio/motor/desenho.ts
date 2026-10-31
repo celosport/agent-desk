@@ -1,7 +1,7 @@
 // Desenho da sala no Canvas 2D, em pixels de arte (o contexto já vem escalado). Tudo é desenhado por código: nada de imagens.
 import { Agente } from './agente';
 import { CENA_A, CENA_L, LADRILHO_A, LADRILHO_L, PAREDE, Ponto, SALA, centroNaTela, paraTela, profundidade } from './iso';
-import { ROBO_ESCALA, SPRITES, SPRITE_A, SPRITE_L, personagemDe } from './personagens';
+import { Personagem, ROBO_ESCALA, SPRITE_A, SPRITE_L, montarSprite, personagemDe } from './personagens';
 
 const ROBO_L = SPRITE_L * ROBO_ESCALA;
 const ROBO_A = SPRITE_A * ROBO_ESCALA;
@@ -70,7 +70,14 @@ export interface Relogio {
   reduzido: boolean;
 }
 
-export function desenharSala(ctx: CanvasRenderingContext2D, agentes: Agente[], p: PaletaSala, r: Relogio, selecionado: string | null): void {
+export function desenharSala(
+  ctx: CanvasRenderingContext2D,
+  agentes: Agente[],
+  p: PaletaSala,
+  r: Relogio,
+  selecionado: string | null,
+  visualDe: (codigo: string) => Personagem = personagemDe,
+): void {
   ctx.fillStyle = p.fundo;
   ctx.fillRect(0, 0, CENA_L, CENA_A);
   paredes(ctx, p);
@@ -82,7 +89,7 @@ export function desenharSala(ctx: CanvasRenderingContext2D, agentes: Agente[], p
   for (const a of agentes) {
     const mesa = { x: a.mesa.x, y: a.mesa.y - 1 };
     itens.push({ z: profundidade(mesa), desenhar: () => mesaComMonitor(ctx, mesa, p, pensando.has(a.codigo), r) });
-    itens.push({ z: profundidade(a.posicao) + 0.5, desenhar: () => agente(ctx, a, p, r, a.codigo === selecionado) });
+    itens.push({ z: profundidade(a.posicao) + 0.5, desenhar: () => agente(ctx, a, visualDe(a.codigo), p, r, a.codigo === selecionado) });
   }
   itens.push({ z: profundidade({ x: 7, y: 7 }), desenhar: () => planta(ctx, { x: 7, y: 7 }, p) });
   itens.push({ z: profundidade({ x: 0, y: 1 }), desenhar: () => planta(ctx, { x: 0, y: 1 }, p) });
@@ -225,13 +232,12 @@ function planta(ctx: CanvasRenderingContext2D, t: Ponto, p: PaletaSala): void {
   for (const [dx, dy, l, a] of [[-6, -14, 4, 7], [-2, -19, 4, 12], [2, -15, 4, 8], [-4, -11, 8, 4]]) ctx.fillRect(x + dx, y + dy, l, a);
 }
 
-function agente(ctx: CanvasRenderingContext2D, a: Agente, p: PaletaSala, r: Relogio, selecionado: boolean): void {
-  const { paleta } = personagemDe(a.codigo);
+function agente(ctx: CanvasRenderingContext2D, a: Agente, visual: Personagem, p: PaletaSala, r: Relogio, selecionado: boolean): void {
   const pe = centroNaTela(a.posicao);
   const andando = a.fase === 'INDO' || a.fase === 'VOLTANDO';
   const respira = !r.reduzido && !andando && Math.floor(r.agora / 600) % 2 === 0 ? 1 : 0;
   const pisca = !r.reduzido && r.agora % 3200 < 140;
-  const sprite = andando && Math.floor(r.agora / 160) % 2 === 0 ? SPRITES.andando : pisca ? SPRITES.piscando : SPRITES.parado;
+  const quadro = andando && Math.floor(r.agora / 160) % 2 === 0 ? 'andando' : pisca ? 'piscando' : 'parado';
 
   if (selecionado) {
     const t = { x: Math.round(a.posicao.x), y: Math.round(a.posicao.y) };
@@ -250,14 +256,24 @@ function agente(ctx: CanvasRenderingContext2D, a: Agente, p: PaletaSala, r: Relo
   ctx.fillStyle = p.sombra;
   ctx.fillRect(Math.round(pe.x - 8), Math.round(pe.y - 2), 16, 3);
 
-  const x0 = Math.round(pe.x - ROBO_L / 2);
-  const y0 = Math.round(pe.y - ROBO_A) + respira;
-  sprite.forEach((linha, j) => {
+  desenharRobo(ctx, visual, quadro, Math.round(pe.x - ROBO_L / 2), Math.round(pe.y - ROBO_A) + respira, ROBO_ESCALA);
+}
+
+/** O robô montado em camadas, com o canto de cima à esquerda em (x0, y0). Também serve para a pré-visualização do editor. */
+export function desenharRobo(
+  ctx: CanvasRenderingContext2D,
+  visual: Personagem,
+  quadro: 'parado' | 'andando' | 'piscando',
+  x0: number,
+  y0: number,
+  escala: number,
+): void {
+  montarSprite(visual, quadro).forEach((linha, j) => {
     for (let i = 0; i < linha.length; i++) {
       const cor = linha[i];
       if (cor === '.') continue;
-      ctx.fillStyle = paleta[cor as keyof typeof paleta];
-      ctx.fillRect(x0 + i * ROBO_ESCALA, y0 + j * ROBO_ESCALA, ROBO_ESCALA, ROBO_ESCALA);
+      ctx.fillStyle = visual.paleta[cor as keyof Personagem['paleta']];
+      ctx.fillRect(x0 + i * escala, y0 + j * escala, escala, escala);
     }
   });
 }

@@ -2,8 +2,9 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { mensagemDeErro } from '../../../core/http/problema';
 import { Agente, avancar, novoAgente } from '../motor/agente';
 import { FonteCena } from '../motor/fonte-cena';
-import { MAXIMO_AGENTES, apelidoDeSessao, lugarDe } from '../motor/personagens';
+import { MAXIMO_AGENTES, Personagem, lugarDe } from '../motor/personagens';
 import { StatusSessao, sincronizarSessao } from '../motor/sessao';
+import { EquipeStore } from './equipe.store';
 import { SessoesApi } from './sessoes.api';
 import { ProjetoAoVivo, SessaoAoVivo } from './sessoes.models';
 
@@ -14,6 +15,7 @@ import { ProjetoAoVivo, SessaoAoVivo } from './sessoes.models';
 @Injectable()
 export class SessoesStore implements FonteCena {
   private readonly api = inject(SessoesApi);
+  private readonly equipe = inject(EquipeStore);
 
   /** Relógio da animação (ms). Trocável nos testes. */
   agora: () => number = () => performance.now();
@@ -45,7 +47,12 @@ export class SessoesStore implements FonteCena {
   });
 
   apelido(sessaoId: string): string {
-    return apelidoDeSessao(sessaoId);
+    return this.visualDe(sessaoId).apelido;
+  }
+
+  /** A equipe do projeto (se houver) vale pelo lugar do robô na sala; senão, o nome e a cor automáticos. */
+  visualDe(sessaoId: string): Personagem {
+    return this.equipe.visualSessao(this.projetoSelecionado(), this.lugares.get(sessaoId), sessaoId);
   }
 
   /** Uma consulta do polling. Lança o erro de volta (o polling espera mais e tenta de novo). */

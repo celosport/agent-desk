@@ -12,7 +12,7 @@ Voltar: [[00 - Dashboard]]
 | Parte | Onde |
 |---|---|
 | Página e cena | `src/AgentDesk.Web/src/app/features/escritorio` (`escritorio.page.ts`, `cena-escritorio.component.ts`) |
-| Motor (puro) | `motor/iso.ts` (projeção e rota), `motor/agente.ts` (estados), `motor/personagens.ts` (robôs e lugares) |
+| Motor (puro) | `motor/iso.ts` (projeção e rota), `motor/agente.ts` (estados), `motor/personagens.ts` (robôs em camadas — antena, expressão, acessório — e lugares; personalização em [[Módulo Equipe]]) |
 | Desenho | `motor/desenho.ts` (Canvas 2D, paleta clara e escura) |
 | Estado | `data-access/escritorio.store.ts` (+ `escritorio.api.ts`) |
 | Testes | `motor/motor.spec.ts` · `escritorio.store.spec.ts` · `e2e/escritorio.spec.ts` |
