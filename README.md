@@ -17,6 +17,8 @@ das suas sessões do **Claude Code** (o que cada uma está fazendo, tokens, cust
 ## Telas
 *(Capturas do modo demonstração, com dados fictícios.)*
 
+![Robôs do escritório andando até a mesa, pensando e mostrando tokens e custo](docs/imagens/escritorio.gif)
+
 **Claude Code ao vivo** — cada sessão é um robô; pedidos de permissão para aprovar ou negar pelo app:
 
 ![Escritório com as sessões do Claude Code ao vivo e um pedido de permissão](docs/imagens/escritorio-claude-code.png)
