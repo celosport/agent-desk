@@ -64,4 +64,9 @@ Siga `docs/obsidian/Receita - Novo Módulo (API + App).md` (banco → API → te
 
 
 ## Licença
-A licença do código ainda será definida; até lá, todos os direitos reservados.
+**GNU Affero General Public License v3.0** (AGPL-3.0) — veja o arquivo [LICENSE](LICENSE). Em resumo:
+- Pode usar, estudar, modificar e rodar por conta própria, de graça, inclusive em empresa.
+- Se você oferecer uma versão modificada como **serviço pela internet**, precisa publicar o código das suas modificações sob a mesma licença.
+- Quer usar sem essas obrigações (por exemplo, embutir num produto fechado)? Fale com o mantenedor sobre uma licença comercial.
+
+Copyright (C) 2026 Marcelo Lima.
