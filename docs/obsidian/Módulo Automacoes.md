@@ -50,3 +50,8 @@ Criado em 2026-10-30.
 ## Cancelar e tempos (Fase 6b-1)
 - Escritório: enquanto o agente trabalha aparece **Cancelar** e o cronômetro "trabalha há 12 s"; depois, "Última execução: 08:15:02 → 08:15:09 · 7 s". O histórico mostra início → fim e o status **Cancelada**.
 - `execucaoId` vai no `executar`; `finalizadaEm` = início + duração (DTO). Sessões do Claude Code mostram "iniciada às HH:mm:ss · duração" (ou início → fim, se encerrada). O topo do app mostra quem está logado.
+
+## Alertas no celular
+`ExecutarAutomacao` avisa pelo `INotificador` ([[Módulo Notificacoes]]) quando a execução termina com sucesso, falha ou é recusada; **cancelada pelo usuário não avisa**.
+A execução sai do registro `IExecucoesEmAndamento` antes do aviso, para o "ainda rodando" não listar a si mesma; o registro agora guarda o nome da automação
+(`Iniciar(id, usuario, rotulo)`) e implementa `IResumoEmAndamento`. [[ADR-016 - Alertas no Celular (Push do App)]]

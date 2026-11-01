@@ -1,6 +1,7 @@
 using FluentValidation;
 using AgentDesk.Modules.Sessoes.Application.Ingestao;
 using AgentDesk.Modules.Sessoes.Domain;
+using AgentDesk.SharedKernel.Contratos;
 using AgentDesk.SharedKernel.Messaging;
 using AgentDesk.SharedKernel.Results;
 
@@ -92,7 +93,7 @@ internal sealed class SolicitarPermissaoValidator : AbstractValidator<SolicitarP
     }
 }
 
-internal sealed class SolicitarPermissaoHandler(ITokensRepository tokens, IControleRepository controle, TimeProvider clock)
+internal sealed class SolicitarPermissaoHandler(ITokensRepository tokens, IControleRepository controle, INotificador notificador, TimeProvider clock)
     : ICommandHandler<SolicitarPermissaoCommand, PermissaoCriadaDto>
 {
     public async Task<Result<PermissaoCriadaDto>> Handle(SolicitarPermissaoCommand command, CancellationToken cancellationToken)
@@ -107,6 +108,10 @@ internal sealed class SolicitarPermissaoHandler(ITokensRepository tokens, IContr
         var permissao = new PermissaoPendente(Guid.NewGuid(), usuarioId.Value, c.SessaoId!.Trim(), c.Ferramenta!.Trim(),
             string.IsNullOrWhiteSpace(c.Resumo) ? null : c.Resumo.Trim(), agora, agora + RegrasControle.ValidadePermissao);
         await controle.CriarPermissaoAsync(permissao, cancellationToken);
+        // O pedido vence em ~55 s: o alerta é a chance de o usuário abrir o app a tempo de aprovar ou negar
+        await notificador.NotificarAsync(usuarioId.Value, TipoAlerta.Permissao, "✋ Claude Code pede permissão",
+            string.IsNullOrEmpty(permissao.Resumo) ? permissao.Ferramenta : $"{permissao.Ferramenta}: {permissao.Resumo}",
+            $"permissao-{permissao.SessaoId}", CancellationToken.None);
         return new PermissaoCriadaDto(permissao.PermissaoId, permissao.ExpiraEm);
     }
 }

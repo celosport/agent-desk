@@ -7,6 +7,7 @@ using AgentDesk.Modules.Sessoes.Application.Tokens;
 using AgentDesk.Modules.Sessoes.Domain;
 using AgentDesk.Modules.Sessoes.Infrastructure.Repositories;
 using AgentDesk.SharedKernel;
+using AgentDesk.SharedKernel.Contratos;
 using AgentDesk.SharedKernel.Messaging;
 using FluentValidation;
 using Microsoft.Extensions.Configuration;
@@ -29,6 +30,7 @@ public sealed class SessoesModule : IModule
         services.AddScoped<ISessoesConsultas, SessoesConsultasRepository>();
         services.AddScoped<ILimitesRepository, LimitesRepository>();
         services.AddScoped<IControleRepository, ControleRepository>();
+        services.AddScoped<IResumoEmAndamento, ResumoSessoesEmAndamento>();
         services.AddScoped<IValidator<DecidirPermissaoCommand>, DecidirPermissaoValidator>();
         services.AddScoped<IValidator<SolicitarPermissaoCommand>, SolicitarPermissaoValidator>();
         services.AddScoped<IValidator<InformarLimitesCommand>, InformarLimitesValidator>();

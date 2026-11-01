@@ -113,3 +113,6 @@ Os hooks do coletor vivem no `~/.claude/settings.json` **do computador onde o Cl
 - O ambiente precisa de **acesso de rede** ao endereço do AgentDesk. O token é pessoal: só nas variáveis do ambiente, nunca num repositório.
 - A sala usa o nome da pasta do projeto na nuvem; o hash do caminho difere do local, então o mesmo projeto aparece como outra sala.
 
+## Alertas no celular
+Ao ingerir um evento `Stop` (sessão terminou) ou `Notification` de permissão/pergunta, e ao criar um pedido de permissão do hook síncrono, o módulo chama
+`INotificador` ([[Módulo Notificacoes]]). Também implementa `IResumoEmAndamento` (sessões trabalhando agora) para o "ainda rodando" dos alertas. [[ADR-016 - Alertas no Celular (Push do App)]]

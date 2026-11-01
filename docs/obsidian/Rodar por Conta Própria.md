@@ -39,3 +39,9 @@ docker compose -f docker-compose.selfhost.yml exec -T postgres pg_dump -U agentd
 
 ## 7. Moedas
 O servidor busca a cotação (PTAX) no Banco Central ao subir e a cada 6 h; precisa de saída para a internet. Sem ela, tudo segue em dólar. [[ADR-014 - Moedas (Cotação PTAX do Banco Central)]]
+
+## 8. Alertas no celular
+Funciona sem configurar nada: o servidor gera as chaves de push na primeira vez. Em **Configurações → Alertas no celular** ative o aparelho. Pontos de atenção:
+- Push exige **HTTPS** (ou `localhost`): em casa/rede local sem HTTPS o navegador não deixa se inscrever. Use o domínio com HTTPS do passo 3.
+- iPhone/iPad (iOS 16.4+): só no app instalado (Safari → Compartilhar → Adicionar à Tela de Início).
+- Opcional: `Notificacoes__Assunto` = `mailto:voce@seudominio.com` (ou `https://seudominio.com`) identifica o seu servidor perante os serviços de push; a Apple pode recusar sem um válido.

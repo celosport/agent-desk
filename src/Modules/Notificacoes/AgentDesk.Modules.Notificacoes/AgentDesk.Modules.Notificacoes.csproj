@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- MODULO: Notificacoes (alertas push no celular: dispositivos, preferências e envio). Módulos NUNCA referenciam outros módulos: comunicação apenas via SharedKernel/contratos. -->
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <InternalsVisibleTo Include="AgentDesk.IntegrationTests" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Dapper" />
+    <PackageReference Include="FluentValidation" />
+    <PackageReference Include="Lib.Net.Http.WebPush" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\BuildingBlocks\AgentDesk.SharedKernel\AgentDesk.SharedKernel.csproj" />
+  </ItemGroup>
+</Project>

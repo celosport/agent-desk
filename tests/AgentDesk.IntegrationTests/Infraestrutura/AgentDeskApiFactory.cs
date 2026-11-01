@@ -2,6 +2,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Dapper;
+using AgentDesk.Modules.Notificacoes.Domain;
 using AgentDesk.SharedKernel.Integracoes;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -33,6 +34,9 @@ public sealed class AgentDeskApiFactory : WebApplicationFactory<Program>, IAsync
     /// <summary>API da Anthropic falsa usada por toda a coleção (nada de chamada real).</summary>
     public AnthropicFalso Anthropic { get; } = new();
 
+    /// <summary>Serviço de push falso usado por toda a coleção (nada de alerta real).</summary>
+    internal PushFalso Push { get; } = new();
+
     public async Task InitializeAsync()
     {
         if (_postgres is not null)
@@ -55,6 +59,7 @@ public sealed class AgentDeskApiFactory : WebApplicationFactory<Program>, IAsync
         Environment.SetEnvironmentVariable("ConnectionStrings__AgentDeskDb", _connectionString);
         Environment.SetEnvironmentVariable("Jwt__ChaveSecreta", ChaveJwtTeste);
         Environment.SetEnvironmentVariable("RateLimit__AutenticacaoPorMinuto", "1000");
+        Environment.SetEnvironmentVariable("Notificacoes__PrazoSegundos", "60"); // banco remoto sob carga: o prazo de 10 s do alerta estourava
         Environment.SetEnvironmentVariable("Sessoes__RotinaLimpezaHabilitada", "false"); // rotinas em segundo plano: desligadas nos testes
         Environment.SetEnvironmentVariable("Configuracoes__CotacoesRotinaHabilitada", "false"); // nada de chamada real ao Banco Central
     }
@@ -64,8 +69,11 @@ public sealed class AgentDeskApiFactory : WebApplicationFactory<Program>, IAsync
         builder.UseEnvironment("Testing");
         // O HttpClient tipado da Anthropic é o cliente nomeado "IClienteAnthropic": troca só o handler primário (headers,
         // serialização e tradução de erros continuam sendo o código real)
-        builder.ConfigureTestServices(s => s.AddHttpClient(nameof(IClienteAnthropic))
-            .ConfigurePrimaryHttpMessageHandler(() => new AnthropicFalsoHandler(Anthropic)));
+        builder.ConfigureTestServices(s =>
+        {
+            s.AddHttpClient(nameof(IClienteAnthropic)).ConfigurePrimaryHttpMessageHandler(() => new AnthropicFalsoHandler(Anthropic));
+            s.AddSingleton<IEnviadorPush>(Push); // o último registro vence o do módulo Notificacoes
+        });
     }
 
     /// <summary>Roda o database/schema.sql (o mesmo do deploy). Rodar de novo testa a idempotência.</summary>

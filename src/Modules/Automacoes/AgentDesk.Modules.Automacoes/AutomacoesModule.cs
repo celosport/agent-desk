@@ -6,6 +6,7 @@ using AgentDesk.Modules.Automacoes.Application.DTOs;
 using AgentDesk.Modules.Automacoes.Domain;
 using AgentDesk.Modules.Automacoes.Infrastructure.Repositories;
 using AgentDesk.SharedKernel;
+using AgentDesk.SharedKernel.Contratos;
 using AgentDesk.SharedKernel.Messaging;
 using FluentValidation;
 using Microsoft.Extensions.Configuration;
@@ -24,6 +25,7 @@ public sealed class AutomacoesModule : IModule
     public IServiceCollection RegisterServices(IServiceCollection services, IConfiguration configuration)
     {
         services.AddScoped<IAutomacoesRepository, AutomacoesRepository>();
+        services.AddScoped<IResumoEmAndamento, ResumoAutomacoesEmAndamento>();
         services.AddSingleton<IExecucoesEmAndamento, ExecucoesEmAndamento>();
 
         services.AddScoped<IValidator<AtualizarAutomacaoCommand>, AtualizarAutomacaoValidator>();

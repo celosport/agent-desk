@@ -13,6 +13,7 @@ das suas sessões do **Claude Code** (o que cada uma está fazendo, tokens, cust
   Painel de tokens por projeto e modelo, taxa de cache, dicas para gastar menos, histórico de sessões, barras de uso de 5 h e da semana.
 - **Controle**: **Parar** uma sessão e **Aprovar/Negar** pedidos de permissão pelo app (sem resposta, o Claude Code pergunta no terminal — nada é aprovado sozinho).
 - **Moedas**: valores em US$, R$, € ou £ (cotação PTAX do Banco Central).
+- **Alertas no celular**: o app instalado avisa quando uma automação ou sessão do Claude Code termina (ou pede permissão), com o resumo do que ainda está rodando.
 
 ## Telas
 *(Capturas do modo demonstração, com dados fictícios.)*
