@@ -314,4 +314,31 @@ CREATE TABLE IF NOT EXISTS agentes_personalizados (
     UNIQUE (usuario_id, alvo, chave, ordem)
 );
 
+-- 10. Notificacoes: alertas push no celular (módulo Notificacoes) — [[ADR-016 - Alertas no Celular (Push do App)]]
+--     Um aparelho = uma inscrição de push do navegador (endpoint único). As chaves VAPID identificam este servidor perante os
+--     serviços de push; o par é gerado na primeira vez e fica na linha única de notificacoes_vapid.
+CREATE TABLE IF NOT EXISTS notificacoes_dispositivos (
+    dispositivo_id UUID           PRIMARY KEY,
+    usuario_id     UUID           NOT NULL REFERENCES usuarios(usuario_id) ON DELETE CASCADE,
+    endpoint       VARCHAR(2048)  NOT NULL UNIQUE,
+    p256dh         VARCHAR(200)   NOT NULL,
+    auth           VARCHAR(100)   NOT NULL,
+    nome           VARCHAR(80)    NOT NULL,
+    criado_em      TIMESTAMPTZ    NOT NULL
+);
+CREATE INDEX IF NOT EXISTS ix_notificacoes_dispositivos_usuario ON notificacoes_dispositivos (usuario_id);
+
+CREATE TABLE IF NOT EXISTS notificacoes_preferencias (
+    usuario_id UUID    PRIMARY KEY REFERENCES usuarios(usuario_id) ON DELETE CASCADE,
+    automacoes BOOLEAN NOT NULL DEFAULT TRUE,
+    sessoes    BOOLEAN NOT NULL DEFAULT TRUE,
+    permissoes BOOLEAN NOT NULL DEFAULT TRUE
+);
+
+CREATE TABLE IF NOT EXISTS notificacoes_vapid (
+    id            SMALLINT     PRIMARY KEY CHECK (id = 1),
+    chave_publica VARCHAR(200) NOT NULL,
+    chave_privada VARCHAR(200) NOT NULL
+);
+
 COMMIT;

@@ -35,6 +35,7 @@
     <Project Path="src/Modules/Consumo/AgentDesk.Modules.Consumo/AgentDesk.Modules.Consumo.csproj" />
     <Project Path="src/Modules/Contas/AgentDesk.Modules.Contas/AgentDesk.Modules.Contas.csproj" />
     <Project Path="src/Modules/Equipe/AgentDesk.Modules.Equipe/AgentDesk.Modules.Equipe.csproj" />
+    <Project Path="src/Modules/Notificacoes/AgentDesk.Modules.Notificacoes/AgentDesk.Modules.Notificacoes.csproj" />
     <Project Path="src/Modules/Sessoes/AgentDesk.Modules.Sessoes/AgentDesk.Modules.Sessoes.csproj" />
   </Folder>
   <Folder Name="/tests/">

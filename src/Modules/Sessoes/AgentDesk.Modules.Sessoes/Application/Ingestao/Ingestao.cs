@@ -44,7 +44,7 @@ internal sealed class IngerirEventoValidator : AbstractValidator<IngerirEventoCo
 }
 
 /// <summary>Valida o token, traduz o evento em status/atividade e grava. Evento desconhecido = aceito e ignorado (coletor mais novo).</summary>
-internal sealed class IngerirEventoHandler(ITokensRepository tokens, ISessoesRepository sessoes, TimeProvider clock)
+internal sealed class IngerirEventoHandler(ITokensRepository tokens, ISessoesRepository sessoes, INotificador notificador, TimeProvider clock)
     : ICommandHandler<IngerirEventoCommand, bool>
 {
     public async Task<Result<bool>> Handle(IngerirEventoCommand command, CancellationToken cancellationToken)
@@ -59,7 +59,22 @@ internal sealed class IngerirEventoHandler(ITokensRepository tokens, ISessoesRep
         var evento = new EventoHook(r.SessaoId!.Trim(), r.Evento!, Vazio(r.Maquina) ?? "?", r.Projeto!.Trim(), r.ProjetoChave!,
             Vazio(r.Ferramenta), Vazio(r.Resumo), Vazio(r.Notificacao), Vazio(r.Modelo), Autenticacao.Horario(r.OcorridoEm, agora));
         await sessoes.AplicarEventoAsync(usuarioId.Value, evento, Transicoes.De(evento), cancellationToken);
+        await AvisarNoCelularAsync(usuarioId.Value, evento);
         return true;
+    }
+
+    /// <summary>
+    /// Alerta no celular: a sessão terminou o que estava fazendo (Stop) ou está esperando o usuário (permissão ou pergunta).
+    /// O Stop também chega quando o Claude Code só respondeu uma pergunta; para o usuário é igual: "terminou, volte aqui".
+    /// </summary>
+    private Task AvisarNoCelularAsync(Guid usuarioId, EventoHook e)
+    {
+        if (e.Evento == "Stop")
+            return notificador.NotificarAsync(usuarioId, TipoAlerta.Sessao, $"✅ {e.Projeto} terminou", "O Claude Code acabou o que estava fazendo.", $"sessao-{e.SessaoId}", CancellationToken.None);
+        if (e is { Evento: "Notification", Notificacao: "permission_prompt" or "elicitation_dialog" })
+            return notificador.NotificarAsync(usuarioId, TipoAlerta.Permissao, $"✋ {e.Projeto} precisa de você",
+                Transicoes.De(e).Atividade?.Replace("✋ Precisa de você: ", "") ?? "Está esperando a sua resposta.", $"permissao-{e.SessaoId}", CancellationToken.None);
+        return Task.CompletedTask;
     }
 
     private static string? Vazio(string? s) => string.IsNullOrWhiteSpace(s) ? null : s.Trim();

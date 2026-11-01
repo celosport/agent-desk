@@ -4,6 +4,7 @@ import { Configuracao, Modelo } from '../../features/configuracoes/data-access/c
 import { Automacao, Execucao } from '../../features/automacoes/data-access/automacoes.models';
 import { Chamada, StatusChamada } from '../../features/consumo/data-access/consumo.models';
 import { Dicas, DiaClaudeCode, LimitesAssinatura, EventoLinha, ItemClaudeCode, LinhaDoTempo, PaginaHistoricoSessoes, PainelClaudeCode, SessaoHistorico, UsoClaudeCode } from '../../features/consumo/data-access/claude-code.models';
+import { DispositivoAlerta, PreferenciasAlerta } from '../../features/configuracoes/data-access/alertas.models';
 import { AgenteEquipe } from '../../features/escritorio/data-access/equipe.models';
 
 /**
@@ -51,6 +52,10 @@ const execucoesCanceladas = new Set<string>();
 
 /** Nome e aparência dos agentes (módulo Equipe); começa vazio: tudo no padrão do Escritório. */
 let equipe: AgenteEquipe[] = [];
+
+/** Alertas no celular (módulo Notificacoes): aparelhos que aceitaram e o que avisar. Tudo ligado até o usuário desligar. */
+let aparelhosDeAlerta: DispositivoAlerta[] = [];
+let preferenciasDeAlerta: PreferenciasAlerta = { automacoes: true, sessoes: true, permissoes: true };
 
 let automacoes: Automacao[] = [
   automacaoMock('a1e5c1a0-0000-4000-8000-000000000001', 'relatorio-executivo', 'Gerar Relatório Executivo',
@@ -777,6 +782,32 @@ function responder(req: HttpRequest<unknown>, url: URL): Observable<HttpResponse
     if (!token) return erro(404, 'Sessoes.TokenNaoEncontrado', 'Token não encontrado.');
     tokensIngestao = tokensIngestao.map((t) => (t === token ? { ...t, revogadoEm: new Date().toISOString() } : t));
     return ok(null, 204);
+  }
+
+  // ---- Notificacoes (alertas no celular) ----
+  if (c === '/api/v1/notificacoes' && req.method === 'GET')
+    return ok({ chavePublica: 'BMockChavePublicaVapid', dispositivos: aparelhosDeAlerta, preferencias: preferenciasDeAlerta });
+  if (c === '/api/v1/notificacoes/dispositivos' && req.method === 'POST') {
+    const endpoint = String(corpo['endpoint'] ?? '');
+    if (!endpoint.startsWith('https://')) return invalido({ endpoint: ['Endereço de push não reconhecido.'] });
+    const aparelho: DispositivoAlerta = {
+      dispositivoId: crypto.randomUUID(), nome: String(corpo['nome'] ?? '') || 'Aparelho', endpoint, criadoEm: new Date().toISOString(),
+    };
+    aparelhosDeAlerta = [...aparelhosDeAlerta.filter((a) => a.endpoint !== endpoint), aparelho];
+    return ok(aparelho);
+  }
+  if (c === '/api/v1/notificacoes/dispositivos/remover' && req.method === 'POST') {
+    aparelhosDeAlerta = aparelhosDeAlerta.filter((a) => a.endpoint !== corpo['endpoint']);
+    return ok(null, 204);
+  }
+  if (c === '/api/v1/notificacoes/preferencias' && req.method === 'PUT') {
+    preferenciasDeAlerta = { automacoes: !!corpo['automacoes'], sessoes: !!corpo['sessoes'], permissoes: !!corpo['permissoes'] };
+    return ok(preferenciasDeAlerta);
+  }
+  if (c === '/api/v1/notificacoes/teste' && req.method === 'POST') {
+    if (aparelhosDeAlerta.length === 0)
+      return erro(409, 'Notificacoes.SemDispositivos', 'Nenhum aparelho está recebendo alertas. Ative os alertas neste aparelho primeiro.');
+    return ok({ entregues: aparelhosDeAlerta.length });
   }
 
   // ---- Consumo ----

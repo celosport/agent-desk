@@ -39,6 +39,7 @@ internal sealed class ExecutarAutomacaoHandler(
     IRegistroConsumo consumo,
     IClienteAnthropic anthropic,
     IExecucoesEmAndamento emAndamento,
+    INotificador notificador,
     TimeProvider clock) : ICommandHandler<ExecutarAutomacaoCommand, ExecucaoDto>
 {
     /// <summary>A partir de quanto do limite a resposta traz o alerta.</summary>
@@ -67,7 +68,7 @@ internal sealed class ExecutarAutomacaoHandler(
 
         // Só o botão Cancelar interrompe a chamada. Se o navegador simplesmente desistir (aba fechada), ela segue e o consumo é
         // gravado mesmo assim, porque a Anthropic pode cobrar (por isso o token da requisição não é usado aqui).
-        using var cancelavel = command.ExecucaoId is { } execucaoId ? emAndamento.Iniciar(execucaoId, command.UsuarioId) : null;
+        using var cancelavel = command.ExecucaoId is { } execucaoId ? emAndamento.Iniciar(execucaoId, command.UsuarioId, automacao.Nome) : null;
         if (command.ExecucaoId is not null && cancelavel is null) return AutomacaoErros.ExecucaoDuplicada;
 
         var pedido = new PedidoMensagem(modeloId, automacao.MaxTokens, automacao.PromptSistema,
@@ -94,6 +95,8 @@ internal sealed class ExecutarAutomacaoHandler(
             await consumo.RegistrarAsync(
                 chamada with { Status = cancelada ? StatusChamada.Cancelada : StatusChamada.Erro, ErroCodigo = resposta.Error.Code },
                 CancellationToken.None);
+            // Quem cancelou sabe; o alerta é para o que terminou sem o usuário olhando
+            if (!cancelada) await AvisarAsync(cancelavel, command.UsuarioId, chamada.ChamadaId, $"⚠️ {automacao.Nome} falhou", resposta.Error.Message);
             return resposta.Error;
         }
 
@@ -107,13 +110,25 @@ internal sealed class ExecutarAutomacaoHandler(
         {
             await consumo.RegistrarAsync(chamada with { Status = StatusChamada.Recusada, ErroCodigo = AutomacaoErros.Recusada.Code },
                 CancellationToken.None);
+            await AvisarAsync(cancelavel, command.UsuarioId, chamada.ChamadaId, $"⚠️ {automacao.Nome} foi recusada", AutomacaoErros.Recusada.Message);
             return AutomacaoErros.Recusada;
         }
 
         await consumo.RegistrarAsync(chamada with { Status = StatusChamada.Sucesso, Resultado = r.Texto }, CancellationToken.None);
+        await AvisarAsync(cancelavel, command.UsuarioId, chamada.ChamadaId, $"✅ {automacao.Nome} concluída", $"Terminou em {Math.Max(1, (int)Math.Round(duracaoMs / 1000.0))} s.");
 
         return new ExecucaoDto(chamada.ChamadaId, automacao.AutomacaoId, automacao.Codigo, modeloId, r.Modelo, r.Texto, r.Truncada,
             TokensDto.De(r.Uso), custo, duracaoMs, agora, Alerta(gastoAntes + custo, preferencias.LimiteMensalUsd));
+    }
+
+    /// <summary>
+    /// Alerta no celular. Sai do registro antes, para o "ainda rodando" do alerta não listar esta mesma execução. Usa CancellationToken.None
+    /// de propósito: o caso típico é o usuário ter fechado a aba e esperar o aviso no celular.
+    /// </summary>
+    private Task AvisarAsync(ExecucaoCancelavel? execucao, Guid usuarioId, Guid chamadaId, string titulo, string corpo)
+    {
+        execucao?.Dispose();
+        return notificador.NotificarAsync(usuarioId, TipoAlerta.Automacao, titulo, corpo, $"automacao-{chamadaId}", CancellationToken.None);
     }
 
     private static AlertaLimiteDto? Alerta(decimal gastoMes, decimal? limite)

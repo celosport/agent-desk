@@ -3,6 +3,7 @@ using AgentDesk.Modules.Configuracoes;
 using AgentDesk.Modules.Consumo;
 using AgentDesk.Modules.Contas;
 using AgentDesk.Modules.Equipe;
+using AgentDesk.Modules.Notificacoes;
 using AgentDesk.Modules.Sessoes;
 using AgentDesk.SharedKernel;
 
@@ -19,6 +20,7 @@ internal static class ModuleExtensions
         new AutomacoesModule(),
         new SessoesModule(),
         new EquipeModule(),
+        new NotificacoesModule(),
     ];
 
     /// <summary>Registra os serviços de cada módulo e expõe os controllers que vivem dentro deles.</summary>

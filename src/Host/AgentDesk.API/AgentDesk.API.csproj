@@ -44,6 +44,7 @@
     <ProjectReference Include="..\..\Modules\Consumo\AgentDesk.Modules.Consumo\AgentDesk.Modules.Consumo.csproj" />
     <ProjectReference Include="..\..\Modules\Contas\AgentDesk.Modules.Contas\AgentDesk.Modules.Contas.csproj" />
     <ProjectReference Include="..\..\Modules\Equipe\AgentDesk.Modules.Equipe\AgentDesk.Modules.Equipe.csproj" />
+    <ProjectReference Include="..\..\Modules\Notificacoes\AgentDesk.Modules.Notificacoes\AgentDesk.Modules.Notificacoes.csproj" />
     <ProjectReference Include="..\..\Modules\Sessoes\AgentDesk.Modules.Sessoes\AgentDesk.Modules.Sessoes.csproj" />
   </ItemGroup>
 </Project>

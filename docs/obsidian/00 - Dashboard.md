@@ -31,6 +31,7 @@ tags: [painel]
 | [[Módulo Automacoes]] | `src/Modules/Automacoes` | `features/automacoes` | `automacoes` | 🟡 Fase 2: 3 fluxos chamando a Claude, edição pelo ADMIN |
 | [[Módulo Sessoes]] | `src/Modules/Sessoes` | `features/escritorio` (sala Claude Code) · `features/configuracoes` (conectar) | `tokens_ingestao`, `cc_sessoes`, `cc_eventos`, `cc_consumo_diario` | 🟢 Fase 5: sessões do Claude Code ao vivo (hooks + telemetria) |
 | [[Módulo Equipe]] | `src/Modules/Equipe` | `features/escritorio` (aba Equipe) | `agentes_personalizados` | 🟡 Fase 6a: nome e aparência dos agentes (API + app) |
+| [[Módulo Notificacoes]] | `src/Modules/Notificacoes` | `features/configuracoes` (cartão Alertas no celular) | `notificacoes_dispositivos`, `notificacoes_preferencias`, `notificacoes_vapid` | 🟡 Alertas push no celular: automação/sessão terminou, pedido de permissão (ADR-016) |
 | [[Escritório Animado]] | — (usa Automacoes) | `features/escritorio` | — | 🟢 Fase 4: sala isométrica em Canvas, robôs por automação |
 | [[Módulo Consumo]] | `src/Modules/Consumo` | `features/consumo` | `consumo_chamadas` | 🟢 Fase 3: painel (polling 10 s), gráfico por dia, ranking e histórico |
 
@@ -41,6 +42,7 @@ tags: [painel]
 |---|---|
 | 2026-10-30 | Projeto criado a partir do esqueleto |
 | 2026-10-30 | Perguntas respondidas; ADR-005 a 007; **Fase 1**: módulo Configuracoes + tabela de modelos e preços |
+| 2026-11-01 | **Alertas no celular**: módulo Notificacoes (push VAPID do app instalado), contrato `INotificador`, ADR-016 |
 | 2026-10-31 | **Fase 6c**: Parar e Aprovar/Negar sessões do Claude Code pelo app (hooks síncronos no coletor), ADR-015 |
 | 2026-10-31 | **Fase 7**: moedas (R$, € e £) pela PTAX do Banco Central, seletor no topo, conversão só na exibição, ADR-014 |
 | 2026-10-31 | **Fase 6b-4**: statusline do coletor (barras de 5 h e da semana), modo `atualizar`, `cc_limites`, ADR-013 |
