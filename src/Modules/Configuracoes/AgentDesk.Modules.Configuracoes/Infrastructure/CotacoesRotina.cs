@@ -19,7 +19,15 @@ internal sealed class CotacoesRotina(IServiceScopeFactory escopos, TimeProvider 
         using var timer = new PeriodicTimer(Intervalo, clock);
         do
         {
-            await ExecutarUmaVezAsync(stoppingToken);
+            try
+            {
+                await ExecutarUmaVezAsync(stoppingToken);
+            }
+            catch (Exception ex) when (!stoppingToken.IsCancellationRequested)
+            {
+                // Nada aqui pode derrubar o app: cotação é só um enfeite de exibição
+                log.LogError(ex, "Cotações: a rodada falhou. Tenta de novo na próxima.");
+            }
         } while (await timer.WaitForNextTickAsync(stoppingToken));
     }
 
@@ -46,7 +54,9 @@ internal sealed class CotacoesRotina(IServiceScopeFactory escopos, TimeProvider 
                 await repositorio.SalvarAsync(new CotacaoBrl(moeda, cotacao.BrlPorUnidade, cotacao.Data, agora), cancellationToken);
                 atualizadas++;
             }
-            catch (Exception ex) when (ex is not OperationCanceledException)
+            // O timeout do HttpClient (BCB lento) chega como TaskCanceledException, que É um OperationCanceledException: só o desligamento
+            // do app (token cancelado) deve propagar. Antes, um BCB lento derrubava o app inteiro (BackgroundServiceExceptionBehavior = StopHost).
+            catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
             {
                 log.LogWarning("Cotações: falha ao buscar {Moeda} ({Tipo}: {Mensagem}). Tenta de novo na próxima rodada.", moeda, ex.GetType().Name, ex.Message);
             }
