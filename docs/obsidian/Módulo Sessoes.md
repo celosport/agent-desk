@@ -123,3 +123,24 @@ Ao ingerir um evento `Stop` (sessão terminou) ou `Notification` de permissão/p
 - **Lugar fixo:** `cc_sessoes.lugar` (0–7) vem do servidor e liga a sessão ao agente da Equipe `(projetoChave, ordem)`. `SessaoAoVivoDto` traz `projetoChave` e `lugar`.
 - **Atualizar o coletor** para mandar `agenteId`/`agenteTipo`: `node ~/.agentdesk/agentdesk-coletor.mjs atualizar`.
 - Testes: `SessoesTests` (subagentes, grupos, lugar) · `salas.spec.ts` · `sessoes.store.spec.ts` · `e2e/claude-code.spec.ts` · `agentdesk-coletor.spec.mjs`.
+
+## Mandar tarefa para o Claude Code do PC (ADR-018)
+O app manda uma tarefa e o coletor do PC abre `claude -p` nela. **Quem libera a pasta é o usuário, no PC** (`agentdesk-coletor liberar`); o caminho nunca sai do computador.
+
+**Como usar** (no computador, uma vez): `node ~/.agentdesk/agentdesk-coletor.mjs liberar` dentro da pasta do projeto e `… escutar` (deixar aberto; Windows PowerShell: `$HOME` no lugar de `~`; `--claude CAMINHO` se o `claude` não estiver no PATH).
+No app: **Escritório → Claude Code (ao vivo) → Mandar tarefa**: computador, pasta, texto, *Enviar tarefa*. O robô da tarefa aparece na sala do projeto (mesmo id da sessão).
+
+| Método | Rota | Acesso | Resposta / erros (`code`) |
+|---|---|---|---|
+| GET | `/api/v1/sessoes/computadores` | logado | 200 `ComputadorDto[]` (`online` = sinal nos últimos 45 s; `pastas` = nome e chave) |
+| POST | `/api/v1/sessoes/tarefas` | logado | 201 `TarefaDto` · 400 · 404 `Sessoes.PastaNaoLiberada` · 409 `Sessoes.LimiteDeTarefas` (5 abertas) |
+| GET | `/api/v1/sessoes/tarefas` | logado | 200 últimas 20 (`PENDENTE`, `EM_ANDAMENTO`, `CONCLUIDA`, `FALHOU`, `CANCELADA`, `EXPIRADA`) |
+| POST | `/api/v1/sessoes/tarefas/{id}/cancelar` | logado (dono) | 204 · 404 `Sessoes.TarefaNaoEncontrada` · 409 `Sessoes.TarefaJaIniciada` (depois de começar: **Parar** no robô) |
+| PUT | `/api/v1/sessoes/controle/pastas` | token de ingestão | 204 · 400 · 401 (substitui a lista do computador e marca o sinal) |
+| GET | `/api/v1/sessoes/controle/tarefas?maquina=&limite=` | token | 200 (cada tarefa sai uma vez; já fica `EM_ANDAMENTO`) |
+| POST | `/api/v1/sessoes/controle/tarefas/{id}/resultado` | token | 204 · 400 · 404 (`{ maquina, status: CONCLUIDA\|FALHOU, erro }`) |
+
+Regras: texto de 1 a 4000 caracteres; máx. 5 tarefas abertas por usuário; pendente há mais de 10 min = `EXPIRADA` (não é mais entregue); em andamento há mais de 6 h = `FALHOU`.
+Tabelas `cc_pastas_liberadas` e `cc_tarefas`. Testes: `TarefasTests` (backend) · `tarefas.store.spec.ts` · `e2e/claude-code.spec.ts` · `agentdesk-coletor.spec.mjs` (inclui o `escutar` de verdade contra um `claude` de mentira).
+**Não testado com o `claude` real** (só o de mentira). Nuvem e sessão já aberta (canal) ficam para depois.
+

@@ -239,6 +239,33 @@ CREATE TABLE IF NOT EXISTS cc_grupos_salas (
     PRIMARY KEY (usuario_id, projeto_chave)
 );
 
+-- Pastas que o usuário liberou NO PC para receber tarefas do app (o caminho fica no PC; aqui só nome e chave) + sinal do coletor
+CREATE TABLE IF NOT EXISTS cc_pastas_liberadas (
+    usuario_id    UUID         NOT NULL REFERENCES usuarios(usuario_id) ON DELETE CASCADE,
+    maquina       VARCHAR(80)  NOT NULL,
+    projeto_chave CHAR(12)     NOT NULL,
+    projeto       VARCHAR(120) NOT NULL,
+    visto_em      TIMESTAMPTZ  NOT NULL,   -- último sinal do coletor deste computador
+    PRIMARY KEY (usuario_id, maquina, projeto_chave)
+);
+
+-- Tarefas mandadas pelo app para o Claude Code do PC. tarefa_id = id da sessão do Claude Code (claude --session-id)
+CREATE TABLE IF NOT EXISTS cc_tarefas (
+    tarefa_id     UUID          PRIMARY KEY,
+    usuario_id    UUID          NOT NULL REFERENCES usuarios(usuario_id) ON DELETE CASCADE,
+    maquina       VARCHAR(80)   NOT NULL,
+    projeto_chave CHAR(12)      NOT NULL,
+    projeto       VARCHAR(120)  NOT NULL,
+    texto         VARCHAR(4000) NOT NULL,
+    status        VARCHAR(20)   NOT NULL CHECK (status IN ('PENDENTE', 'EM_ANDAMENTO', 'CONCLUIDA', 'FALHOU', 'CANCELADA')),
+    criada_em     TIMESTAMPTZ   NOT NULL,
+    iniciada_em   TIMESTAMPTZ,
+    finalizada_em TIMESTAMPTZ,
+    erro          VARCHAR(300)
+);
+CREATE INDEX IF NOT EXISTS ix_cc_tarefas_usuario ON cc_tarefas (usuario_id, criada_em DESC);
+CREATE INDEX IF NOT EXISTS ix_cc_tarefas_fila ON cc_tarefas (usuario_id, maquina, status);
+
 -- Linha do tempo de cada sessão (eventos detalhados: guardados 90 dias)
 CREATE TABLE IF NOT EXISTS cc_eventos (
     evento_id      BIGSERIAL     PRIMARY KEY,

@@ -94,6 +94,24 @@ const ROTEIROS: { projeto: string; chave: string; sessaoId: string; maquina: str
   },
 ];
 
+/** Mandar tarefa (mock): um computador com duas pastas liberadas. A tarefa vai de pendente a rodando e a concluída com o passar do tempo. */
+const COMPUTADORES_MOCK = [
+  { maquina: 'Notebook', online: true, pastas: [{ projetoChave: 'a0b1c2d3e4f5', projeto: 'app-mobile' }, { projetoChave: 'f5e4d3c2b1a0', projeto: 'api-pagamentos' }] },
+];
+interface TarefaMock { tarefaId: string; maquina: string; projetoChave: string; projeto: string; texto: string; criadaEm: number; cancelada?: boolean }
+let tarefasMock: TarefaMock[] = [];
+
+function tarefaDoMock(t: TarefaMock) {
+  const passou = Date.now() - t.criadaEm;
+  const status = t.cancelada ? 'CANCELADA' : passou < 4000 ? 'PENDENTE' : passou < 12_000 ? 'EM_ANDAMENTO' : 'CONCLUIDA';
+  return {
+    tarefaId: t.tarefaId, maquina: t.maquina, projetoChave: t.projetoChave, projeto: t.projeto, texto: t.texto, status,
+    criadaEm: new Date(t.criadaEm).toISOString(),
+    iniciadaEm: status === 'PENDENTE' || status === 'CANCELADA' ? undefined : new Date(t.criadaEm + 4000).toISOString(),
+    finalizadaEm: status === 'CONCLUIDA' ? new Date(t.criadaEm + 12_000).toISOString() : undefined,
+  };
+}
+
 /** Controle das sessões (mock): um pedido de permissão de demonstração e o Parar guardado até recarregar. */
 const paradasMock = new Set<string>();
 /** Salas juntas num grupo (projetoChave → nome do grupo), guardadas até recarregar. */
@@ -719,6 +737,28 @@ function responder(req: HttpRequest<unknown>, url: URL): Observable<HttpResponse
 
   // ---- Sessões do Claude Code ----
   if (c === '/api/v1/sessoes/ao-vivo' && req.method === 'GET') return ok(aoVivoMock());
+  if (c === '/api/v1/sessoes/computadores' && req.method === 'GET') return ok(COMPUTADORES_MOCK);
+  if (c === '/api/v1/sessoes/tarefas' && req.method === 'GET') return ok(tarefasMock.map(tarefaDoMock));
+  if (c === '/api/v1/sessoes/tarefas' && req.method === 'POST') {
+    const texto = String(corpo['texto'] ?? '').trim();
+    if (!texto) return invalido({ texto: ['O texto da tarefa é obrigatório.'] });
+    if (texto.length > 4000) return invalido({ texto: ['O texto deve ter no máximo 4000 caracteres.'] });
+    const pasta = COMPUTADORES_MOCK.find((x) => x.maquina === corpo['maquina'])?.pastas.find((p) => p.projetoChave === corpo['projetoChave']);
+    if (!pasta) return erro(404, 'Sessoes.PastaNaoLiberada', 'Esta pasta não está liberada neste computador. Rode "agentdesk-coletor liberar" na pasta, no próprio computador.');
+    if (tarefasMock.filter((t) => ['PENDENTE', 'EM_ANDAMENTO'].includes(tarefaDoMock(t).status)).length >= 5)
+      return erro(409, 'Sessoes.LimiteDeTarefas', 'Já há 5 tarefas esperando ou rodando. Aguarde alguma terminar (ou cancele uma pendente).');
+    const nova: TarefaMock = { tarefaId: crypto.randomUUID(), maquina: String(corpo['maquina']), projetoChave: pasta.projetoChave, projeto: pasta.projeto, texto, criadaEm: Date.now() };
+    tarefasMock = [nova, ...tarefasMock];
+    return ok(tarefaDoMock(nova), 201);
+  }
+  const cancelarTarefa = c.match(/^\/api\/v1\/sessoes\/tarefas\/([^/]+)\/cancelar$/);
+  if (cancelarTarefa && req.method === 'POST') {
+    const tarefa = tarefasMock.find((t) => t.tarefaId === cancelarTarefa[1]);
+    if (!tarefa) return erro(404, 'Sessoes.TarefaNaoEncontrada', 'Tarefa não encontrada.');
+    if (tarefaDoMock(tarefa).status !== 'PENDENTE') return erro(409, 'Sessoes.TarefaJaIniciada', 'A tarefa já começou ou terminou. Para interromper, use Parar no robô dela.');
+    tarefa.cancelada = true;
+    return ok(null, 204);
+  }
   if (c === '/api/v1/sessoes/grupos' && req.method === 'PUT') {
     const chave = String(corpo['projetoChave'] ?? '');
     const grupo = String(corpo['grupo'] ?? '').trim().replace(/\s+/g, ' ');

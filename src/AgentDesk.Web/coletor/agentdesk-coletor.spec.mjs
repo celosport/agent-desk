@@ -1,7 +1,7 @@
 // Testes do coletor (node --test). Garantem o principal: NADA de conteúdo sai do PC e o settings.json do usuário é preservado.
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
-import { existsSync, mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
+import { chmodSync, existsSync, mkdtempSync, mkdirSync, readdirSync, readFileSync, realpathSync, writeFileSync, rmSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -11,7 +11,15 @@ import {
   EVENTOS,
   INTERVALO_LIMITES_MS,
   MARCA,
+  argumentosDoClaude,
+  comPastaLiberada,
   comandoCurto,
+  pastaDaTarefa,
+  pastaParaLiberar,
+  pastasParaServidor,
+  resultadoDaSaida,
+  semPastaLiberada,
+  tarefaValida,
   deveEnviarLimites,
   EVENTOS_CONTROLE,
   saidaDeParada,
@@ -378,3 +386,225 @@ test('nuvem: sem URL ou token (nem nas variáveis) o instalar explica o que falt
   }
 });
 
+// ---- mandar tarefa pelo app (ADR-018) ----
+
+test('tarefas: o servidor só recebe nome e chave da pasta — nunca o caminho', () => {
+  const pasta = pastaParaLiberar('/home/ana/trabalho/loja');
+  const config = comPastaLiberada({ url: 'x' }, pasta);
+
+  assert.deepEqual(pastasParaServidor(config), [{ projetoChave: projetoDe(pasta.caminho).projetoChave, projeto: 'loja' }]);
+  assert.ok(!JSON.stringify(pastasParaServidor(config)).includes('trabalho'));
+  assert.equal(pastaDaTarefa(config, pasta.projetoChave).caminho, pasta.caminho);
+  assert.equal(pastaDaTarefa(config, 'ffffffffffff'), undefined); // pasta que o usuário não liberou aqui
+});
+
+test('tarefas: liberar duas vezes não duplica, bloquear tira, e há um teto de 50 pastas', () => {
+  const pasta = pastaParaLiberar('/home/ana/loja');
+  let config = comPastaLiberada(comPastaLiberada({}, pasta), pasta);
+  assert.equal(config.pastasLiberadas.length, 1);
+  assert.deepEqual(semPastaLiberada(config, pasta).pastasLiberadas, []);
+
+  config = {};
+  for (let i = 0; i < 50; i++) config = comPastaLiberada(config, pastaParaLiberar(`/p/pasta${i}`));
+  assert.throws(() => comPastaLiberada(config, pastaParaLiberar('/p/uma-a-mais')), /No máximo 50/);
+});
+
+test('tarefas: os argumentos do claude são fixos — o texto da tarefa nunca entra na linha de comando', () => {
+  const id = '3f2504e0-4f89-41d3-9a0c-0305e82c3301';
+  const args = argumentosDoClaude(id);
+
+  assert.deepEqual(args, ['-p', '--session-id', id, '--permission-mode', 'default', '--max-turns', '100']);
+  assert.ok(!args.includes('--dangerously-skip-permissions'));
+  assert.throws(() => argumentosDoClaude('x"; rm -rf /'), /inválido/);
+  assert.throws(() => argumentosDoClaude(undefined), /inválido/);
+});
+
+test('tarefas: tarefa mal formada é recusada', () => {
+  const boa = { tarefaId: '3f2504e0-4f89-41d3-9a0c-0305e82c3301', projetoChave: 'aaaaaaaaaaaa', texto: 'Rode os testes' };
+  assert.equal(tarefaValida(boa), true);
+  assert.equal(tarefaValida({ ...boa, tarefaId: 'nao-e-guid' }), false);
+  assert.equal(tarefaValida({ ...boa, texto: '   ' }), false);
+  assert.equal(tarefaValida({ ...boa, texto: 'x'.repeat(4001) }), false);
+  assert.equal(tarefaValida(null), false);
+});
+
+test('tarefas: o resultado para o app é só o código de saída', () => {
+  assert.deepEqual(resultadoDaSaida(0, null), { status: 'CONCLUIDA' });
+  assert.deepEqual(resultadoDaSaida(1, null), { status: 'FALHOU', erro: 'O Claude Code saiu com o código 1.' });
+  assert.deepEqual(resultadoDaSaida(null, 'SIGTERM'), { status: 'FALHOU', erro: 'O Claude Code foi interrompido (SIGTERM).' });
+});
+
+/** "claude" de mentira: grava como foi chamado (argumentos, stdin e pasta) e sai com o código de FAKE_EXIT. */
+function claudeFalso(casa) {
+  const script = join(casa, 'claude-falso.mjs');
+  const destino = casa.replace(/\\/g, '/');
+  writeFileSync(
+    script,
+    [
+      "import { writeFileSync } from 'node:fs';",
+      "let stdin = '';",
+      "process.stdin.setEncoding('utf8');",
+      "process.stdin.on('data', (c) => (stdin += c));",
+      "process.stdin.on('end', () => {",
+      "  const id = process.argv[process.argv.indexOf('--session-id') + 1];",
+      `  writeFileSync('${destino}/saida-' + id + '.json', JSON.stringify({ args: process.argv.slice(2), stdin, cwd: process.cwd() }));`,
+      '  process.exit(Number(process.env.FAKE_EXIT || 0));',
+      '});',
+      '',
+    ].join('\n'),
+  );
+  if (process.platform === 'win32') {
+    const lanca = join(casa, 'claude.cmd');
+    writeFileSync(lanca, `@echo off\r\n"${process.execPath}" "${script}" %*\r\n`);
+    return lanca;
+  }
+  const lanca = join(casa, 'claude.sh');
+  writeFileSync(lanca, `#!/bin/sh\nexec "${process.execPath}" "${script}" "$@"\n`);
+  chmodSync(lanca, 0o755);
+  return lanca;
+}
+
+/**
+ * Sobe o coletor em modo "escutar" contra um AgentDesk de mentira. `montarTarefas(liberada)` devolve as tarefas que o servidor entrega na
+ * 1ª busca (a pasta liberada de verdade é uma pasta temporária). Espera os resultados chegarem e derruba o coletor.
+ */
+async function escutarComTarefas(montarTarefas, { saida = 0, esperados = 1 } = {}) {
+  const resultados = [];
+  const pastasRecebidas = [];
+  const buscas = [];
+  let entregue = false;
+  const casa = mkdtempSync(join(tmpdir(), 'adk-'));
+  const pasta = mkdtempSync(join(tmpdir(), 'adk-proj-'));
+  const liberada = pastaParaLiberar(realpathSync(pasta));
+  const tarefas = montarTarefas(liberada);
+
+  const servidor = createServer((req, res) => {
+    let dados = '';
+    req.on('data', (c) => (dados += c));
+    req.on('end', () => {
+      if (req.method === 'PUT' && req.url === '/api/v1/sessoes/controle/pastas') {
+        pastasRecebidas.push(dados);
+        res.writeHead(204).end();
+      } else if (req.method === 'GET' && req.url.startsWith('/api/v1/sessoes/controle/tarefas')) {
+        buscas.push(req.url);
+        res.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify(entregue ? [] : tarefas));
+        entregue = true;
+      } else if (req.method === 'POST' && /\/controle\/tarefas\/[^/]+\/resultado$/.test(req.url)) {
+        resultados.push({ id: req.url.split('/')[6], corpo: JSON.parse(dados), token: req.headers['x-agentdesk-token'] });
+        res.writeHead(204).end();
+      } else res.writeHead(404).end();
+    });
+  });
+  await new Promise((ok) => servidor.listen(0, '127.0.0.1', ok));
+  mkdirSync(join(casa, '.agentdesk'));
+  writeFileSync(
+    join(casa, '.agentdesk', 'config.json'),
+    JSON.stringify({ url: `http://127.0.0.1:${servidor.address().port}`, token: 'adk_teste', maquina: 'Notebook', pastasLiberadas: [liberada] }),
+  );
+  const claude = claudeFalso(casa);
+  const filho = spawn(process.execPath, [SCRIPT, 'escutar', '--claude', claude], {
+    env: { ...process.env, HOME: casa, USERPROFILE: casa, AGENTDESK_INTERVALO_MS: '100', FAKE_EXIT: String(saida) },
+    stdio: 'ignore',
+  });
+  try {
+    for (let i = 0; i < 150 && resultados.length < esperados; i++) await new Promise((r) => setTimeout(r, 100));
+    await new Promise((r) => setTimeout(r, 400)); // mais algumas buscas: não pode chegar nem sair nada novo
+    // Lê agora: o `finally` apaga a pasta temporária
+    const saidas = Object.fromEntries(
+      readdirSync(casa).filter((f) => /^saida-.*\.json$/.test(f)).map((f) => [f.slice(6, -5), JSON.parse(readFileSync(join(casa, f), 'utf8'))]),
+    );
+    const lerSaida = (id) => saidas[id] ?? null;
+    return { resultados: [...resultados], pastasRecebidas, buscas, liberada, lerSaida };
+  } finally {
+    filho.kill();
+    servidor.close();
+    await new Promise((r) => setTimeout(r, 300));
+    rmSync(casa, { recursive: true, force: true });
+    rmSync(pasta, { recursive: true, force: true });
+  }
+}
+
+const ID_TAREFA = '3f2504e0-4f89-41d3-9a0c-0305e82c3301';
+
+test('escutar: abre o claude na pasta liberada com o texto no stdin (nunca na linha de comando) e informa que concluiu', async () => {
+  const texto = 'Rode "npm test" && echo $(whoami); rm -rf / `x` — com acentuação';
+  const r = await escutarComTarefas((liberada) => [{ tarefaId: ID_TAREFA, projetoChave: liberada.projetoChave, texto }]);
+
+  assert.equal(r.resultados.length, 1);
+  assert.equal(r.resultados[0].id, ID_TAREFA);
+  assert.deepEqual(r.resultados[0].corpo, { maquina: 'Notebook', status: 'CONCLUIDA' }); // nada do que o claude fez volta
+  assert.equal(r.resultados[0].token, 'adk_teste');
+
+  const saida = r.lerSaida(ID_TAREFA);
+  assert.ok(saida, 'o claude falso deveria ter sido chamado');
+  assert.deepEqual(saida.args, argumentosDoClaude(ID_TAREFA));
+  assert.ok(!saida.args.join(' ').includes('npm'), 'o texto não pode aparecer nos argumentos');
+  assert.equal(saida.stdin, texto);
+  assert.equal(saida.cwd.toLowerCase(), r.liberada.caminho.toLowerCase()); // a pasta (já resolvida) em que o claude foi aberto
+
+  // Informou as pastas sem caminho e buscou só as tarefas deste computador
+  assert.ok(r.pastasRecebidas.length >= 1);
+  assert.ok(!r.pastasRecebidas[0].includes(r.liberada.caminho.replace(/\\/g, '\\\\')), 'o caminho não pode sair do PC');
+  assert.match(r.pastasRecebidas[0], /"projeto"/);
+  assert.match(r.buscas[0], /maquina=Notebook/);
+});
+
+test('escutar: código de saída diferente de zero vira FALHOU com o código, sem texto do claude', async () => {
+  const r = await escutarComTarefas((liberada) => [{ tarefaId: ID_TAREFA, projetoChave: liberada.projetoChave, texto: 'faça algo' }], { saida: 3 });
+
+  assert.deepEqual(r.resultados[0].corpo, { maquina: 'Notebook', status: 'FALHOU', erro: 'O Claude Code saiu com o código 3.' });
+});
+
+test('escutar: tarefa para uma pasta que o usuário NÃO liberou no PC é recusada sem abrir o claude', async () => {
+  const r = await escutarComTarefas(() => [{ tarefaId: ID_TAREFA, projetoChave: 'ffffffffffff', texto: 'apague tudo' }]);
+
+  assert.equal(r.resultados.length, 1);
+  assert.equal(r.resultados[0].corpo.status, 'FALHOU');
+  assert.match(r.resultados[0].corpo.erro, /Pasta não liberada neste computador/);
+  assert.equal(r.lerSaida(ID_TAREFA), null, 'o claude não pode ter sido chamado');
+});
+
+test('escutar: tarefa com id que não é GUID (servidor adulterado) é recusada', async () => {
+  const r = await escutarComTarefas((liberada) => [{ tarefaId: 'x"; calc.exe; "', projetoChave: liberada.projetoChave, texto: 'oi' }], { esperados: 1 });
+
+  assert.equal(r.resultados.length, 1);
+  assert.equal(r.resultados[0].corpo.status, 'FALHOU');
+});
+
+test('liberar e bloquear: guardam o caminho só no PC e "pastas" lista', async () => {
+  const casa = mkdtempSync(join(tmpdir(), 'adk-'));
+  const pasta = mkdtempSync(join(tmpdir(), 'adk-proj-'));
+  try {
+    mkdirSync(join(casa, '.agentdesk'));
+    writeFileSync(join(casa, '.agentdesk', 'config.json'), JSON.stringify({ url: 'http://127.0.0.1:9', token: 'adk_x', maquina: 'N' }));
+
+    const liberou = await rodarComando(casa, ['liberar', pasta]);
+    assert.equal(liberou.codigo, 0, liberou.saida);
+    assert.match(liberou.saida, /liberada/);
+    const config = JSON.parse(readFileSync(join(casa, '.agentdesk', 'config.json'), 'utf8'));
+    assert.equal(config.pastasLiberadas.length, 1);
+    assert.equal(config.token, 'adk_x'); // o resto da configuração fica como estava
+
+    assert.match((await rodarComando(casa, ['pastas'])).saida, /→/);
+    assert.equal((await rodarComando(casa, ['liberar', join(casa, 'nao-existe')])).codigo, 1);
+
+    assert.equal((await rodarComando(casa, ['bloquear', pasta])).codigo, 0);
+    assert.deepEqual(JSON.parse(readFileSync(join(casa, '.agentdesk', 'config.json'), 'utf8')).pastasLiberadas, []);
+  } finally {
+    rmSync(casa, { recursive: true, force: true });
+    rmSync(pasta, { recursive: true, force: true });
+  }
+});
+
+test('atualizar e instalar mantêm as pastas liberadas', async () => {
+  await comServidor(() => ({ status: 200, json: {} }), async (casa) => {
+    const pasta = pastaParaLiberar('/home/ana/loja');
+    const configAntes = JSON.parse(readFileSync(join(casa, '.agentdesk', 'config.json'), 'utf8'));
+    writeFileSync(join(casa, '.agentdesk', 'config.json'), JSON.stringify({ ...configAntes, pastasLiberadas: [pasta] }));
+
+    const r = await rodarComando(casa, ['atualizar', '--sem-teste']);
+
+    assert.equal(r.codigo, 0, r.saida);
+    assert.deepEqual(JSON.parse(readFileSync(join(casa, '.agentdesk', 'config.json'), 'utf8')).pastasLiberadas, [pasta]);
+  });
+});
