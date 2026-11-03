@@ -19,6 +19,11 @@ export class SessoesApi {
     return firstValueFrom(this.http.post<void>(`${this.base}/permissoes/${permissaoId}/decidir`, { decisao }));
   }
 
+  /** Junta a sala (projeto) a um grupo, ou tira dele com `grupo` vazio. */
+  definirGrupo(projetoChave: string, grupo: string | null): Promise<void> {
+    return firstValueFrom(this.http.put<void>(`${this.base}/grupos`, { projetoChave, grupo }));
+  }
+
   aoVivo(): Promise<AoVivo> {
     return firstValueFrom(this.http.get<AoVivo>(`${this.base}/ao-vivo`));
   }

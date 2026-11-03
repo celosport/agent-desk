@@ -51,7 +51,7 @@ export class EquipeStore {
     return a ? paraPersonagem(a) : personagemDe(codigo);
   }
 
-  /** `lugar` = a posição do robô na sala (0 a 7): a 1ª sessão a chegar usa o agente de ordem 0, e assim por diante. */
+  /** `lugar` = o lugar fixo da sessão no projeto (0 a 7, dado pelo servidor): o lugar 0 usa o agente de ordem 0, e assim por diante. [[ADR-017 - Ajudantes, Grupos de Salas e Lugar Fixo]] */
   visualSessao(projetoChave: string | null, lugar: number | undefined, sessaoId: string): Personagem {
     const a = projetoChave !== null && lugar !== undefined ? this.obter('PROJETO', projetoChave, lugar) : null;
     return a ? paraPersonagem(a) : personagemDeSessao(sessaoId);

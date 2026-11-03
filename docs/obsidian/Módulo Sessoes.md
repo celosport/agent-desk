@@ -24,10 +24,10 @@ da telemetria. Decisão: [[ADR-010 - Sessões do Claude Code (Hooks e Telemetria
 
 ## Regras de negócio
 - Status: `TRABALHANDO` (pedido/ferramenta), `ESPERANDO_VOCE` (aviso de permissão ou pergunta), `OCIOSA` (terminou/esperando o
-  próximo pedido; ou sem sinal há 30 min), `ENCERRADA` (fim da sessão; some da sala depois de 2 min).
+  próximo pedido; ou sem sinal há 30 min), `ENCERRADA` (fim da sessão; some da sala depois de 15 min).
 - Atividade do balão: "📖 Lendo api.ts", "✏️ Editando…", "📝 Escrevendo…", "💻 Rodando npm test", "🔎 Procurando…", "🌐 Abrindo
   docs.x.com", "👥 Chamando subagente…", "🗜️ Compactando o contexto", "🔌 Usando github" (MCP)…
-- Sala = projeto (nome da pasta + hash do caminho completo: duas pastas "api" diferentes são duas salas). Até 8 robôs por sala.
+- Sala = projeto (nome da pasta + hash do caminho completo: duas pastas "api" diferentes são duas salas), ou **um grupo** de salas que o usuário juntou. Até 8 robôs por sala; passando disso ficam os que trabalham ou esperam por você.
 - No "ao vivo": sessões com atividade nas últimas 12 h.
 - Evento fora de ordem (mais velho que a última atividade) entra na linha do tempo, mas não muda o status.
 - Custo = `cost_usd` da telemetria (preço de tabela da API) — na assinatura, é o **equivalente**, não uma cobrança.
@@ -116,3 +116,10 @@ Os hooks do coletor vivem no `~/.claude/settings.json` **do computador onde o Cl
 ## Alertas no celular
 Ao ingerir um evento `Stop` (sessão terminou) ou `Notification` de permissão/pergunta, e ao criar um pedido de permissão do hook síncrono, o módulo chama
 `INotificador` ([[Módulo Notificacoes]]). Também implementa `IResumoEmAndamento` (sessões trabalhando agora) para o "ainda rodando" dos alertas. [[ADR-016 - Alertas no Celular (Push do App)]]
+
+## Ajudantes, grupos de salas e lugar fixo (ADR-017)
+- **Subagentes = robôs ajudantes.** Hooks com `agent_id` criam/atualizam uma linha em `cc_subagentes`; `GET /ao-vivo` traz `subagentes` (`agenteId`, `tipo`, `status` TRABALHANDO|ENCERRADA, `atividade`) em cada sessão. Terminou (`SubagentStop`) = some em ~20 s; `SessionEnd` fecha todos; sem sinal há 10 min = some. Evento sem `agent_id` (coletor antigo) continua só como balão da sessão.
+- **Grupos:** `PUT /api/v1/sessoes/grupos` `{ projetoChave, grupo }` (grupo vazio tira) · 204 · 400 · 409 `Sessoes.LimiteDeGrupos` (100 salas). `ProjetoAoVivoDto.grupo` diz a qual grupo o projeto pertence. No app: "Juntar salas" no painel da sala e a sugestão "Há outra sala chamada…" quando duas pastas têm o mesmo nome.
+- **Lugar fixo:** `cc_sessoes.lugar` (0–7) vem do servidor e liga a sessão ao agente da Equipe `(projetoChave, ordem)`. `SessaoAoVivoDto` traz `projetoChave` e `lugar`.
+- **Atualizar o coletor** para mandar `agenteId`/`agenteTipo`: `node ~/.agentdesk/agentdesk-coletor.mjs atualizar`.
+- Testes: `SessoesTests` (subagentes, grupos, lugar) · `salas.spec.ts` · `sessoes.store.spec.ts` · `e2e/claude-code.spec.ts` · `agentdesk-coletor.spec.mjs`.

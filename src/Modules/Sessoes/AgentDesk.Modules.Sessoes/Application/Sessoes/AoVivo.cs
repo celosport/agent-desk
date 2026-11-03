@@ -19,12 +19,20 @@ public sealed record SessaoAoVivoDto(
     /// <summary>Pedido de permissão do Claude Code esperando o Aprovar/Negar do app (vence em ~55 s).</summary>
     PermissaoPendenteDto? PermissaoPendente = null,
     /// <summary>O Parar já foi pedido e o Claude Code ainda não chegou na próxima ferramenta.</summary>
-    bool PararSolicitado = false);
+    bool PararSolicitado = false,
+    /// <summary>Robôs ajudantes: os subagentes que esta sessão chamou e ainda estão trabalhando (ou acabaram de terminar).</summary>
+    IReadOnlyList<SubagenteAoVivoDto>? Subagentes = null,
+    /// <summary>Projeto (pasta) da sessão e o lugar dela na sala: a Equipe guarda nome e aparência por (projetoChave, lugar).</summary>
+    string? ProjetoChave = null,
+    int? Lugar = null);
+
+/// <summary>Um subagente: aparece como um robô ao lado da sessão que o chamou. Status: TRABALHANDO ou ENCERRADA.</summary>
+public sealed record SubagenteAoVivoDto(string AgenteId, string Tipo, StatusSessao Status, string? Atividade, DateTimeOffset IniciadoEm, DateTimeOffset UltimaAtividadeEm);
 
 public sealed record PermissaoPendenteDto(Guid PermissaoId, string Ferramenta, string? Resumo, DateTimeOffset CriadaEm, DateTimeOffset ExpiraEm);
 
 /// <summary>Uma "sala" do Escritório: as sessões abertas de um projeto (mesma pasta, mesmo hash do caminho).</summary>
-public sealed record ProjetoAoVivoDto(string Chave, string Nome, IReadOnlyList<SessaoAoVivoDto> Sessoes);
+public sealed record ProjetoAoVivoDto(string Chave, string Nome, IReadOnlyList<SessaoAoVivoDto> Sessoes, string? Grupo = null);
 
 public sealed record AoVivoDto(IReadOnlyList<ProjetoAoVivoDto> Projetos, DateTimeOffset AtualizadoEm);
 
@@ -34,7 +42,7 @@ public sealed record AoVivoDto(IReadOnlyList<ProjetoAoVivoDto> Projetos, DateTim
 /// </summary>
 public sealed record ObterAoVivoQuery(Guid UsuarioId) : IQuery<AoVivoDto>;
 
-internal sealed class ObterAoVivoHandler(ISessoesRepository sessoes, IControleRepository controle, TimeProvider clock) : IQueryHandler<ObterAoVivoQuery, AoVivoDto>
+internal sealed class ObterAoVivoHandler(ISessoesRepository sessoes, IControleRepository controle, IGruposRepository grupos, TimeProvider clock) : IQueryHandler<ObterAoVivoQuery, AoVivoDto>
 {
     public async Task<Result<AoVivoDto>> Handle(ObterAoVivoQuery query, CancellationToken cancellationToken)
     {
@@ -44,6 +52,10 @@ internal sealed class ObterAoVivoHandler(ISessoesRepository sessoes, IControleRe
         var permissoes = (await controle.ListarPermissoesPendentesAsync(query.UsuarioId, agora, cancellationToken))
             .GroupBy(p => p.SessaoId).ToDictionary(g => g.Key, g => g.First());
         var paradas = await controle.SessoesComParadaAsync(query.UsuarioId, agora, cancellationToken);
+        var ajudantes = (await sessoes.ListarSubagentesAsync(query.UsuarioId, agora - SessaoAoVivo.SubagenteSemSinal,
+                agora - SessaoAoVivo.DespedidaSubagente, cancellationToken))
+            .GroupBy(a => a.SessaoId).ToDictionary(g => g.Key, g => g.ToList());
+        var gruposDasSalas = await grupos.ListarAsync(query.UsuarioId, cancellationToken);
 
         var projetos = lista
             .GroupBy(s => s.ProjetoChave)
@@ -53,10 +65,17 @@ internal sealed class ObterAoVivoHandler(ISessoesRepository sessoes, IControleRe
                 s.Modelo, s.Uso.Entrada + (long)s.Uso.Saida + s.Uso.CacheLeitura + s.Uso.CacheEscrita, s.Uso.CacheLeitura,
                 s.CustoUsd, s.Pedidos, s.IniciadaEm, s.UltimaAtividadeEm,
                 permissoes.TryGetValue(s.SessaoId, out var p) ? new PermissaoPendenteDto(p.PermissaoId, p.Ferramenta, p.Resumo, p.CriadaEm, p.ExpiraEm) : null,
-                paradas.Contains(s.SessaoId))).ToList()))
+                paradas.Contains(s.SessaoId), AjudantesDe(s, ajudantes), s.ProjetoChave, s.Lugar))
+                .ToList(), gruposDasSalas.GetValueOrDefault(g.Key)))
             .OrderByDescending(p => p.Sessoes.Max(s => s.UltimaAtividadeEm))
             .ToList();
 
         return new AoVivoDto(projetos, agora);
     }
+
+    /// <summary>Sessão encerrada não tem ajudantes; ociosa só mostra os que ainda têm sinal (o balão da sessão manda).</summary>
+    private static IReadOnlyList<SubagenteAoVivoDto> AjudantesDe(Sessao s, Dictionary<string, List<Subagente>> porSessao)
+        => s.Status == StatusSessao.Encerrada || !porSessao.TryGetValue(s.SessaoId, out var lista)
+            ? []
+            : lista.Select(a => new SubagenteAoVivoDto(a.AgenteId, a.Tipo, a.Status, a.Atividade, a.IniciadoEm, a.UltimaAtividadeEm)).ToList();
 }

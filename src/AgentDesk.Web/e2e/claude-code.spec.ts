@@ -29,6 +29,44 @@ test('o Escritório abre nas sessões do Claude Code, na sala que precisa de voc
   await expect(sessoes.getByRole('button')).toHaveCount(1);
 });
 
+test('um subagente aparece como robô ajudante ao lado da sessão que o chamou', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await entrarComo(page, 'usuario');
+  await page.getByRole('navigation', { name: 'Principal' }).getByRole('link', { name: 'Escritório' }).click();
+
+  const ajudantes = page.getByRole('list', { name: /^Ajudantes de/ });
+  await expect(ajudantes).toHaveCount(1);
+  await expect(ajudantes).toContainText('Explore');
+  await expect(ajudantes).toContainText('Trabalhando');
+  await expect(ajudantes).toContainText('🔎 Procurando “SortMenu”');
+  await expect(page.getByText('1 ajudante(s) trabalhando')).toBeVisible();
+  await expect(page.locator('[data-agente="sub:demo-sessao-3:demo-ajudante-1"]')).toContainText('Procurando'); // o balão do ajudante na sala
+});
+
+test('juntar duas salas num grupo mostra tudo numa sala só, e dá para tirar do grupo', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await entrarComo(page, 'usuario');
+  await page.getByRole('navigation', { name: 'Principal' }).getByRole('link', { name: 'Escritório' }).click();
+  const projetos = page.getByRole('group', { name: 'Projetos' });
+  await expect(projetos.getByRole('button')).toHaveCount(2);
+
+  await page.getByText('Juntar salas', { exact: true }).click();
+  await page.getByLabel('Juntar com').selectOption({ label: 'api-pagamentos' });
+  await page.getByLabel('Nome do grupo').fill('Time de pagamentos');
+  await page.getByRole('button', { name: 'Juntar', exact: true }).click();
+
+  await expect(projetos.getByRole('button')).toHaveCount(1);
+  await expect(projetos.getByRole('button', { name: /🗂️ Time de pagamentos · 4/ })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('heading', { name: 'Grupo Time de pagamentos' })).toBeVisible();
+  const sessoes = page.getByRole('list', { name: 'Sessões' });
+  await expect(sessoes.getByRole('button')).toHaveCount(4); // as 3 de app-mobile + a de api-pagamentos
+  await expect(sessoes).toContainText('api-pagamentos'); // cada sessão mostra de qual projeto veio
+
+  await page.getByRole('button', { name: 'Tirar api-pagamentos do grupo' }).click();
+  await expect(projetos.getByRole('button')).toHaveCount(2);
+  await expect(projetos.getByRole('button', { name: /api-pagamentos · 1/ })).toBeVisible();
+});
+
 test('conectar o Claude Code: gera token, mostra o comando uma vez e revoga', async ({ page }) => {
   await entrarComo(page, 'usuario');
   await page.goto('/configuracoes');

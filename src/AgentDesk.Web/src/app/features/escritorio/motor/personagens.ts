@@ -57,6 +57,9 @@ export interface Personagem {
 /** Aparência padrão: sem acessório, antena reta, expressão normal. */
 const PADRAO = { acessorio: 'NENHUM', antena: 'RETA', expressao: 'NORMAL' } as const;
 
+/** Aparência padrão dos ajudantes (subagentes): antena de bolinha e expressão concentrada, para se distinguirem das sessões. */
+export const PADRAO_AJUDANTE = { acessorio: 'NENHUM', antena: 'BOLINHA', expressao: 'CONCENTRADO' } as const;
+
 const base = { c: '#1b2233', e: '#8a93a6', h: '#2b2f3a' };
 
 export const PERSONAGENS: Record<string, Personagem> = {

@@ -60,6 +60,18 @@ public sealed class SessoesController(IUsuarioAtual usuarioAtual) : ControllerBa
     public async Task<IActionResult> AoVivo([FromServices] IQueryHandler<ObterAoVivoQuery, AoVivoDto> handler, CancellationToken ct)
         => Responder(await handler.Handle(new ObterAoVivoQuery(usuarioAtual.UsuarioId), ct));
 
+    /// <summary>Junta a sala a um grupo (<c>{ "projetoChave", "grupo" }</c>) ou tira dele (grupo vazio). As salas do mesmo grupo viram uma só no Escritório.</summary>
+    [HttpPut("grupos")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> DefinirGrupo(
+        [FromBody] DefinirGrupoRequestDto corpo, [FromServices] ICommandHandler<DefinirGrupoCommand, bool> handler, CancellationToken ct)
+    {
+        var result = await handler.Handle(new DefinirGrupoCommand(usuarioAtual.UsuarioId, corpo.ProjetoChave, corpo.Grupo), ct);
+        return result.IsSuccess ? NoContent() : this.ToProblem(result.Error);
+    }
+
     /// <summary>
     /// Painel de tokens do Claude Code (totais, gráfico por dia, rankings, cache e ferramentas). <c>?escopo=TODOS</c> soma todos os
     /// usuários e é só do ADMIN (403 <c>Sessoes.SemPermissao</c>).
@@ -269,5 +281,7 @@ public sealed class SessoesController(IUsuarioAtual usuarioAtual) : ControllerBa
 }
 
 public sealed record DecidirPermissaoRequestDto(string? Decisao);
+
+public sealed record DefinirGrupoRequestDto(string? ProjetoChave, string? Grupo);
 
 public sealed record ParadaDto(bool Parar);

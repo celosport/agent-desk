@@ -23,7 +23,10 @@ public sealed record EventoHookRequestDto(
     string? Resumo,
     string? Notificacao,
     string? Modelo,
-    DateTimeOffset? OcorridoEm);
+    DateTimeOffset? OcorridoEm,
+    /// <summary>Quando o hook roda dentro de um subagente: <c>agent_id</c> e <c>agent_type</c> (coletor novo).</summary>
+    string? AgenteId = null,
+    string? AgenteTipo = null);
 
 public sealed record IngerirEventoCommand(string? Token, EventoHookRequestDto Evento) : ICommand<bool>;
 
@@ -40,6 +43,8 @@ internal sealed class IngerirEventoValidator : AbstractValidator<IngerirEventoCo
         RuleFor(x => x.Evento.Resumo).MaximumLength(120).OverridePropertyName("resumo");
         RuleFor(x => x.Evento.Notificacao).MaximumLength(40).OverridePropertyName("notificacao");
         RuleFor(x => x.Evento.Modelo).MaximumLength(80).OverridePropertyName("modelo");
+        RuleFor(x => x.Evento.AgenteId).MaximumLength(100).OverridePropertyName("agenteId");
+        RuleFor(x => x.Evento.AgenteTipo).MaximumLength(80).OverridePropertyName("agenteTipo");
     }
 }
 
@@ -57,7 +62,8 @@ internal sealed class IngerirEventoHandler(ITokensRepository tokens, ISessoesRep
         if (!Transicoes.Conhecidos.Contains(r.Evento!)) return false;
 
         var evento = new EventoHook(r.SessaoId!.Trim(), r.Evento!, Vazio(r.Maquina) ?? "?", r.Projeto!.Trim(), r.ProjetoChave!,
-            Vazio(r.Ferramenta), Vazio(r.Resumo), Vazio(r.Notificacao), Vazio(r.Modelo), Autenticacao.Horario(r.OcorridoEm, agora));
+            Vazio(r.Ferramenta), Vazio(r.Resumo), Vazio(r.Notificacao), Vazio(r.Modelo), Autenticacao.Horario(r.OcorridoEm, agora),
+            Vazio(r.AgenteId), Vazio(r.AgenteTipo));
         await sessoes.AplicarEventoAsync(usuarioId.Value, evento, Transicoes.De(evento), cancellationToken);
         await AvisarNoCelularAsync(usuarioId.Value, evento);
         return true;

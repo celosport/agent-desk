@@ -43,6 +43,7 @@ tags: [painel]
 | 2026-10-30 | Projeto criado a partir do esqueleto |
 | 2026-10-30 | Perguntas respondidas; ADR-005 a 007; **Fase 1**: módulo Configuracoes + tabela de modelos e preços |
 | 2026-11-01 | **Alertas no celular**: módulo Notificacoes (push VAPID do app instalado), contrato `INotificador`, ADR-016 |
+| 2026-11-03 | **Ajudantes, grupos de salas e lugar fixo** no Escritório ao vivo: subagentes viram robôs, salas podem ser juntadas, nome/aparência salvos deixam de "voltar" (ADR-017) |
 | 2026-10-31 | **Fase 6c**: Parar e Aprovar/Negar sessões do Claude Code pelo app (hooks síncronos no coletor), ADR-015 |
 | 2026-10-31 | **Fase 7**: moedas (R$, € e £) pela PTAX do Banco Central, seletor no topo, conversão só na exibição, ADR-014 |
 | 2026-10-31 | **Fase 6b-4**: statusline do coletor (barras de 5 h e da semana), modo `atualizar`, `cc_limites`, ADR-013 |
