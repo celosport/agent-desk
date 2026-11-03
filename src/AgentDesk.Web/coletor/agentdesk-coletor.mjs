@@ -16,6 +16,14 @@
 //   node agentdesk-coletor.mjs evento          (uso interno: os hooks chamam com o JSON do evento no stdin)
 //   node agentdesk-coletor.mjs statusline      (uso interno: a statusline do Claude Code chama; mostra 5h/semana e avisa o AgentDesk)
 //   node agentdesk-coletor.mjs controle        (uso interno: hooks SÍNCRONOS de PreToolUse e PermissionRequest: Parar e Aprovar/Negar)
+//   node agentdesk-coletor.mjs liberar [pasta] (libera a pasta — padrão: a atual — para receber tarefas mandadas pelo app)
+//   node agentdesk-coletor.mjs bloquear [pasta](tira a pasta da lista de liberadas)  ·  pastas (mostra as liberadas)
+//   node agentdesk-coletor.mjs escutar         (fica ouvindo o app: roda `claude -p` nas tarefas que você mandar, só nas pastas liberadas)
+//
+// Mandar tarefa pelo app [[ADR-018 - Mandar Tarefa para o Claude Code do PC]]: quem decide ONDE uma tarefa pode rodar é VOCÊ, aqui no PC
+// (comando "liberar"); o caminho da pasta nunca sai daqui (o app só vê o nome). O Claude Code roda no modo padrão: cada pedido de permissão
+// vai para o Aprovar/Negar do app, e sem resposta é negado — nunca se usa --dangerously-skip-permissions. O texto da tarefa (que VOCÊ escreveu
+// no app) vem do AgentDesk para cá e entra no Claude Code pelo stdin, nunca na linha de comando.
 //
 // Controle (Parar e Aprovar/Negar pelo app): antes de cada ferramenta o coletor pergunta ao AgentDesk se você pediu para parar a
 // sessão (1 consulta curta, 2,5 s no máximo) e, quando o Claude Code pede permissão, espera até 45 s a sua resposta no app. Sem
@@ -28,10 +36,11 @@
 //
 // Sem dependências: Node 18+ (usa fetch). Sempre termina com código 0 no modo "evento" — nunca atrapalha o Claude Code.
 
+import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { appendFileSync, copyFileSync, existsSync, mkdirSync, readFileSync, realpathSync, statSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { basename, dirname, join } from 'node:path';
+import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export const MARCA = 'agentdesk-coletor';
@@ -73,6 +82,66 @@ export function projetoDe(cwd) {
     projeto: corte(basename(caminho.replace(/\\/g, '/')) || '(raiz)', 120),
     projetoChave: createHash('sha256').update(normalizado).digest('hex').slice(0, 12),
   };
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Mandar tarefa pelo app (ADR-018)
+// ---------------------------------------------------------------------------------------------------------------------
+
+export const INTERVALO_BUSCA_MS = 5000;
+export const INTERVALO_PASTAS_MS = 20_000;
+/** Quantas tarefas rodam ao mesmo tempo neste computador. */
+export const SIMULTANEAS_PADRAO = 2;
+/** Uma tarefa que passa disso é interrompida (e vira falha no app). */
+export const TEMPO_MAXIMO_TAREFA_MS = 3 * 60 * 60 * 1000;
+export const MAXIMO_TURNOS = 100;
+const GUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Pasta liberada: o caminho fica SÓ no PC; para o app vai o nome e a chave (a mesma dos hooks, então o robô cai na mesma sala). */
+export function pastaParaLiberar(caminho) {
+  const completo = resolve(String(caminho || '.'));
+  return { caminho: completo, ...projetoDe(completo) };
+}
+
+/** Devolve a configuração com a pasta incluída (sem duplicar, no máximo 50). */
+export function comPastaLiberada(config, pasta) {
+  const outras = (config.pastasLiberadas || []).filter((p) => p.projetoChave !== pasta.projetoChave);
+  if (outras.length >= 50) throw new Error('No máximo 50 pastas liberadas. Use "bloquear" em alguma.');
+  return { ...config, pastasLiberadas: [...outras, pasta] };
+}
+
+export function semPastaLiberada(config, pasta) {
+  return { ...config, pastasLiberadas: (config.pastasLiberadas || []).filter((p) => p.projetoChave !== pasta.projetoChave) };
+}
+
+/** O que o AgentDesk recebe das pastas: nome e chave. NUNCA o caminho. */
+export function pastasParaServidor(config) {
+  return (config.pastasLiberadas || []).map((p) => ({ projetoChave: p.projetoChave, projeto: p.projeto }));
+}
+
+/** A pasta liberada (com o caminho local) que corresponde à chave da tarefa; undefined se o usuário não liberou. */
+export function pastaDaTarefa(config, projetoChave) {
+  return (config.pastasLiberadas || []).find((p) => p.projetoChave === projetoChave);
+}
+
+export function tarefaValida(t) {
+  return !!t && typeof t === 'object' && GUID.test(String(t.tarefaId)) && typeof t.texto === 'string' && t.texto.trim().length > 0
+    && t.texto.length <= 4000 && typeof t.projetoChave === 'string';
+}
+
+/**
+ * Argumentos do `claude`. TUDO fixo (o id é um GUID validado): o texto da tarefa NÃO entra aqui, vai pelo stdin — assim nada digitado no
+ * app vira parte de um comando. Modo padrão de permissões: pedidos vão para o Aprovar/Negar do app (hook PermissionRequest).
+ */
+export function argumentosDoClaude(tarefaId) {
+  if (!GUID.test(String(tarefaId))) throw new Error('Id de tarefa inválido.');
+  return ['-p', '--session-id', String(tarefaId).toLowerCase(), '--permission-mode', 'default', '--max-turns', String(MAXIMO_TURNOS)];
+}
+
+/** Resultado para o app: só o código de saída (nada do que o Claude Code escreveu sai do PC). */
+export function resultadoDaSaida(codigo, sinal) {
+  if (codigo === 0) return { status: 'CONCLUIDA' };
+  return { status: 'FALHOU', erro: sinal ? `O Claude Code foi interrompido (${sinal}).` : `O Claude Code saiu com o código ${codigo}.` };
 }
 
 /** Resumo SEGURO da ferramenta: nunca conteúdo, nunca o comando inteiro (pode ter senha), nunca o caminho completo. */
@@ -374,7 +443,7 @@ async function consultar(config, caminho, opcoes, prazoMs) {
     signal: AbortSignal.timeout(prazoMs),
   });
   if (!resposta.ok) throw new Error(`HTTP ${resposta.status}`);
-  return resposta.json();
+  return resposta.status === 204 ? null : resposta.json();
 }
 
 /**
@@ -420,6 +489,98 @@ async function modoEvento() {
     await enviar(config, evento, evento.evento === 'SessionEnd' ? 1200 : 4000);
   } catch (e) {
     registrar(`evento: ${e?.message ?? e}`);
+  }
+}
+
+const dormir = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * Abre o Claude Code (`claude -p`) numa tarefa. O texto entra pelo stdin; a saída do Claude Code é descartada (o que ele faz aparece no
+ * Escritório pelos hooks de sempre — a sessão tem o mesmo id da tarefa). Sempre informa o resultado ao app.
+ */
+function executarTarefa(config, tarefa, claude, emExecucao) {
+  const informar = (resultado) =>
+    consultar(config, `controle/tarefas/${tarefa.tarefaId}/resultado`, { method: 'POST', body: JSON.stringify({ maquina: config.maquina, ...resultado }) }, 8000)
+      .catch((e) => registrar(`resultado da tarefa: ${e?.message ?? e}`));
+
+  const pasta = pastaDaTarefa(config, tarefa.projetoChave);
+  if (!tarefaValida(tarefa) || !pasta || !existsSync(pasta.caminho)) {
+    registrar(`tarefa ${tarefa?.tarefaId}: recusada (pasta não liberada neste computador ou tarefa inválida)`);
+    console.log(`✖ Tarefa recusada: a pasta não está liberada aqui (rode "liberar" nela).`);
+    return informar({ status: 'FALHOU', erro: 'Pasta não liberada neste computador.' });
+  }
+
+  console.log(`▶ Tarefa ${tarefa.tarefaId.slice(0, 8)} em "${pasta.projeto}"`);
+  // No Windows o npm instala o claude como .cmd, que só abre pelo shell: os argumentos são fixos e o texto vai pelo stdin, então é seguro
+  const comShell = process.platform === 'win32' && !/\.exe$/i.test(claude);
+  const comando = comShell && /\s/.test(claude) ? `"${claude}"` : claude; // caminho com espaço, aberto pelo shell do Windows
+  const filho = spawn(comando, argumentosDoClaude(tarefa.tarefaId), { cwd: pasta.caminho, stdio: ['pipe', 'ignore', 'ignore'], windowsHide: true, shell: comShell });
+  emExecucao.set(tarefa.tarefaId, filho);
+  let resolvido = false;
+  const terminar = (resultado) => {
+    if (resolvido) return;
+    resolvido = true;
+    clearTimeout(limite);
+    emExecucao.delete(tarefa.tarefaId);
+    console.log(resultado.status === 'CONCLUIDA' ? `✔ Tarefa ${tarefa.tarefaId.slice(0, 8)} concluída.` : `✖ Tarefa ${tarefa.tarefaId.slice(0, 8)}: ${resultado.erro}`);
+    return informar(resultado);
+  };
+  const limite = setTimeout(() => {
+    filho.kill();
+    terminar({ status: 'FALHOU', erro: 'Passou do tempo máximo (3 horas) e foi interrompida.' });
+  }, TEMPO_MAXIMO_TAREFA_MS);
+  filho.on('error', (e) => terminar({ status: 'FALHOU', erro: e?.code === 'ENOENT' ? 'Não achei o comando "claude" neste computador (use --claude CAMINHO).' : 'Não consegui abrir o Claude Code.' }));
+  filho.on('close', (codigo, sinal) => terminar(resultadoDaSaida(codigo, sinal)));
+  filho.stdin.on('error', () => {});
+  filho.stdin.end(tarefa.texto);
+}
+
+/** Fica ouvindo o app: informa as pastas liberadas (e que está online) e abre o Claude Code nas tarefas que chegarem. Ctrl+C para sair. */
+async function modoEscutar(inicial, o) {
+  if (!inicial.url || !inicial.token) throw new Error('Nada instalado ainda: rode "instalar" com --url e --token.');
+  const claude = String(o.claude && o.claude !== true ? o.claude : inicial.claudeComando || 'claude');
+  const maximo = Math.max(1, Math.min(5, Number(o.simultaneas) || SIMULTANEAS_PADRAO));
+  const emExecucao = new Map();
+  let ultimoEnvioPastas = 0;
+  let parar = false;
+
+  const sair = () => {
+    if (parar) return;
+    parar = true;
+    console.log('\nEncerrando: as tarefas em andamento serão interrompidas…');
+    const config = lerJson(CONFIG, inicial);
+    for (const [id, filho] of emExecucao) {
+      filho.kill();
+      consultar(config, `controle/tarefas/${id}/resultado`, { method: 'POST', body: JSON.stringify({ maquina: config.maquina, status: 'FALHOU', erro: 'Interrompida: o coletor foi fechado.' }) }, 3000)
+        .catch(() => {});
+    }
+    setTimeout(() => process.exit(0), 1500);
+  };
+  process.on('SIGINT', sair);
+  process.on('SIGTERM', sair);
+
+  const pastas = pastasParaServidor(inicial);
+  console.log(`✔ Ouvindo o AgentDesk como "${inicial.maquina}" (até ${maximo} tarefa(s) ao mesmo tempo). Ctrl+C para sair.`);
+  console.log(pastas.length ? `  Pastas liberadas: ${pastas.map((p) => p.projeto).join(', ')}` : '  Nenhuma pasta liberada ainda: rode "liberar" dentro de uma pasta de projeto.');
+
+  while (!parar) {
+    try {
+      // Relê a configuração a cada volta: "liberar" e "bloquear" em outro terminal valem na hora
+      const config = lerJson(CONFIG, inicial);
+      const agora = Date.now();
+      if (agora - ultimoEnvioPastas >= INTERVALO_PASTAS_MS) {
+        await consultar(config, 'controle/pastas', { method: 'PUT', body: JSON.stringify({ maquina: config.maquina, pastas: pastasParaServidor(config) }) }, 8000);
+        ultimoEnvioPastas = agora;
+      }
+      const livres = maximo - emExecucao.size;
+      if (livres > 0) {
+        const tarefas = await consultar(config, `controle/tarefas?maquina=${encodeURIComponent(config.maquina)}&limite=${livres}`, { method: 'GET' }, 8000);
+        for (const tarefa of Array.isArray(tarefas) ? tarefas : []) executarTarefa(config, tarefa, claude, emExecucao);
+      }
+    } catch (e) {
+      registrar(`escutar: ${e?.message ?? e}`);
+    }
+    await dormir(Number(process.env.AGENTDESK_INTERVALO_MS) || INTERVALO_BUSCA_MS); // a variável existe para o teste não esperar 5 s
   }
 }
 
@@ -495,7 +656,7 @@ async function principal() {
       comandoControle: semControle ? undefined : comandoControle,
     });
     writeFileSync(SETTINGS, `${JSON.stringify(settings, null, 2)}\n`);
-    writeFileSync(CONFIG, `${JSON.stringify({ ...config, envDefinido, semControle }, null, 2)}\n`, { mode: 0o600 });
+    writeFileSync(CONFIG, `${JSON.stringify({ ...config, envDefinido, semControle, pastasLiberadas: anterior.pastasLiberadas || [], claudeComando: anterior.claudeComando }, null, 2)}\n`, { mode: 0o600 });
     console.log(`• Hooks do AgentDesk adicionados em ${SETTINGS}`);
     console.log(envDefinido.length ? '• Telemetria (tokens e custo) ligada, com prompts redigidos.' : '• Telemetria NÃO alterada.');
     console.log(semControle ? '• Controle remoto DESLIGADO (--sem-controle): só observa.' : '• Controle remoto ligado: Parar e Aprovar/Negar pelo app (sem resposta, o Claude Code pergunta no terminal).');
@@ -509,6 +670,27 @@ async function principal() {
 
   if (modo === 'testar') return modoTestar(lerJson(CONFIG, {}));
 
+  if (modo === 'liberar' || modo === 'bloquear') {
+    const alvo = resto.find((a) => !a.startsWith('--')) || process.cwd();
+    const pasta = pastaParaLiberar(alvo);
+    if (modo === 'liberar' && (!existsSync(pasta.caminho) || !statSync(pasta.caminho).isDirectory())) throw new Error(`Não existe a pasta ${pasta.caminho}.`);
+    const config = lerJson(CONFIG, {});
+    mkdirSync(PASTA, { recursive: true });
+    writeFileSync(CONFIG, `${JSON.stringify(modo === 'liberar' ? comPastaLiberada(config, pasta) : semPastaLiberada(config, pasta), null, 2)}\n`, { mode: 0o600 });
+    console.log(modo === 'liberar'
+      ? `✔ "${pasta.projeto}" liberada: o app pode mandar tarefas para ${pasta.caminho} (só o nome "${pasta.projeto}" sai do PC).\n  Falta deixar o coletor ouvindo: node ${fileURLToPath(import.meta.url)} escutar`
+      : `✔ "${pasta.projeto}" não recebe mais tarefas do app.`);
+    return;
+  }
+
+  if (modo === 'pastas') {
+    const lista = lerJson(CONFIG, {}).pastasLiberadas || [];
+    console.log(lista.length ? lista.map((p) => `• ${p.projeto}  →  ${p.caminho}`).join('\n') : 'Nenhuma pasta liberada. Use: liberar [pasta]');
+    return;
+  }
+
+  if (modo === 'escutar') return modoEscutar(lerJson(CONFIG, {}), argumentos(resto));
+
   if (modo === 'desinstalar') {
     const config = lerJson(CONFIG, {});
     const { settings, removidos } = removerDoSettings(lerJson(SETTINGS, {}), config.envDefinido || []);
@@ -518,7 +700,7 @@ async function principal() {
     return;
   }
 
-  console.log('Modos: instalar --url URL --token adk_... --maquina NOME [--forcar] [--statusline] [--sem-controle] [--sem-teste] (ou as variáveis AGENTDESK_URL, AGENTDESK_TOKEN e AGENTDESK_MAQUINA) · atualizar [--com-controle] · testar · desinstalar');
+  console.log('Modos: instalar --url URL --token adk_... --maquina NOME [--forcar] [--statusline] [--sem-controle] [--sem-teste] (ou as variáveis AGENTDESK_URL, AGENTDESK_TOKEN e AGENTDESK_MAQUINA) · atualizar [--com-controle] · testar · liberar [pasta] · bloquear [pasta] · pastas · escutar [--claude CAMINHO] [--simultaneas N] · desinstalar');
 }
 
 /** Só executa quando chamado direto (o teste importa as funções sem rodar nada). No Windows, maiúsculas e barras variam. */

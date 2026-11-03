@@ -3,6 +3,7 @@ import { RouterLink } from '@angular/router';
 import { atualizarPeriodicamente } from '../../core/tempo-real/atualizacao-periodica';
 import { formatarDolarCompacto, formatarDuracao, formatarHaQuanto, formatarHora, formatarIntervalo, formatarNumero } from '../../shared/util/formatos';
 import { CenaEscritorio } from './cena-escritorio.component';
+import { MandarTarefa } from './mandar-tarefa.component';
 import { EquipeStore } from './data-access/equipe.store';
 import { Sala, codigoDoSubagente } from './data-access/salas';
 import { SessaoAoVivo } from './data-access/sessoes.models';
@@ -27,7 +28,7 @@ const ROTULO: Record<StatusSessao, string> = {
  */
 @Component({
   selector: 'app-sala-claude-code',
-  imports: [RouterLink, CenaEscritorio],
+  imports: [RouterLink, CenaEscritorio, MandarTarefa],
   providers: [SessoesStore],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -67,6 +68,8 @@ const ROTULO: Record<StatusSessao, string> = {
     @if (store.erroControle()) {
       <p class="ui-erro" role="alert">{{ store.erroControle() }}</p>
     }
+
+    <app-mandar-tarefa />
 
     @if (!store.carregado() && !store.erro()) {
       <p class="ui-suave">Carregando…</p>

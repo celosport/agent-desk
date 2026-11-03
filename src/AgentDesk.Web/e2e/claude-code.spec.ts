@@ -67,6 +67,52 @@ test('juntar duas salas num grupo mostra tudo numa sala só, e dá para tirar do
   await expect(projetos.getByRole('button', { name: /api-pagamentos · 1/ })).toBeVisible();
 });
 
+test('mandar tarefa: escolhe computador e pasta, envia e acompanha; pendente dá para cancelar', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await entrarComo(page, 'usuario');
+  await page.getByRole('navigation', { name: 'Principal' }).getByRole('link', { name: 'Escritório' }).click();
+
+  const enviar = page.getByRole('button', { name: 'Enviar tarefa' });
+  await expect(page.getByRole('heading', { name: /Mandar tarefa para o Claude Code/ })).toBeVisible();
+  await expect(page.getByLabel('Computador')).toContainText('Notebook · online');
+  await expect(page.getByLabel('Pasta do projeto')).toContainText('app-mobile');
+  await expect(enviar).toBeDisabled(); // sem texto
+
+  await page.getByLabel('Pasta do projeto').selectOption({ label: 'api-pagamentos' });
+  await page.getByLabel('O que o Claude Code deve fazer').fill('Rode os testes e corrija o que falhar.');
+  await enviar.click();
+
+  const lista = page.getByRole('list', { name: 'Tarefas enviadas' });
+  await expect(lista).toContainText('Rode os testes e corrija o que falhar.');
+  await expect(lista).toContainText('api-pagamentos · Notebook');
+  await expect(lista).toContainText('Esperando o computador');
+  await expect(page.getByLabel('O que o Claude Code deve fazer')).toHaveValue(''); // o texto é limpo depois de enviar
+  await expect(lista).toContainText(/Rodando|Concluída/, { timeout: 20_000 }); // o mock avança sozinho (como o coletor faria)
+
+  // Outra tarefa: enquanto está pendente, dá para cancelar
+  await page.getByLabel('O que o Claude Code deve fazer').fill('Esta eu vou cancelar');
+  await enviar.click();
+  await page.getByRole('button', { name: /Cancelar a tarefa: Esta eu vou cancelar/ }).click();
+  await expect(lista.getByRole('listitem').filter({ hasText: 'Esta eu vou cancelar' })).toContainText('Cancelada');
+});
+
+test('mandar tarefa: pasta não liberada ou limite de 5 mostram o motivo do servidor', async ({ page }) => {
+  await entrarComo(page, 'usuario');
+  await page.getByRole('navigation', { name: 'Principal' }).getByRole('link', { name: 'Escritório' }).click();
+
+  const texto = page.getByLabel('O que o Claude Code deve fazer');
+  for (let i = 1; i <= 5; i++) {
+    await texto.fill(`Tarefa número ${i}`);
+    await page.getByRole('button', { name: 'Enviar tarefa' }).click();
+    await expect(page.getByRole('list', { name: 'Tarefas enviadas' })).toContainText(`Tarefa número ${i}`);
+  }
+  await texto.fill('A sexta não cabe');
+  await page.getByRole('button', { name: 'Enviar tarefa' }).click();
+
+  await expect(page.getByRole('alert').filter({ hasText: 'Já há 5 tarefas esperando ou rodando' })).toBeVisible();
+  await expect(texto).toHaveValue('A sexta não cabe'); // o que foi digitado não se perde
+});
+
 test('conectar o Claude Code: gera token, mostra o comando uma vez e revoga', async ({ page }) => {
   await entrarComo(page, 'usuario');
   await page.goto('/configuracoes');

@@ -5,6 +5,7 @@ using AgentDesk.Modules.Sessoes.Application.Controle;
 using AgentDesk.Modules.Sessoes.Application.Limites;
 using AgentDesk.Modules.Sessoes.Application.Painel;
 using AgentDesk.Modules.Sessoes.Application.Sessoes;
+using AgentDesk.Modules.Sessoes.Application.Tarefas;
 using AgentDesk.Modules.Sessoes.Application.Tokens;
 using AgentDesk.SharedKernel.Identidade;
 using AgentDesk.SharedKernel.Messaging;
@@ -69,6 +70,88 @@ public sealed class SessoesController(IUsuarioAtual usuarioAtual) : ControllerBa
         [FromBody] DefinirGrupoRequestDto corpo, [FromServices] ICommandHandler<DefinirGrupoCommand, bool> handler, CancellationToken ct)
     {
         var result = await handler.Handle(new DefinirGrupoCommand(usuarioAtual.UsuarioId, corpo.ProjetoChave, corpo.Grupo), ct);
+        return result.IsSuccess ? NoContent() : this.ToProblem(result.Error);
+    }
+
+    // ---- mandar tarefa para o Claude Code do PC [[ADR-018 - Mandar Tarefa para o Claude Code do PC]] ----
+
+    /// <summary>Computadores com o coletor ouvindo e as pastas que o usuário liberou NELES para receber tarefas.</summary>
+    [HttpGet("computadores")]
+    [ProducesResponseType<IReadOnlyList<ComputadorDto>>(StatusCodes.Status200OK)]
+    public async Task<IActionResult> Computadores(
+        [FromServices] IQueryHandler<ObterComputadoresQuery, IReadOnlyList<ComputadorDto>> handler, CancellationToken ct)
+        => Responder(await handler.Handle(new ObterComputadoresQuery(usuarioAtual.UsuarioId), ct));
+
+    /// <summary>Manda uma tarefa para o Claude Code de um computador, numa pasta liberada nele. O coletor busca e abre a sessão.</summary>
+    [HttpPost("tarefas")]
+    [ProducesResponseType<TarefaDto>(StatusCodes.Status201Created)]
+    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> EnviarTarefa(
+        [FromBody] EnviarTarefaRequestDto corpo, [FromServices] ICommandHandler<EnviarTarefaCommand, TarefaDto> handler, CancellationToken ct)
+    {
+        var result = await handler.Handle(new EnviarTarefaCommand(usuarioAtual.UsuarioId, corpo.Maquina, corpo.ProjetoChave, corpo.Texto), ct);
+        return result.IsSuccess ? StatusCode(StatusCodes.Status201Created, result.Value) : this.ToProblem(result.Error);
+    }
+
+    /// <summary>As últimas 20 tarefas mandadas pelo app.</summary>
+    [HttpGet("tarefas")]
+    [ProducesResponseType<IReadOnlyList<TarefaDto>>(StatusCodes.Status200OK)]
+    public async Task<IActionResult> Tarefas(
+        [FromServices] IQueryHandler<ListarTarefasQuery, IReadOnlyList<TarefaDto>> handler, CancellationToken ct)
+        => Responder(await handler.Handle(new ListarTarefasQuery(usuarioAtual.UsuarioId), ct));
+
+    /// <summary>Cancela uma tarefa que ainda não começou (depois de começar, use Parar na sessão: mesmo id).</summary>
+    [HttpPost("tarefas/{tarefaId:guid}/cancelar")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> CancelarTarefa(
+        Guid tarefaId, [FromServices] ICommandHandler<CancelarTarefaCommand, bool> handler, CancellationToken ct)
+    {
+        var result = await handler.Handle(new CancelarTarefaCommand(usuarioAtual.UsuarioId, tarefaId), ct);
+        return result.IsSuccess ? NoContent() : this.ToProblem(result.Error);
+    }
+
+    /// <summary>Coletor: pastas liberadas no PC (a cada ~20 s; também é o sinal de "online").</summary>
+    [HttpPut("controle/pastas")]
+    [AllowAnonymous]
+    [RequestSizeLimit(32 * 1024)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> InformarPastas(
+        [FromHeader(Name = HeaderToken)] string? token, [FromBody] InformarPastasRequestDto corpo,
+        [FromServices] ICommandHandler<InformarPastasCommand, bool> handler, CancellationToken ct)
+    {
+        var result = await handler.Handle(new InformarPastasCommand(token, corpo), ct);
+        return result.IsSuccess ? NoContent() : this.ToProblem(result.Error);
+    }
+
+    /// <summary>Coletor: busca as tarefas pendentes do computador (cada uma sai uma vez só e já fica EM_ANDAMENTO).</summary>
+    [HttpGet("controle/tarefas")]
+    [AllowAnonymous]
+    [ProducesResponseType<IReadOnlyList<TarefaParaExecutarDto>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> BuscarTarefas(
+        [FromHeader(Name = HeaderToken)] string? token, [FromQuery] string? maquina, [FromQuery] int? limite,
+        [FromServices] ICommandHandler<ReceberTarefasCommand, IReadOnlyList<TarefaParaExecutarDto>> handler, CancellationToken ct)
+        => Responder(await handler.Handle(new ReceberTarefasCommand(token, maquina, limite), ct));
+
+    /// <summary>Coletor: como a tarefa terminou (<c>{ "maquina", "status": "CONCLUIDA" | "FALHOU", "erro" }</c>).</summary>
+    [HttpPost("controle/tarefas/{tarefaId:guid}/resultado")]
+    [AllowAnonymous]
+    [RequestSizeLimit(4 * 1024)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ResultadoDaTarefa(
+        Guid tarefaId, [FromHeader(Name = HeaderToken)] string? token, [FromBody] ResultadoTarefaRequestDto corpo,
+        [FromServices] ICommandHandler<ResultadoTarefaCommand, bool> handler, CancellationToken ct)
+    {
+        var result = await handler.Handle(new ResultadoTarefaCommand(token, tarefaId, corpo), ct);
         return result.IsSuccess ? NoContent() : this.ToProblem(result.Error);
     }
 
