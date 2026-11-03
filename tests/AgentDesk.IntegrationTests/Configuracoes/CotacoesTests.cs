@@ -129,6 +129,31 @@ public sealed class CotacoesTests(AgentDeskApiFactory factory)
     }
 
     [Fact]
+    public async Task Timeout_do_HttpClient_no_BCB_nao_derruba_a_rotina_nem_o_app()
+    {
+        // O timeout do HttpClient chega como TaskCanceledException (um OperationCanceledException): foi o que derrubou o deploy em 2026-11-03
+        await LimparAsync();
+        var cliente = new ClienteFalso(moeda => moeda == "USD" ? throw new TaskCanceledException("HttpClient.Timeout de 20 s", new TimeoutException()) : (5m, Dia));
+
+        var atualizadas = await Rotina(cliente).ExecutarUmaVezAsync(CancellationToken.None);
+
+        Assert.Equal(2, atualizadas);
+    }
+
+    [Fact]
+    public async Task Desligar_o_app_ainda_cancela_a_rotina()
+    {
+        using var desligando = new CancellationTokenSource();
+        var cliente = new ClienteFalso(_ =>
+        {
+            desligando.Cancel();
+            throw new OperationCanceledException(desligando.Token);
+        });
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => Rotina(cliente).ExecutarUmaVezAsync(desligando.Token));
+    }
+
+    [Fact]
     public async Task Moeda_sem_cotacao_nos_ultimos_dias_e_pulada()
     {
         await LimparAsync();
