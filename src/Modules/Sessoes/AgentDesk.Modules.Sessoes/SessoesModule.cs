@@ -30,6 +30,9 @@ public sealed class SessoesModule : IModule
         services.AddScoped<ISessoesConsultas, SessoesConsultasRepository>();
         services.AddScoped<ILimitesRepository, LimitesRepository>();
         services.AddScoped<IControleRepository, ControleRepository>();
+        services.AddScoped<IGruposRepository, GruposRepository>();
+        services.AddScoped<IValidator<DefinirGrupoCommand>, DefinirGrupoValidator>();
+        services.AddCommandHandler<DefinirGrupoCommand, bool, DefinirGrupoHandler>();
         services.AddScoped<IResumoEmAndamento, ResumoSessoesEmAndamento>();
         services.AddScoped<IValidator<DecidirPermissaoCommand>, DecidirPermissaoValidator>();
         services.AddScoped<IValidator<SolicitarPermissaoCommand>, SolicitarPermissaoValidator>();

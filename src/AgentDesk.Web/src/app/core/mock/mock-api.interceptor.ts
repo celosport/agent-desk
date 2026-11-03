@@ -96,6 +96,8 @@ const ROTEIROS: { projeto: string; chave: string; sessaoId: string; maquina: str
 
 /** Controle das sessões (mock): um pedido de permissão de demonstração e o Parar guardado até recarregar. */
 const paradasMock = new Set<string>();
+/** Salas juntas num grupo (projetoChave → nome do grupo), guardadas até recarregar. */
+const gruposMock = new Map<string, string>();
 let permissoesMock: { permissaoId: string; sessaoId: string; ferramenta: string; resumo?: string }[] = [
   { permissaoId: 'a1111111-1111-4111-8111-111111111111', sessaoId: 'demo-sessao-3', ferramenta: 'Bash', resumo: 'npm test' },
 ];
@@ -110,6 +112,13 @@ function aoVivoMock() {
       chave: r.chave,
       sessao: {
         sessaoId: r.sessaoId,
+        projetoChave: r.chave,
+        lugar: ROTEIROS.filter((o) => o.chave === r.chave).indexOf(r),
+        // A sessão 3 chama um subagente Explore o tempo todo (o ajudante aparece como um robô ao lado dela)
+        subagentes: r.sessaoId === 'demo-sessao-3' ? [{
+          agenteId: 'demo-ajudante-1', tipo: 'Explore', status: 'TRABALHANDO', atividade: '🔎 Procurando “SortMenu”',
+          iniciadoEm: new Date(agora - 60_000).toISOString(), ultimaAtividadeEm: new Date(Date.now() - 2000).toISOString(),
+        }] : [],
         maquina: r.maquina,
         status,
         atividade,
@@ -129,7 +138,7 @@ function aoVivoMock() {
   });
   const projetos = [...new Set(sessoes.map((s) => s.chave))].map((chave) => {
     const daSala = sessoes.filter((s) => s.chave === chave);
-    return { chave, nome: daSala[0].projeto, sessoes: daSala.map((s) => s.sessao) };
+    return { chave, nome: daSala[0].projeto, sessoes: daSala.map((s) => s.sessao), grupo: gruposMock.get(chave) };
   });
   return { projetos, atualizadoEm: new Date().toISOString() };
 }
@@ -710,6 +719,15 @@ function responder(req: HttpRequest<unknown>, url: URL): Observable<HttpResponse
 
   // ---- Sessões do Claude Code ----
   if (c === '/api/v1/sessoes/ao-vivo' && req.method === 'GET') return ok(aoVivoMock());
+  if (c === '/api/v1/sessoes/grupos' && req.method === 'PUT') {
+    const chave = String(corpo['projetoChave'] ?? '');
+    const grupo = String(corpo['grupo'] ?? '').trim().replace(/\s+/g, ' ');
+    if (chave.length !== 12) return invalido({ projetoChave: ['A chave do projeto deve ter 12 caracteres.'] });
+    if (grupo.length > 40) return invalido({ grupo: ['O nome do grupo deve ter no máximo 40 caracteres.'] });
+    if (grupo) gruposMock.set(chave, grupo);
+    else gruposMock.delete(chave);
+    return ok(null, 204);
+  }
   const parar = c.match(/^\/api\/v1\/sessoes\/([^/]+)\/parar$/);
   if (parar && req.method === 'POST') {
     const id = decodeURIComponent(parar[1]);

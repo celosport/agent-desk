@@ -78,7 +78,7 @@ const ROTULO_EXPRESSAO: Record<(typeof EXPRESSOES)[number], string> = { NORMAL: 
                 }
               </select>
             </div>
-            <p class="ui-suave dica">A 1ª sessão a chegar na sala do projeto usa o agente 1, a 2ª usa o 2, e assim por diante.</p>
+            <p class="ui-suave dica">Cada sessão ganha um lugar fixo na sala do projeto (1 a 8) e o mantém até acabar: a 1ª que abrir usa o agente 1, a 2ª o 2... Quando uma termina, o próximo a abrir usa o lugar que ficou livre.</p>
           }
         </section>
 

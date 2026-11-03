@@ -135,7 +135,7 @@ public sealed class SessoesTests(AgentDeskApiFactory factory)
         Assert.Equal("✅ Terminou", Atividade(terminou));
         Assert.Equal(6, await factory.ConsultarAsync<long>("SELECT COUNT(*) FROM cc_eventos WHERE sessao_id = @S", new { S = s }));
 
-        // Encerrada agora: ainda aparece por 2 min (a "despedida" do robô)
+        // Encerrada agora: ainda aparece por 15 min (a "despedida" do robô)
         await EnviarAsync(c.Token, new { sessaoId = s, evento = "SessionEnd", maquina = "Notebook", projeto = "agent-desk", projetoChave = "a1b2c3d4e5f6" });
         Assert.Equal("ENCERRADA", Status(await SessaoAoVivoAsync(c.Http, s)));
     }
@@ -311,8 +311,188 @@ public sealed class SessoesTests(AgentDeskApiFactory factory)
         Assert.Equal(-1, await rotina.ExecutarUmaVezAsync(CancellationToken.None));
     }
 
+    /// <summary>Subagente só aparece com sinal nos últimos 10 min: estes eventos são de 2 min atrás (o <c>Base</c> dos outros é de 20).</summary>
+    private static readonly DateTimeOffset Recente = DateTimeOffset.UtcNow.AddMinutes(-2);
+
+    private static object EventoDeSubagente(string sessao, string evento, int segundos, string? agente, string? tipo = "Explore",
+        string? ferramenta = null, string? resumo = null)
+        => new
+        {
+            sessaoId = sessao, evento, maquina = "Notebook", projeto = "agent-desk", projetoChave = "a1b2c3d4e5f6", ferramenta, resumo,
+            ocorridoEm = Recente.AddSeconds(segundos), agenteId = agente, agenteTipo = tipo,
+        };
+
+    private static async Task<List<JsonElement>> AjudantesAsync(HttpClient http, string sessao)
+        => (await SessaoAoVivoAsync(http, sessao))!.Value.GetProperty("subagentes").EnumerateArray().ToList();
+
+    private static JsonElement Ajudante(List<JsonElement> lista, string id) => lista.Single(a => a.GetProperty("agenteId").GetString() == id);
+
+    [Fact]
+    public async Task Subagente_vira_um_robo_ajudante_com_a_propria_atividade_e_some_quando_termina()
+    {
+        var c = await ContaComTokenAsync();
+        var s = $"sessao-{Guid.NewGuid():N}";
+        await EnviarAsync(c.Token, Evento(s, "UserPromptSubmit", 0));
+
+        await EnviarAsync(c.Token, EventoDeSubagente(s, "SubagentStart", 1, "ag-1"));
+        await EnviarAsync(c.Token, EventoDeSubagente(s, "SubagentStart", 1, "ag-2", "Plan"));
+        await EnviarAsync(c.Token, EventoDeSubagente(s, "PreToolUse", 2, "ag-1", "Explore", "Grep", "“SortMenu”"));
+
+        var ajudantes = await AjudantesAsync(c.Http, s);
+        Assert.Equal(2, ajudantes.Count);
+        Assert.Equal("Explore", Ajudante(ajudantes, "ag-1").GetProperty("tipo").GetString());
+        Assert.Equal("TRABALHANDO", Ajudante(ajudantes, "ag-1").GetProperty("status").GetString());
+        Assert.Equal("🔎 Procurando “SortMenu”", Ajudante(ajudantes, "ag-1").GetProperty("atividade").GetString());
+        Assert.Equal("Plan", Ajudante(ajudantes, "ag-2").GetProperty("tipo").GetString());
+        Assert.Equal("💭 Pensando…", Ajudante(ajudantes, "ag-2").GetProperty("atividade").GetString());
+
+        // A ferramenta do subagente não troca o balão da sessão (ela segue "chamando subagente")
+        Assert.Equal("👥 Chamando subagente", Atividade(await SessaoAoVivoAsync(c.Http, s)));
+
+        // Um hook atrasado (mais velho que a última atividade do ajudante) não muda nada
+        await EnviarAsync(c.Token, EventoDeSubagente(s, "PreToolUse", 1, "ag-1", "Explore", "Read", "velho.ts"));
+        Assert.Equal("🔎 Procurando “SortMenu”", Ajudante(await AjudantesAsync(c.Http, s), "ag-1").GetProperty("atividade").GetString());
+
+        // Terminou: o ajudante sai da sala (só fica um instante como ENCERRADA, e este já terminou há ~2 min)
+        await EnviarAsync(c.Token, EventoDeSubagente(s, "SubagentStop", 3, "ag-1"));
+        Assert.Equal(1, await factory.ConsultarAsync<long>("SELECT COUNT(*) FROM cc_subagentes WHERE usuario_id = @U AND sessao_id = @S AND encerrado_em IS NOT NULL", new { U = c.Id, S = s }));
+        Assert.Equal("ag-2", Assert.Single(await AjudantesAsync(c.Http, s)).GetProperty("agenteId").GetString());
+    }
+
+    [Fact]
+    public async Task Fim_da_sessao_fecha_os_subagentes_que_ficaram_abertos()
+    {
+        var c = await ContaComTokenAsync();
+        var s = $"sessao-{Guid.NewGuid():N}";
+        await EnviarAsync(c.Token, EventoDeSubagente(s, "SubagentStart", 0, "ag-x"));
+        await EnviarAsync(c.Token, new { sessaoId = s, evento = "SessionEnd", maquina = "Notebook", projeto = "agent-desk", projetoChave = "a1b2c3d4e5f6" });
+
+        Assert.Equal(1, await factory.ConsultarAsync<long>("SELECT COUNT(*) FROM cc_subagentes WHERE usuario_id = @U AND sessao_id = @S AND encerrado_em IS NOT NULL", new { U = c.Id, S = s }));
+        Assert.Empty(await AjudantesAsync(c.Http, s)); // sessão encerrada não tem ajudantes
+    }
+
+    [Fact]
+    public async Task Subagente_sem_sinal_ha_dez_minutos_sai_da_sala_mesmo_sem_o_SubagentStop()
+    {
+        var c = await ContaComTokenAsync();
+        var s = $"sessao-{Guid.NewGuid():N}";
+        // O Base fica 20 min no passado: o ajudante nunca mais deu sinal
+        await EnviarAsync(c.Token, new
+        {
+            sessaoId = s, evento = "SubagentStart", maquina = "Notebook", projeto = "agent-desk", projetoChave = "a1b2c3d4e5f6",
+            ocorridoEm = Base, agenteId = "ag-perdido", agenteTipo = "Explore",
+        });
+        await EnviarAsync(c.Token, Evento(s, "UserPromptSubmit", 1));
+
+        Assert.Empty(await AjudantesAsync(c.Http, s));
+    }
+
+    [Fact]
+    public async Task Evento_sem_id_de_subagente_continua_funcionando_como_antes()
+    {
+        var c = await ContaComTokenAsync();
+        var s = $"sessao-{Guid.NewGuid():N}";
+        await EnviarAsync(c.Token, Evento(s, "SubagentStart", 0, resumo: "Explore"));
+
+        Assert.Equal("👥 Chamando subagente Explore", Atividade(await SessaoAoVivoAsync(c.Http, s)));
+        Assert.Empty(await AjudantesAsync(c.Http, s));
+    }
+
+    private static int Lugar(JsonElement? s) => s!.Value.GetProperty("lugar").GetInt32();
+
+    [Fact]
+    public async Task Cada_sessao_ganha_um_lugar_fixo_na_sala_e_quem_sai_libera_o_lugar_para_a_proxima()
+    {
+        var c = await ContaComTokenAsync();
+        const string chave = "dddddddddddd";
+        var (a, b, d) = ($"sessao-{Guid.NewGuid():N}", $"sessao-{Guid.NewGuid():N}", $"sessao-{Guid.NewGuid():N}");
+
+        await EnviarAsync(c.Token, Evento(a, "SessionStart", 0, chave: chave));
+        await EnviarAsync(c.Token, Evento(b, "SessionStart", 1, chave: chave));
+        var sessaoA = await SessaoAoVivoAsync(c.Http, a);
+        Assert.Equal(0, Lugar(sessaoA));
+        Assert.Equal(1, Lugar(await SessaoAoVivoAsync(c.Http, b)));
+        Assert.Equal(chave, sessaoA!.Value.GetProperty("projetoChave").GetString());
+
+        // O lugar não muda com os eventos seguintes (é ele que liga a sessão ao nome salvo na Equipe)
+        await EnviarAsync(c.Token, Evento(b, "UserPromptSubmit", 2, chave: chave));
+        await EnviarAsync(c.Token, Evento(a, "UserPromptSubmit", 3, chave: chave));
+        Assert.Equal(0, Lugar(await SessaoAoVivoAsync(c.Http, a)));
+        Assert.Equal(1, Lugar(await SessaoAoVivoAsync(c.Http, b)));
+
+        // A "a" acabou: a próxima sessão do projeto ocupa o lugar 0; a "b" continua no 1
+        await EnviarAsync(c.Token, new { sessaoId = a, evento = "SessionEnd", maquina = "Notebook", projeto = "agent-desk", projetoChave = chave });
+        await EnviarAsync(c.Token, Evento(d, "SessionStart", 4, chave: chave));
+        Assert.Equal(0, Lugar(await SessaoAoVivoAsync(c.Http, d)));
+        Assert.Equal(1, Lugar(await SessaoAoVivoAsync(c.Http, b)));
+    }
+
+    [Fact]
+    public async Task Lugar_de_outro_projeto_nao_conta_e_a_nona_sessao_fica_sem_lugar()
+    {
+        var c = await ContaComTokenAsync();
+        await EnviarAsync(c.Token, Evento("s-outro-projeto", "SessionStart", 0, chave: "eeeeeeeeeeee"));
+        var ids = Enumerable.Range(0, 9).Select(_ => $"sessao-{Guid.NewGuid():N}").ToList();
+        foreach (var (id, i) in ids.Select((id, i) => (id, i)))
+            await EnviarAsync(c.Token, Evento(id, "SessionStart", i + 1, chave: "ffffffffffff"));
+
+        Assert.Equal(0, Lugar(await SessaoAoVivoAsync(c.Http, ids[0]))); // o outro projeto não ocupou o lugar 0 deste
+        Assert.Equal(7, Lugar(await SessaoAoVivoAsync(c.Http, ids[7])));
+        Assert.False((await SessaoAoVivoAsync(c.Http, ids[8]))!.Value.TryGetProperty("lugar", out _)); // as 8 mesas estavam ocupadas
+    }
+
+    [Fact]
+    public async Task Sala_pode_ser_juntada_a_um_grupo_e_sair_dele()
+    {
+        var c = await ContaComTokenAsync();
+        await EnviarAsync(c.Token, Evento($"sessao-{Guid.NewGuid():N}", "SessionStart", 0, projeto: "loja", chave: "aaaaaaaaaaaa"));
+        await EnviarAsync(c.Token, Evento($"sessao-{Guid.NewGuid():N}", "SessionStart", 1, projeto: "loja-wt", chave: "bbbbbbbbbbbb"));
+
+        Assert.Equal(HttpStatusCode.NoContent, (await c.Http.PutAsJsonAsync($"{Rota}/grupos", new { projetoChave = "aaaaaaaaaaaa", grupo = "  Loja   completa " })).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, (await c.Http.PutAsJsonAsync($"{Rota}/grupos", new { projetoChave = "bbbbbbbbbbbb", grupo = "Loja completa" })).StatusCode);
+
+        var salas = (await (await c.Http.GetAsync($"{Rota}/ao-vivo")).JsonAsync()).GetProperty("projetos").EnumerateArray().ToList();
+        Assert.All(salas, p => Assert.Equal("Loja completa", p.GetProperty("grupo").GetString())); // espaços sobrando são arrumados
+
+        Assert.Equal(HttpStatusCode.NoContent, (await c.Http.PutAsJsonAsync($"{Rota}/grupos", new { projetoChave = "bbbbbbbbbbbb", grupo = " " })).StatusCode);
+        var depois = (await (await c.Http.GetAsync($"{Rota}/ao-vivo")).JsonAsync()).GetProperty("projetos").EnumerateArray().ToList();
+        Assert.False(depois.Single(p => p.GetProperty("chave").GetString() == "bbbbbbbbbbbb").TryGetProperty("grupo", out _)); // sem grupo, o campo nem vem
+        Assert.Equal("Loja completa", depois.Single(p => p.GetProperty("chave").GetString() == "aaaaaaaaaaaa").GetProperty("grupo").GetString());
+    }
+
+    [Fact]
+    public async Task Grupo_e_de_cada_usuario_e_valida_o_pedido()
+    {
+        var c = await ContaComTokenAsync();
+        var outro = await ContaComTokenAsync();
+        await EnviarAsync(c.Token, Evento("s-g1", "SessionStart", 0, chave: "cccccccccccc"));
+        await EnviarAsync(outro.Token, Evento("s-g2", "SessionStart", 0, chave: "cccccccccccc"));
+        await c.Http.PutAsJsonAsync($"{Rota}/grupos", new { projetoChave = "cccccccccccc", grupo = "Meu grupo" });
+
+        var doOutro = (await (await outro.Http.GetAsync($"{Rota}/ao-vivo")).JsonAsync()).GetProperty("projetos").EnumerateArray().Single();
+        Assert.False(doOutro.TryGetProperty("grupo", out _));
+
+        Assert.Equal(HttpStatusCode.BadRequest, (await c.Http.PutAsJsonAsync($"{Rota}/grupos", new { projetoChave = "curta", grupo = "x" })).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await c.Http.PutAsJsonAsync($"{Rota}/grupos", new { projetoChave = "cccccccccccc", grupo = new string('g', 41) })).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await factory.CreateClient().PutAsJsonAsync($"{Rota}/grupos", new { projetoChave = "cccccccccccc", grupo = "x" })).StatusCode);
+    }
+
+    [Fact]
+    public async Task Passar_de_100_salas_agrupadas_responde_409_mas_trocar_o_grupo_de_uma_sala_ja_agrupada_continua_valendo()
+    {
+        var c = await ContaComTokenAsync();
+        for (var i = 0; i < DefinirGrupoHandler.LimiteDeSalas; i++)
+            Assert.Equal(HttpStatusCode.NoContent, (await c.Http.PutAsJsonAsync($"{Rota}/grupos", new { projetoChave = $"{i:D12}", grupo = "G" })).StatusCode);
+
+        var excesso = await c.Http.PutAsJsonAsync($"{Rota}/grupos", new { projetoChave = "999999999999", grupo = "G" });
+        Assert.Equal(HttpStatusCode.Conflict, excesso.StatusCode);
+        Assert.Equal("Sessoes.LimiteDeGrupos", await excesso.CodigoErroAsync());
+        Assert.Equal(HttpStatusCode.NoContent, (await c.Http.PutAsJsonAsync($"{Rota}/grupos", new { projetoChave = "000000000000", grupo = "Outro" })).StatusCode);
+    }
+
     private sealed class RepositorioQueFalha : ISessoesRepository
     {
+        public Task<IReadOnlyList<Subagente>> ListarSubagentesAsync(Guid u, DateTimeOffset a, DateTimeOffset e, CancellationToken ct) => throw new NotSupportedException();
         public Task AplicarEventoAsync(Guid u, EventoHook e, Transicao t, CancellationToken ct) => throw new NotSupportedException();
         public Task RegistrarUsoAsync(Guid u, UsoModelo uso, DateOnly dia, CancellationToken ct) => throw new NotSupportedException();
         public Task<IReadOnlyList<Sessao>> ListarAoVivoAsync(Guid u, DateTimeOffset d, DateTimeOffset e, CancellationToken ct)

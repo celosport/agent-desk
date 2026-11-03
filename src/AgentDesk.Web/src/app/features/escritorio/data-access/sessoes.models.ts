@@ -27,6 +27,22 @@ export interface SessaoAoVivo {
   permissaoPendente?: PermissaoPendente;
   /** O Parar já foi pedido e o Claude Code ainda não chegou na próxima ferramenta. */
   pararSolicitado?: boolean;
+  /** Robôs ajudantes: os subagentes que esta sessão chamou. */
+  subagentes?: SubagenteAoVivo[];
+  /** Projeto (pasta) da sessão e o lugar dela na sala: o nome e a aparência da Equipe valem por (projetoChave, lugar). */
+  projetoChave?: string;
+  lugar?: number;
+}
+
+/** Um subagente: aparece como um robô ao lado da sessão que o chamou. */
+export interface SubagenteAoVivo {
+  agenteId: string;
+  /** Explore, Plan, general-purpose... */
+  tipo: string;
+  status: StatusSessao;
+  atividade?: string;
+  iniciadoEm: string;
+  ultimaAtividadeEm: string;
 }
 
 /** Uma sala: as sessões de um projeto (pasta). */
@@ -34,6 +50,8 @@ export interface ProjetoAoVivo {
   chave: string;
   nome: string;
   sessoes: SessaoAoVivo[];
+  /** Nome do grupo, quando o usuário juntou esta sala a outras. */
+  grupo?: string;
 }
 
 export interface AoVivo {

@@ -87,6 +87,17 @@ test('evento enxuto: prompt, resposta e conteúdo do tool_input nunca vão para 
   assert.ok(!('message' in aviso));
 });
 
+test('dentro de um subagente o evento leva o id e o tipo dele (para virar um robô ajudante); fora, não', () => {
+  const dentro = resumirEvento(
+    { session_id: 's1', hook_event_name: 'PreToolUse', cwd: '/x/loja', tool_name: 'Grep', tool_input: { pattern: 'x' }, agent_id: 'ag-1', agent_type: 'Explore' },
+    'N',
+  );
+  assert.equal(dentro.agenteId, 'ag-1');
+  assert.equal(dentro.agenteTipo, 'Explore');
+  const fora = resumirEvento({ session_id: 's1', hook_event_name: 'PreToolUse', cwd: '/x/loja', tool_name: 'Grep', agent_type: 'security-reviewer' }, 'N');
+  assert.ok(!('agenteId' in fora) && !('agenteTipo' in fora)); // --agent na sessão inteira não é subagente
+});
+
 test('eventos fora da lista ou sem sessão são ignorados', () => {
   assert.equal(resumirEvento({ session_id: 's', hook_event_name: 'FileChanged', cwd: '/x' }, 'N'), null);
   assert.equal(resumirEvento({ hook_event_name: 'Stop', cwd: '/x' }, 'N'), null);

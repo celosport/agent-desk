@@ -133,6 +133,11 @@ export function resumirEvento(hook, maquina, agora = new Date()) {
     if (resumo) evento.resumo = resumo;
   }
   if (hook.hook_event_name === 'SubagentStart' && hook.agent_type) evento.resumo = corte(String(hook.agent_type), 40);
+  // Dentro de um subagente o hook traz o id e o tipo dele: o AgentDesk mostra cada subagente como um robô ajudante
+  if (hook.agent_id) {
+    evento.agenteId = corte(String(hook.agent_id), 100);
+    if (hook.agent_type) evento.agenteTipo = corte(String(hook.agent_type), 80);
+  }
   if (hook.notification_type) evento.notificacao = corte(String(hook.notification_type), 40);
   if (typeof hook.model === 'string') evento.modelo = corte(hook.model, 80);
   else if (hook.model && typeof hook.model.id === 'string') evento.modelo = corte(hook.model.id, 80);

@@ -40,6 +40,9 @@ internal static class SessaoErros
 
     public static readonly Error LimiteDeTokens = Error.Conflict(
         "Sessoes.LimiteDeTokens", "Você já tem 10 tokens ativos. Revogue um que não use mais.");
+
+    public static readonly Error LimiteDeGrupos = Error.Conflict(
+        "Sessoes.LimiteDeGrupos", "Você já agrupou 100 salas. Tire algumas de um grupo antes de juntar outras.");
 }
 
 internal interface ITokensRepository

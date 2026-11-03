@@ -1,9 +1,10 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { atualizarPeriodicamente } from '../../core/tempo-real/atualizacao-periodica';
 import { formatarDolarCompacto, formatarDuracao, formatarHaQuanto, formatarHora, formatarIntervalo, formatarNumero } from '../../shared/util/formatos';
 import { CenaEscritorio } from './cena-escritorio.component';
 import { EquipeStore } from './data-access/equipe.store';
+import { Sala, codigoDoSubagente } from './data-access/salas';
 import { SessaoAoVivo } from './data-access/sessoes.models';
 import { SessoesStore } from './data-access/sessoes.store';
 import { acompanharMovimentoReduzido } from './movimento-reduzido';
@@ -31,7 +32,7 @@ const ROTULO: Record<StatusSessao, string> = {
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="topo">
-      <p class="ui-suave">Ao vivo · atualiza a cada 3 s</p>
+      <p class="ui-suave">Ao vivo · atualiza a cada 3 s@if (store.ajudantesAtivos()) { · 👥 {{ store.ajudantesAtivos() }} ajudante(s) trabalhando}</p>
       @if (store.esperandoVoce()) {
         <p class="alerta" role="status">✋ {{ store.esperandoVoce() }} sessão(ões) precisam de você</p>
       }
@@ -82,7 +83,7 @@ const ROTULO: Record<StatusSessao, string> = {
       <div class="projetos" role="group" aria-label="Projetos">
         @for (p of store.projetos(); track p.chave) {
           <button type="button" class="ui-botao" [attr.aria-pressed]="p.chave === projeto.chave" (click)="store.escolherProjeto(p.chave)">
-            {{ p.nome }} · {{ p.sessoes.length }}{{ temAlerta(p.sessoes) ? ' ✋' : '' }}
+            {{ p.grupo ? '🗂️ ' : '' }}{{ p.nome }} · {{ p.sessoes.length }}{{ temAlerta(p.sessoes) ? ' ✋' : '' }}
           </button>
         }
       </div>
@@ -91,18 +92,24 @@ const ROTULO: Record<StatusSessao, string> = {
         <section class="ui-cartao sala" [attr.aria-label]="'Sala ' + projeto.nome">
           <app-cena-escritorio [fonte]="store" [descricao]="store.descricao()" />
           @if (store.foraDaSala()) {
-            <p class="ui-suave dica">+{{ store.foraDaSala() }} sessões não cabem na sala (veja na lista).</p>
+            <p class="ui-suave dica">+{{ store.foraDaSala() }} robôs não cabem na sala (veja na lista).</p>
+          }
+          @for (h of store.homonimas(); track h.chave) {
+            <p class="homonima" role="status">
+              Há outra sala chamada “{{ h.nome }}” (outra pasta, worktree ou a nuvem).
+              <button type="button" class="ui-botao" (click)="juntarHomonima(projeto.chave, h.chave, projeto.nome)">Juntar numa sala só</button>
+            </p>
           }
         </section>
 
         <section class="ui-cartao painel" aria-labelledby="titulo-sessoes">
-          <h2 id="titulo-sessoes">Sessões em {{ projeto.nome }}</h2>
+          <h2 id="titulo-sessoes">{{ projeto.grupo ? 'Grupo' : 'Sessões em' }} {{ projeto.nome }}</h2>
           <ul class="sessoes" aria-label="Sessões">
             @for (s of projeto.sessoes; track s.sessaoId) {
               <li>
                 <button type="button" class="sessao" [attr.aria-pressed]="s.sessaoId === store.selecionado()" (click)="store.selecionar(s.sessaoId)">
                   <span class="cor" [style.background]="store.visualDe(s.sessaoId).paleta.b" aria-hidden="true"></span>
-                  <span class="nomes"><strong>{{ store.apelido(s.sessaoId) }}</strong> <span class="ui-suave">{{ s.maquina }}</span></span>
+                  <span class="nomes"><strong>{{ store.apelido(s.sessaoId) }}</strong> <span class="ui-suave">{{ s.maquina }}@if (projeto.grupo) { · {{ nomeDoProjeto(projeto, s) }}}</span></span>
                   <span [class]="'status ' + s.status.toLowerCase()">{{ rotulo[s.status] }}</span>
                   <span class="atividade">{{ s.atividade ?? '—' }}</span>
                   <span class="numeros ui-suave">
@@ -110,9 +117,53 @@ const ROTULO: Record<StatusSessao, string> = {
                     @if (s.modelo) { · {{ s.modelo }} }
                   </span>
                 </button>
+                @if (s.subagentes?.length) {
+                  <ul class="ajudantes" [attr.aria-label]="'Ajudantes de ' + store.apelido(s.sessaoId)">
+                    @for (a of s.subagentes; track a.agenteId) {
+                      <li>
+                        <span class="cor" [style.background]="store.visualDe(codigoAjudante(s.sessaoId, a.agenteId)).paleta.b" aria-hidden="true"></span>
+                        <strong>{{ a.tipo }}</strong>
+                        <span [class]="'status ' + a.status.toLowerCase()">{{ a.status === 'ENCERRADA' ? 'Terminou' : 'Trabalhando' }}</span>
+                        <span class="atividade ui-suave">{{ a.atividade ?? '—' }}</span>
+                      </li>
+                    }
+                  </ul>
+                }
               </li>
             }
           </ul>
+          <details class="agrupar">
+            <summary>Juntar salas</summary>
+            <p class="ui-suave dica">
+              Salas juntas viram uma só no Escritório: serve para worktrees, para o mesmo projeto no PC e na nuvem ou para vários serviços que
+              trabalham juntos. Cada robô mantém o nome e a aparência da equipe do projeto dele.
+            </p>
+            @if (projeto.grupo) {
+              <ul class="membros" aria-label="Projetos do grupo">
+                @for (m of projeto.projetos; track m.chave) {
+                  <li>{{ m.nome }} <button type="button" class="ui-botao" [attr.aria-label]="'Tirar ' + m.nome + ' do grupo'" (click)="store.agrupar(m.chave, null)">Tirar do grupo</button></li>
+                }
+              </ul>
+            }
+            @if (outrasSalas(projeto).length) {
+              <div class="juntar">
+                <label for="juntar-com">Juntar com</label>
+                <select id="juntar-com" class="ui-entrada" [value]="escolhida()" (change)="escolhida.set($any($event.target).value)">
+                  <option value="">Escolha uma sala…</option>
+                  @for (o of outrasSalas(projeto); track o.chave) {
+                    <option [value]="o.chave">{{ o.grupo ? '🗂️ ' : '' }}{{ o.nome }}</option>
+                  }
+                </select>
+                @if (!projeto.grupo && !escolhidaEhGrupo()) {
+                  <label for="nome-grupo">Nome do grupo</label>
+                  <input id="nome-grupo" class="ui-entrada" maxlength="40" [value]="nomeGrupo()" (input)="nomeGrupo.set($any($event.target).value)" [placeholder]="projeto.nome" />
+                }
+                <button type="button" class="ui-botao ui-botao--primario" [disabled]="!escolhida()" (click)="juntar(projeto)">Juntar</button>
+              </div>
+            } @else if (!projeto.grupo) {
+              <p class="ui-suave">Não há outra sala para juntar agora.</p>
+            }
+          </details>
           @if (store.selecionado(); as selecionada) {
             @if (store.agenteDaSessao(selecionada); as agente) {
               <div class="acoes">
@@ -164,6 +215,18 @@ const ROTULO: Record<StatusSessao, string> = {
     .permissoes code { overflow-wrap: anywhere; }
     .acoes { display: flex; flex-wrap: wrap; gap: var(--ui-e2); align-items: center; }
     .atividade, .numeros { grid-column: 2 / -1; overflow-wrap: anywhere; }
+    .ajudantes { list-style: none; margin: var(--ui-e1) 0 0 var(--ui-e5); padding: 0 0 0 var(--ui-e3); border-left: 2px solid var(--ui-linha);
+      display: grid; gap: var(--ui-e1); font-size: var(--ui-t-xs); }
+    .ajudantes li { display: flex; flex-wrap: wrap; gap: 0 var(--ui-e2); align-items: baseline; }
+    .ajudantes .cor { width: 10px; height: 10px; }
+    .ajudantes .atividade { grid-column: auto; }
+    .homonima { display: flex; flex-wrap: wrap; gap: var(--ui-e2); align-items: center; padding: var(--ui-e2) var(--ui-e3);
+      border-radius: var(--ui-raio-controle); background: var(--ui-alerta-fundo); font-size: var(--ui-t-sm); }
+    .agrupar { border-top: 1px solid var(--ui-linha); padding-top: var(--ui-e3); }
+    .agrupar summary { cursor: pointer; font-weight: 700; }
+    .juntar, .membros { display: grid; gap: var(--ui-e2); margin-top: var(--ui-e2); }
+    .membros { list-style: none; padding: 0; margin-bottom: 0; }
+    .membros li { display: flex; flex-wrap: wrap; gap: var(--ui-e2); align-items: center; justify-content: space-between; }
     .numeros { font-size: var(--ui-t-xs); }
   `,
 })
@@ -173,6 +236,34 @@ export class SalaClaudeCode {
   protected readonly sessaoDe = (sessaoId: string): SessaoAoVivo | undefined =>
     this.store.sessoes().find((s) => s.sessaoId === sessaoId);
   protected readonly rotulo = ROTULO;
+  protected readonly codigoAjudante = codigoDoSubagente;
+  protected readonly escolhida = signal('');
+  protected readonly nomeGrupo = signal('');
+  protected readonly escolhidaEhGrupo = () => this.escolhida().startsWith('g:');
+
+  /** Salas que dá para juntar à atual (num grupo, só as de um projeto só; senão, também grupos inteiros). */
+  protected outrasSalas(atual: Sala): Sala[] {
+    return this.store.projetos().filter((s) => s.chave !== atual.chave && (!atual.grupo || !s.grupo));
+  }
+
+  protected nomeDoProjeto(sala: Sala, s: SessaoAoVivo): string {
+    return sala.projetos.find((p) => p.chave === s.projetoChave)?.nome ?? '';
+  }
+
+  /** Dois projetos de mesmo nome viram um grupo com esse nome. */
+  protected async juntarHomonima(atual: string, outro: string, nome: string): Promise<void> {
+    await this.store.agrupar(atual, nome);
+    await this.store.agrupar(outro, nome);
+  }
+
+  protected async juntar(atual: Sala): Promise<void> {
+    const alvo = this.store.projetos().find((s) => s.chave === this.escolhida());
+    if (!alvo) return;
+    const nome = atual.grupo ?? alvo.grupo ?? (this.nomeGrupo().trim() || atual.nome);
+    for (const p of [...atual.projetos, ...alvo.projetos]) await this.store.agrupar(p.chave, nome);
+    this.escolhida.set('');
+    this.nomeGrupo.set('');
+  }
   protected readonly numero = formatarNumero;
   protected readonly dolar = formatarDolarCompacto;
   protected readonly haQuanto = (iso: string) => formatarHaQuanto(iso);

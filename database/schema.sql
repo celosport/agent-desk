@@ -213,6 +213,31 @@ CREATE TABLE IF NOT EXISTS cc_sessoes (
     PRIMARY KEY (usuario_id, sessao_id)
 );
 CREATE INDEX IF NOT EXISTS ix_cc_sessoes_atividade ON cc_sessoes (usuario_id, ultima_atividade_em DESC);
+-- Lugar (0 a 7) do robô na sala do projeto: fixo enquanto a sessão existir. É ele que liga a sessão ao nome e à aparência salvos
+-- na Equipe (agentes_personalizados.ordem); sem isso o nome "voltava" quando a ordem de chegada das sessões mudava.
+ALTER TABLE cc_sessoes ADD COLUMN IF NOT EXISTS lugar SMALLINT;
+
+-- Subagentes que uma sessão chamou (cada um vira um robô ajudante no Escritório; some quando termina)
+CREATE TABLE IF NOT EXISTS cc_subagentes (
+    usuario_id          UUID         NOT NULL REFERENCES usuarios(usuario_id) ON DELETE CASCADE,
+    sessao_id           VARCHAR(100) NOT NULL,
+    agente_id           VARCHAR(100) NOT NULL,   -- agent_id do hook
+    tipo                VARCHAR(80)  NOT NULL,   -- agent_type: Explore, Plan, general-purpose...
+    atividade           VARCHAR(200),
+    iniciado_em         TIMESTAMPTZ  NOT NULL,
+    ultima_atividade_em TIMESTAMPTZ  NOT NULL,
+    encerrado_em        TIMESTAMPTZ,
+    PRIMARY KEY (usuario_id, sessao_id, agente_id)
+);
+CREATE INDEX IF NOT EXISTS ix_cc_subagentes_atividade ON cc_subagentes (usuario_id, ultima_atividade_em DESC);
+
+-- Salas (projetos) que o usuário juntou num grupo, para ver o mesmo trabalho numa sala só (worktrees, nuvem + PC...)
+CREATE TABLE IF NOT EXISTS cc_grupos_salas (
+    usuario_id    UUID        NOT NULL REFERENCES usuarios(usuario_id) ON DELETE CASCADE,
+    projeto_chave CHAR(12)    NOT NULL,
+    grupo         VARCHAR(40) NOT NULL,
+    PRIMARY KEY (usuario_id, projeto_chave)
+);
 
 -- Linha do tempo de cada sessão (eventos detalhados: guardados 90 dias)
 CREATE TABLE IF NOT EXISTS cc_eventos (
