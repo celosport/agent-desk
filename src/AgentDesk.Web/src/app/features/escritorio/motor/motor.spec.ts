@@ -106,8 +106,8 @@ describe('agente', () => {
   });
 
   it('sem mudança, avancar devolve o mesmo objeto', () => {
-    const a = parado();
-    expect(avancar(a, 100, 50, false)).toBe(a);
+    const a = avancar(parado(), 100, 50, false); // o 1º quadro só agenda a próxima vontade do robô
+    expect(avancar(a, 150, 50, false)).toBe(a);
   });
 });
 

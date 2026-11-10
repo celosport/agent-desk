@@ -1,6 +1,8 @@
 // Desenho da sala no Canvas 2D, em pixels de arte (o contexto já vem escalado). Tudo é desenhado por código: nada de imagens.
 import { Agente } from './agente';
 import { CENA_A, CENA_L, LADRILHO_A, LADRILHO_L, PAREDE, Ponto, SALA, centroNaTela, paraTela, profundidade } from './iso';
+import { ACORDAR_MS, COMEMORAR_MS, Pose, desvios, poseDe } from './pose';
+import { BEBEDOURO } from './vida';
 import { Personagem, ROBO_ESCALA, SPRITE_A, SPRITE_L, montarSprite, personagemDe } from './personagens';
 
 const ROBO_L = SPRITE_L * ROBO_ESCALA;
@@ -27,7 +29,7 @@ export interface PaletaSala {
 
 export const PALETAS: Record<'claro' | 'escuro', PaletaSala> = {
   claro: {
-    fundo: '#f6f7f9',
+    fundo: '#f1f5fd',
     piso: ['#ead9bd', '#e3d0b0'],
     tapete: '#c5d0ec',
     paredeEsquerda: '#d4dcea',
@@ -45,22 +47,22 @@ export const PALETAS: Record<'claro' | 'escuro', PaletaSala> = {
     destaque: '#3b5bdb',
   },
   escuro: {
-    fundo: '#14161b',
+    fundo: '#0d1224',
     piso: ['#3b342c', '#352f28'],
-    tapete: '#2c3554',
-    paredeEsquerda: '#252b38',
-    paredeDireita: '#2d3444',
-    rodape: '#4a5368',
+    tapete: '#26335f',
+    paredeEsquerda: '#1b2240',
+    paredeDireita: '#242c52',
+    rodape: '#3b4a7a',
     mesaTopo: '#7d5a3a',
     mesaLado: ['#5c4129', '#6b4c31'],
     monitor: '#11151f',
     telaApagada: '#0b0e15',
-    telaAcesa: '#66d9e8',
+    telaAcesa: '#22d3ee',
     vaso: '#a04a31',
     folha: '#2f7d3c',
-    janela: '#1c3d5a',
+    janela: '#17476b',
     sombra: 'rgb(0 0 0 / 0.35)',
-    destaque: '#6f88e6',
+    destaque: '#7fd8ff',
   },
 };
 
@@ -86,11 +88,13 @@ export function desenharSala(
   // Objetos e agentes juntos, do fundo para a frente
   const pensando = new Set(agentes.filter((a) => a.fase === 'PENSANDO').map((a) => a.codigo));
   const itens: { z: number; desenhar: () => void }[] = [];
+  const desvio = desvios(agentes);
   for (const a of agentes) {
     const mesa = { x: a.mesa.x, y: a.mesa.y - 1 };
     itens.push({ z: profundidade(mesa), desenhar: () => mesaComMonitor(ctx, mesa, p, pensando.has(a.codigo), r) });
-    itens.push({ z: profundidade(a.posicao) + 0.5, desenhar: () => agente(ctx, a, visualDe(a.codigo), p, r, a.codigo === selecionado) });
+    itens.push({ z: profundidade(a.posicao) + 0.5, desenhar: () => agente(ctx, a, visualDe(a.codigo), p, r, a.codigo === selecionado, desvio.get(a.codigo) ?? 0) });
   }
+  itens.push({ z: profundidade(BEBEDOURO), desenhar: () => bebedouro(ctx, p, r) });
   itens.push({ z: profundidade({ x: 7, y: 7 }), desenhar: () => planta(ctx, { x: 7, y: 7 }, p) });
   itens.push({ z: profundidade({ x: 0, y: 1 }), desenhar: () => planta(ctx, { x: 0, y: 1 }, p) });
   itens.sort((a, b) => a.z - b.z).forEach((i) => i.desenhar());
@@ -232,12 +236,13 @@ function planta(ctx: CanvasRenderingContext2D, t: Ponto, p: PaletaSala): void {
   for (const [dx, dy, l, a] of [[-6, -14, 4, 7], [-2, -19, 4, 12], [2, -15, 4, 8], [-4, -11, 8, 4]]) ctx.fillRect(x + dx, y + dy, l, a);
 }
 
-function agente(ctx: CanvasRenderingContext2D, a: Agente, visual: Personagem, p: PaletaSala, r: Relogio, selecionado: boolean): void {
+function agente(ctx: CanvasRenderingContext2D, a: Agente, visual: Personagem, p: PaletaSala, r: Relogio, selecionado: boolean, desvio: number): void {
+  const pose = poseDe(a, r.agora, r.reduzido);
   const pe = centroNaTela(a.posicao);
-  const andando = a.fase === 'INDO' || a.fase === 'VOLTANDO';
-  const respira = !r.reduzido && !andando && Math.floor(r.agora / 600) % 2 === 0 ? 1 : 0;
+  const px = pe.x + desvio;
+  const trabalhando = a.fase === 'PENSANDO' || a.fase === 'INDO';
   const pisca = !r.reduzido && r.agora % 3200 < 140;
-  const quadro = andando && Math.floor(r.agora / 160) % 2 === 0 ? 'andando' : pisca ? 'piscando' : 'parado';
+  const quadro = pose.andando && Math.floor(r.agora / 140) % 2 === 0 ? 'andando' : pisca ? 'piscando' : 'parado';
 
   if (selecionado) {
     const t = { x: Math.round(a.posicao.x), y: Math.round(a.posicao.y) };
@@ -253,10 +258,113 @@ function agente(ctx: CanvasRenderingContext2D, a: Agente, visual: Personagem, p:
     ctx.stroke();
   }
 
+  // Sombra: encolhe quando o robô sobe (pulinho, passo)
+  const largura = 16 - Math.max(0, -pose.dy) * 2;
   ctx.fillStyle = p.sombra;
-  ctx.fillRect(Math.round(pe.x - 8), Math.round(pe.y - 2), 16, 3);
+  ctx.fillRect(Math.round(px - largura / 2), Math.round(pe.y - 2), largura, 3);
 
-  desenharRobo(ctx, visual, quadro, Math.round(pe.x - ROBO_L / 2), Math.round(pe.y - ROBO_A) + respira, ROBO_ESCALA);
+  // Halo neon no chão enquanto trabalha
+  if (trabalhando) {
+    ctx.save();
+    ctx.globalAlpha = r.reduzido ? 0.16 : 0.15 + 0.07 * Math.sin(r.agora / 250);
+    ctx.fillStyle = p.telaAcesa;
+    ctx.beginPath();
+    ctx.ellipse(px, pe.y, 15, 6, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  const x0 = Math.round(px - ROBO_L / 2) + pose.dx;
+  const y0 = Math.round(pe.y - ROBO_A) + pose.dy;
+  desenharRobo(ctx, visual, quadro, x0, y0, ROBO_ESCALA, pose.inclinar, pose.bracosParaCima);
+
+  // A antena brilha: forte quando trabalha, respirando quando está à toa
+  if (visual.antena !== 'NENHUMA') {
+    ctx.save();
+    ctx.globalAlpha = r.reduzido ? 0.3 : trabalhando ? 0.5 + 0.3 * Math.sin(r.agora / 160) : 0.2 + 0.12 * Math.sin(r.agora / 700);
+    ctx.fillStyle = p.telaAcesa;
+    ctx.beginPath();
+    ctx.arc(x0 + ROBO_L / 2, y0 + 2, 4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+  efeito(ctx, pose, x0, y0, p, r);
+}
+
+const CONFETE = ['#ffd43b', '#ff6b6b', '#51cf66', '#22d3ee', '#b197fc', '#ffa94d'];
+
+/** Detalhes de cada pose: onda de acordar, teclas, confete, gota de suor, copo. */
+function efeito(ctx: CanvasRenderingContext2D, pose: Pose, x0: number, y0: number, p: PaletaSala, r: Relogio): void {
+  if (r.reduzido) return;
+  const cx = x0 + ROBO_L / 2;
+  switch (pose.efeito) {
+    case 'ACORDAR': {
+      const k = pose.t / ACORDAR_MS;
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, 1 - k);
+      ctx.strokeStyle = p.telaAcesa;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(cx, y0 + 2, 4 + k * 12, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+      break;
+    }
+    case 'DIGITAR': {
+      const alterna = Math.floor(r.agora / 90) % 2;
+      ctx.fillStyle = p.telaAcesa;
+      ctx.fillRect(x0 - 3, y0 + 20 + alterna * 2, 2, 2);
+      ctx.fillRect(x0 + ROBO_L + 1, y0 + 22 - alterna * 2, 2, 2);
+      break;
+    }
+    case 'COMEMORAR': {
+      const k = pose.t / COMEMORAR_MS;
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, 1 - k);
+      for (let i = 0; i < 10; i++) {
+        ctx.fillStyle = CONFETE[i % CONFETE.length];
+        ctx.fillRect(Math.round(cx + (i - 4.5) * 7 * k), Math.round(y0 + 4 - k * 16 + k * k * 22 + (i % 3) * 2), 2, 2);
+      }
+      ctx.restore();
+      break;
+    }
+    case 'ERRO': {
+      ctx.fillStyle = '#74c0fc';
+      ctx.fillRect(x0 + ROBO_L + 1, y0 + 6 + (Math.floor(pose.t / 150) % 3) * 2, 2, 3);
+      break;
+    }
+    case 'BEBER': {
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(x0 + ROBO_L + 1, y0 + 14, 3, 4);
+      ctx.fillStyle = p.telaAcesa;
+      ctx.fillRect(x0 + ROBO_L + 2, y0 + 15, 1, 2);
+      break;
+    }
+    default:
+      break;
+  }
+}
+
+/** Bebedouro no canto direito: um passeio dos robôs termina aqui. As bolhas sobem no galão. */
+function bebedouro(ctx: CanvasRenderingContext2D, p: PaletaSala, r: Relogio): void {
+  const pe = centroNaTela(BEBEDOURO);
+  const x = Math.round(pe.x);
+  const y = Math.round(pe.y);
+  ctx.fillStyle = p.sombra;
+  ctx.fillRect(x - 7, y - 1, 14, 2);
+  ctx.fillStyle = p.monitor;
+  ctx.fillRect(x - 5, y - 12, 10, 11);
+  ctx.fillStyle = p.rodape;
+  ctx.fillRect(x - 5, y - 12, 10, 2);
+  ctx.fillStyle = p.telaAcesa;
+  ctx.fillRect(x - 1, y - 7, 2, 2);
+  ctx.fillStyle = p.janela;
+  ctx.fillRect(x - 4, y - 23, 8, 11);
+  ctx.fillStyle = '#ffffff';
+  ctx.globalAlpha = 0.45;
+  ctx.fillRect(x - 3, y - 22, 1, 8);
+  ctx.globalAlpha = 1;
+  if (!r.reduzido) ctx.fillRect(x, y - 13 - Math.round(((r.agora / 900) % 1) * 9), 1, 1);
 }
 
 /** O robô montado em camadas, com o canto de cima à esquerda em (x0, y0). Também serve para a pré-visualização do editor. */
@@ -267,15 +375,25 @@ export function desenharRobo(
   x0: number,
   y0: number,
   escala: number,
+  inclinar: -1 | 0 | 1 = 0,
+  bracosParaCima = false,
 ): void {
   montarSprite(visual, quadro).forEach((linha, j) => {
     for (let i = 0; i < linha.length; i++) {
       const cor = linha[i];
       if (cor === '.') continue;
+      // braços levantados: os de baixo (pontas, linhas 9 e 10) somem e sobem ao lado da cabeça
+      if (bracosParaCima && (i === 0 || i === linha.length - 1) && (j === 9 || j === 10)) continue;
       ctx.fillStyle = visual.paleta[cor as keyof Personagem['paleta']];
-      ctx.fillRect(x0 + i * escala, y0 + j * escala, escala, escala);
+      // cabeça e tronco se inclinam (1 px) para o lado em que o robô anda
+      ctx.fillRect(x0 + i * escala + (j < 8 ? inclinar : 0), y0 + j * escala, escala, escala);
     }
   });
+  if (bracosParaCima) {
+    ctx.fillStyle = visual.paleta.f;
+    ctx.fillRect(x0 - 1, y0 + 4 * escala, escala, 5 * escala);
+    ctx.fillRect(x0 + (SPRITE_L - 1) * escala + 1, y0 + 4 * escala, escala, 5 * escala);
+  }
 }
 
 function poligono(ctx: CanvasRenderingContext2D, cor: string, pontos: Ponto[]): void {
