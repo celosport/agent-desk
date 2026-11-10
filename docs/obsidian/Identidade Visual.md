@@ -19,7 +19,8 @@ Marca do **Agent Desk**: futurista, "central de comando" de agentes de IA. Códi
 | `--ui-marca-tinta` (escuro) | `#7fd8ff` | links e texto de marca no tema escuro |
 | `--ui-brilho` | glow ciano suave | só no tema escuro; `none` no claro |
 
-Tema escuro virou azul-noite (`#0a0d1a` fundo, `#111629` superfície, `#28315a` linhas). Regra: neon é **enfeite/realce**, nunca a única forma de passar informação; texto segue os tokens de contraste.
+Tema escuro: azul-noite (`#0a0d1a` fundo, `#111629` superfície, `#28315a` linhas), brilho ciano nos realces.
+Tema claro: "gelo" (`#eef3fc` fundo, superfície branca, `#c9d5ee` linhas, texto `#0c1230`), sombras azuladas e brilho ciano discreto. Os dois temas têm uma **aurora** (`--ui-aurora`: manchas ciano e violeta no canto do fundo, mais forte no claro). No claro o hexágono da logo é escuro (ficha neon sobre fundo claro).
 
 ## Como regenerar os PNGs
 Edite os SVGs, renderize no Chrome em 192, 512 e (maskable) 512 e recorte no tamanho exato; o `favicon.ico` é um PNG 48×48 embutido num ICO.
