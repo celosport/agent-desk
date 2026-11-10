@@ -6,15 +6,15 @@
    ============================================================================= */
 
 @mixin tema-claro {
-  --ui-fundo: #f6f7f9;
+  --ui-fundo: #eef3fc;
   --ui-superficie: #ffffff;
-  --ui-superficie-2: #eceef2;
-  --ui-linha: #d9dce3;
-  --ui-sombra: rgb(20 22 27 / 0.12);
+  --ui-superficie-2: #e3eafa;
+  --ui-linha: #c9d5ee;
+  --ui-sombra: rgb(40 60 140 / 0.14);
 
-  --ui-texto: #14161b;
-  --ui-texto-2: #4b5060;
-  --ui-texto-3: #6b7080;
+  --ui-texto: #0c1230;
+  --ui-texto-2: #424a6b;
+  --ui-texto-3: #5d6587;
 
   --ui-marca: #3b5bdb;
   --ui-marca-texto: #ffffff;
@@ -22,10 +22,11 @@
   /* Identidade: ciano → violeta (logo). Só enfeite/realce; texto usa --ui-marca-tinta */
   --ui-neon-1: #0891b2;
   --ui-neon-2: #6d4aff;
-  --ui-brilho: none;
+  --ui-brilho: 0 0 14px rgb(8 145 178 / 0.25);
+  --ui-aurora: radial-gradient(60rem 28rem at 88% -8%, rgb(34 211 238 / 0.2), transparent 62%), radial-gradient(50rem 26rem at -8% 0%, rgb(139 108 255 / 0.15), transparent 62%);
   /* Gráficos (uma série): validado contra a superfície (contraste ≥ 3:1) — [[Módulo Consumo]] */
   --ui-grafico: #3b5bdb;
-  --ui-grafico-grade: #e4e6eb;
+  --ui-grafico-grade: #dde5f6;
   --ui-alerta-fundo: rgb(245 159 0 / 0.18);
 
   --ui-verde: #18794e;
@@ -54,6 +55,7 @@
   --ui-neon-1: #22d3ee;
   --ui-neon-2: #8b6cff;
   --ui-brilho: 0 0 18px rgb(34 211 238 / 0.28);
+  --ui-aurora: radial-gradient(60rem 28rem at 88% -8%, rgb(34 211 238 / 0.09), transparent 62%), radial-gradient(50rem 26rem at -8% 0%, rgb(139 108 255 / 0.1), transparent 62%);
   --ui-grafico: #6f88e6;
   --ui-grafico-grade: #2c313b;
   --ui-alerta-fundo: rgb(245 159 0 / 0.16);
@@ -112,7 +114,7 @@ html,
 body {
   margin: 0;
   min-height: 100%;
-  background: var(--ui-fundo);
+  background: var(--ui-aurora) no-repeat fixed, var(--ui-fundo);
   color: var(--ui-texto);
   font-family: var(--ui-fonte);
   font-size: var(--ui-t-md);
