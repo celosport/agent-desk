@@ -90,3 +90,21 @@ test('"Personalizar" numa sessão do Claude Code abre a equipe do projeto na pos
   await expect(page.getByLabel('Projeto', { exact: true })).toHaveValue('a0b1c2d3e4f5');
   await expect(page.getByLabel('Posição na equipe')).toHaveValue('1');
 });
+
+test('opções novas (acessório, antena, expressão) e animação da pré-visualização', async ({ page }) => {
+  await abrirEquipe(page);
+
+  await page.getByLabel('Acessório').selectOption('HELICE');
+  await page.getByLabel('Antena').selectOption('PARABOLICA');
+  await page.getByLabel('Expressão').selectOption('APAIXONADO');
+  await expect(page.getByLabel('Acessório')).toHaveValue('HELICE');
+
+  // a pré-visualização tem as animações escolhíveis; "Comemorando" fica marcada
+  const animacoes = page.getByRole('group', { name: 'Animação da pré-visualização' });
+  await animacoes.getByRole('button', { name: 'Comemorando' }).click();
+  await expect(animacoes.getByRole('button', { name: 'Comemorando' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(animacoes.getByRole('button', { name: 'Automático' })).toHaveAttribute('aria-pressed', 'false');
+
+  await page.getByRole('button', { name: 'Salvar agente' }).click();
+  await expect(page.getByRole('status').filter({ hasText: 'foi salvo.' })).toBeVisible();
+});

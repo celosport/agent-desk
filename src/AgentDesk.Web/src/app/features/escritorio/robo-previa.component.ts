@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, afterNextRender, inject, input, signal, viewChild } from '@angular/core';
 import { Agente, novoAgente } from './motor/agente';
-import { desenharRobo } from './motor/desenho';
+import { PALETAS, adornosDoRobo, desenharRobo } from './motor/desenho';
 import { poseDe } from './motor/pose';
 import { Personagem, SPRITE_A, SPRITE_L } from './motor/personagens';
 import { acompanharMovimentoReduzido } from './movimento-reduzido';
@@ -114,6 +114,13 @@ export class RoboPrevia {
       pose.cara,
       pose.olhar,
       pose.bracosParaCima,
+      reduzido ? 0 : Math.floor(agora / 120) % 4,
     );
+    // efeitos do acessório/antena (notas, brilho, ondas…) no mesmo tamanho ampliado
+    ctx.save();
+    ctx.translate(MARGEM_LADO + pose.dx * ESCALA, MARGEM_TOPO + pose.dy * ESCALA);
+    ctx.scale(ESCALA, ESCALA);
+    adornosDoRobo(ctx, this.visual(), 0, 0, PALETAS.escuro, { agora, reduzido });
+    ctx.restore();
   }
 }

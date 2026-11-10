@@ -293,7 +293,8 @@ function agente(ctx: CanvasRenderingContext2D, a: Agente, visual: Personagem, p:
   const x0 = Math.round(px - ROBO_L / 2) + pose.dx;
   const y0 = Math.round(pe.y - ROBO_A) + pose.dy;
   if (pose.andando) poeiraDosPassos(ctx, p, { x: px, y: pe.y }, a.caminho[0], a.posicao, r);
-  desenharRobo(ctx, visual, pose.quadro, x0, y0, ROBO_ESCALA, pose.inclinar, pose.cara, pose.olhar, pose.bracosParaCima);
+  const anim = r.reduzido ? 0 : Math.floor(r.agora / 120) % 4;
+  desenharRobo(ctx, visual, pose.quadro, x0, y0, ROBO_ESCALA, pose.inclinar, pose.cara, pose.olhar, pose.bracosParaCima, anim);
 
   // A antena brilha: forte quando trabalha, respirando quando está à toa
   if (visual.antena !== 'NENHUMA') {
@@ -306,6 +307,75 @@ function agente(ctx: CanvasRenderingContext2D, a: Agente, visual: Personagem, p:
     ctx.restore();
   }
   efeito(ctx, pose, x0, y0, p, r);
+  adornosDoRobo(ctx, visual, x0, y0, p, r);
+}
+
+/** Efeitos que acompanham o acessório e a antena: notas da música, brilho da coroa, aura do halo, ondas da parabólica, faísca do raio. */
+export function adornosDoRobo(ctx: CanvasRenderingContext2D, visual: Pick<Personagem, 'acessorio' | 'antena'>, x0: number, y0: number, p: PaletaSala, r: Relogio): void {
+  if (r.reduzido) return;
+  const t = r.agora;
+  const cx = x0 + SPRITE_L / 2;
+  switch (visual.acessorio) {
+    case 'FONE':
+      for (let i = 0; i < 2; i++) {
+        const f = (t / 1400 + i / 2) % 1;
+        const x = Math.round(x0 + SPRITE_L + 1 + i * 3 + Math.sin(t / 300 + i * 3) * 2);
+        const y = Math.round(y0 + 8 - f * 16);
+        ctx.save();
+        ctx.globalAlpha = 1 - f;
+        ctx.fillStyle = p.destaque;
+        ctx.fillRect(x, y + 2, 2, 2);
+        ctx.fillRect(x + 1, y - 1, 1, 4);
+        ctx.restore();
+      }
+      break;
+    case 'COROA': {
+      const brilho = Math.max(0, Math.sin(t / 260));
+      ctx.save();
+      ctx.globalAlpha = brilho;
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(x0 + 4, y0 + 1, 3, 1);
+      ctx.fillRect(x0 + 5, y0, 1, 3);
+      ctx.restore();
+      break;
+    }
+    case 'HALO':
+      ctx.save();
+      ctx.globalAlpha = 0.2 + 0.08 * Math.sin(t / 400);
+      ctx.fillStyle = '#ffe58a';
+      ctx.beginPath();
+      ctx.ellipse(cx, y0 + 3, 10, 4, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+      break;
+    default:
+      break;
+  }
+  switch (visual.antena) {
+    case 'PARABOLICA':
+      for (let k = 0; k < 2; k++) {
+        const f = (t / 900 + k / 2) % 1;
+        ctx.save();
+        ctx.globalAlpha = 1 - f;
+        ctx.strokeStyle = p.telaAcesa;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(cx, y0 + 2, 3 + f * 9, Math.PI * 1.15, Math.PI * 1.85);
+        ctx.stroke();
+        ctx.restore();
+      }
+      break;
+    case 'RAIO':
+      if (Math.floor(t / 120) % 4 === 0) {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(cx - 5, y0 + 3, 1, 1);
+        ctx.fillRect(cx + 4, y0 + 1, 1, 1);
+        ctx.fillRect(cx + 5, y0 + 4, 1, 1);
+      }
+      break;
+    default:
+      break;
+  }
 }
 
 const CONFETE = ['#ffd43b', '#ff6b6b', '#51cf66', '#22d3ee', '#b197fc', '#ffa94d'];
@@ -396,9 +466,10 @@ export function desenharRobo(
   cara: Cara = 'FRENTE',
   olhar: -1 | 0 | 1 = 0,
   bracosParaCima = false,
+  anim = 0,
 ): void {
   const cores = coresDoSprite(visual.paleta);
-  montarSprite(visual, quadro, cara, olhar, bracosParaCima).forEach((linha, j) => {
+  montarSprite(visual, quadro, cara, olhar, bracosParaCima, anim).forEach((linha, j) => {
     for (let i = 0; i < linha.length; i++) {
       const letra = linha[i];
       if (letra === '.') continue;

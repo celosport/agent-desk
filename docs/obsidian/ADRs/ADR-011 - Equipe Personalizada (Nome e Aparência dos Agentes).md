@@ -22,3 +22,10 @@ das sessões do Claude Code por projeto) sem que isso mexa nos módulos Automaco
 ## Consequências
 - Excluir o usuário apaga a equipe (`ON DELETE CASCADE`).
 - Novo acessório/antena/expressão = mudar o `CHECK` do schema **e** `OpcoesAgente`, no mesmo commit.
+
+## Atualização 2026-11-10 — mais opções e animações
+- **Acessórios** (13): + `HELICE` (boné com hélice girando), `CAPACETE` (lanterna pisca), `ORELHAS` (de gato, tremem), `HALO` (flutua, com aura), `VISOR` (luz de varredura). Os antigos ganharam movimento: fone (conchas pulsam + notas de música), óculos (reflexo), coroa (brilho nas pontas), laço, gravata (balança ao andar).
+- **Antenas** (8): + `MOLA` (balança), `RAIO` (pisca), `PARABOLICA` (gira e emite ondas), `BROTO` (folhas ao vento).
+- **Expressões** (7): + `BRAVO`, `ESPANTADO`, `APAIXONADO` (olhos de coração).
+- Os valores novos precisam existir em **três lugares**: `OpcoesAgente` (validador, C#), os `CHECK` de `agentes_personalizados` no `schema.sql` (bancos existentes trocam o CHECK num bloco `DO $$`, uma vez só) e `ACESSORIOS/ANTENAS/EXPRESSOES` em `motor/personagens.ts` (+ rótulos em `equipe.component.ts`).
+- A animação é um índice de 0 a 3 (a cada 120 ms) passado a `montarSprite`; efeitos soltos (notas, ondas, brilho) em `adornosDoRobo` (`desenho.ts`). Com movimento reduzido, tudo fica no quadro 0.

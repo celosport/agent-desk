@@ -8,9 +8,9 @@ export type { Cara, Quadro } from './sprite';
 export type Paleta = Record<'a' | 'b' | 'c' | 'd' | 'e' | 'f' | 'g' | 'h', string>;
 
 // Mesmos valores (SNAKE_CASE_UPPER) que a API de Equipe grava e valida. [[ADR-011 - Equipe Personalizada (Nome e Aparência dos Agentes)]]
-export const ACESSORIOS = ['NENHUM', 'BONE', 'CHAPEU', 'FONE', 'OCULOS', 'GRAVATA', 'LACO', 'COROA'] as const;
-export const ANTENAS = ['RETA', 'BOLINHA', 'DUPLA', 'NENHUMA'] as const;
-export const EXPRESSOES = ['NORMAL', 'FELIZ', 'CONCENTRADO', 'SONOLENTO'] as const;
+export const ACESSORIOS = ['NENHUM', 'BONE', 'CHAPEU', 'FONE', 'OCULOS', 'GRAVATA', 'LACO', 'COROA', 'HELICE', 'CAPACETE', 'ORELHAS', 'HALO', 'VISOR'] as const;
+export const ANTENAS = ['RETA', 'BOLINHA', 'DUPLA', 'NENHUMA', 'MOLA', 'RAIO', 'PARABOLICA', 'BROTO'] as const;
+export const EXPRESSOES = ['NORMAL', 'FELIZ', 'CONCENTRADO', 'SONOLENTO', 'BRAVO', 'ESPANTADO', 'APAIXONADO'] as const;
 export type Acessorio = (typeof ACESSORIOS)[number];
 export type Antena = (typeof ANTENAS)[number];
 export type Expressao = (typeof EXPRESSOES)[number];
