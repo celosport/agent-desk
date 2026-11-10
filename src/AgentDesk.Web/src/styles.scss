@@ -19,6 +19,10 @@
   --ui-marca: #3b5bdb;
   --ui-marca-texto: #ffffff;
   --ui-marca-tinta: var(--ui-marca);
+  /* Identidade: ciano → violeta (logo). Só enfeite/realce; texto usa --ui-marca-tinta */
+  --ui-neon-1: #0891b2;
+  --ui-neon-2: #6d4aff;
+  --ui-brilho: none;
   /* Gráficos (uma série): validado contra a superfície (contraste ≥ 3:1) — [[Módulo Consumo]] */
   --ui-grafico: #3b5bdb;
   --ui-grafico-grade: #e4e6eb;
@@ -33,10 +37,10 @@
 }
 
 @mixin tema-escuro {
-  --ui-fundo: #14161b;
-  --ui-superficie: #1d2027;
-  --ui-superficie-2: #272b34;
-  --ui-linha: #333845;
+  --ui-fundo: #0a0d1a;
+  --ui-superficie: #111629;
+  --ui-superficie-2: #1a2140;
+  --ui-linha: #28315a;
   --ui-sombra: rgb(0 0 0 / 0.45);
 
   --ui-texto: #eceef2;
@@ -46,7 +50,10 @@
   --ui-marca: #3b5bdb;
   --ui-marca-texto: #ffffff;
   /* A marca usada como TINTA (texto, borda, foco) precisa clarear no fundo escuro */
-  --ui-marca-tinta: color-mix(in srgb, var(--ui-marca) 55%, #ffffff);
+  --ui-marca-tinta: #7fd8ff; /* ciano da identidade — [[Identidade Visual]] */
+  --ui-neon-1: #22d3ee;
+  --ui-neon-2: #8b6cff;
+  --ui-brilho: 0 0 18px rgb(34 211 238 / 0.28);
   --ui-grafico: #6f88e6;
   --ui-grafico-grade: #2c313b;
   --ui-alerta-fundo: rgb(245 159 0 / 0.16);
@@ -62,6 +69,7 @@
 :root {
   @include tema-claro;
 
+  --ui-degrade: linear-gradient(90deg, var(--ui-neon-1), var(--ui-neon-2));
   --ui-fonte: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 
   --ui-t-xs: 0.8125rem;

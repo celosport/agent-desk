@@ -5,17 +5,18 @@ import { rotaInicial } from '../../core/auth/auth.guards';
 import { AuthStore } from '../../core/auth/auth.store';
 import { mensagemDeErro } from '../../core/http/problema';
 import { AlternarTema } from '../../shared/ui/alternar-tema.component';
+import { Logo } from '../../shared/ui/logo.component';
 
 @Component({
   selector: 'app-login',
-  imports: [ReactiveFormsModule, RouterLink, AlternarTema],
+  imports: [ReactiveFormsModule, RouterLink, AlternarTema, Logo],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './auth.page.scss',
   template: `
     <app-alternar-tema class="tema" />
     <main class="cartao ui-cartao">
       <header>
-        <p class="marca">Agent Desk</p>
+        <p class="marca"><app-logo /></p>
         <h1>Entrar</h1>
       </header>
 

@@ -14,7 +14,7 @@ tags: [painel]
 > 3. Crie o primeiro módulo com a [[Receita - Novo Módulo (API + App)]].
 
 ## 🗺️ Mapa
-- 📐 Padrões → [[Arquitetura e Padrões]] (backend) · [[Frontend (Angular PWA)]] (app)
+- 📐 Padrões → [[Arquitetura e Padrões]] (backend) · [[Frontend (Angular PWA)]] (app) · 🎨 [[Identidade Visual]] (logo e cores)
 - 🧩 Receita → [[Receita - Novo Módulo (API + App)]]
 - 🐳 Ambiente → [[Ambiente Local (API + App)]] · [[Deploy (Railway)]]
 - 🏛️ Decisões → [[ADR-001 - Monolito Modular]] · [[ADR-002 - Handlers Próprios (CQRS sem MediatR)]] · [[ADR-003 - Frontend Junto da API (SPA Proxy)]] · [[ADR-004 - Documentação no Obsidian]]
@@ -43,6 +43,7 @@ tags: [painel]
 | 2026-10-30 | Projeto criado a partir do esqueleto |
 | 2026-10-30 | Perguntas respondidas; ADR-005 a 007; **Fase 1**: módulo Configuracoes + tabela de modelos e preços |
 | 2026-11-01 | **Alertas no celular**: módulo Notificacoes (push VAPID do app instalado), contrato `INotificador`, ADR-016 |
+| 2026-11-10 | **Identidade visual futurista**: logo (hexágono + A + nó do agente), ícones PWA, tema escuro azul-noite e degradê ciano→violeta ([[Identidade Visual]]) |
 | 2026-11-03 | **Mandar tarefa para o Claude Code do PC**: `escutar` no coletor, pastas liberadas no PC, tarefas pelo app (ADR-018) |
 | 2026-11-03 | **Ajudantes, grupos de salas e lugar fixo** no Escritório ao vivo: subagentes viram robôs, salas podem ser juntadas, nome/aparência salvos deixam de "voltar" (ADR-017) |
 | 2026-10-31 | **Fase 6c**: Parar e Aprovar/Negar sessões do Claude Code pelo app (hooks síncronos no coletor), ADR-015 |
