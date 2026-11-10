@@ -29,6 +29,36 @@ public sealed class EquipeTests(AgentDeskApiFactory factory)
         Assert.Equal(0, lista.GetArrayLength());
     }
 
+    [Theory]
+    [InlineData("acessorio", "HELICE")]
+    [InlineData("acessorio", "CAPACETE")]
+    [InlineData("acessorio", "ORELHAS")]
+    [InlineData("acessorio", "HALO")]
+    [InlineData("acessorio", "VISOR")]
+    [InlineData("antena", "MOLA")]
+    [InlineData("antena", "RAIO")]
+    [InlineData("antena", "PARABOLICA")]
+    [InlineData("antena", "BROTO")]
+    [InlineData("expressao", "BRAVO")]
+    [InlineData("expressao", "ESPANTADO")]
+    [InlineData("expressao", "APAIXONADO")]
+    public async Task Aceita_os_acessorios_antenas_e_expressoes_novos_e_grava_no_banco(string campo, string valor)
+    {
+        var usuario = await factory.ClienteNovoUsuarioAsync();
+        var corpo = new Dictionary<string, object?>
+        {
+            ["alvo"] = "PROJETO", ["chave"] = "p", ["ordem"] = 0, ["nome"] = "Beto", ["corCabeca"] = "#111111", ["corCorpo"] = "#222222",
+            ["corDetalhe"] = "#333333", ["corOlhos"] = "#444444", ["acessorio"] = "NENHUM", ["antena"] = "RETA", ["expressao"] = "NORMAL",
+        };
+        corpo[campo] = valor;
+
+        var salvo = await usuario.PutAsJsonAsync(Rota, corpo);
+
+        Assert.Equal(HttpStatusCode.OK, salvo.StatusCode);   // passa pelo validador E pelo CHECK do banco
+        var lista = await (await usuario.GetAsync(Rota)).JsonAsync();
+        Assert.Equal(valor, lista[0].GetProperty(campo).GetString());
+    }
+
     [Fact]
     public async Task Salva_lista_e_atualiza_o_mesmo_agente()
     {

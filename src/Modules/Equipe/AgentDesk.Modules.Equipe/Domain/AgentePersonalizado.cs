@@ -30,9 +30,9 @@ internal static class OpcoesAgente
     public const int OrdemMaxima = 7;
 
     public static readonly IReadOnlySet<string> Alvos = new HashSet<string> { Automacao, Projeto };
-    public static readonly IReadOnlySet<string> Acessorios = new HashSet<string> { "NENHUM", "BONE", "CHAPEU", "FONE", "OCULOS", "GRAVATA", "LACO", "COROA" };
-    public static readonly IReadOnlySet<string> Antenas = new HashSet<string> { "RETA", "BOLINHA", "DUPLA", "NENHUMA" };
-    public static readonly IReadOnlySet<string> Expressoes = new HashSet<string> { "NORMAL", "FELIZ", "CONCENTRADO", "SONOLENTO" };
+    public static readonly IReadOnlySet<string> Acessorios = new HashSet<string> { "NENHUM", "BONE", "CHAPEU", "FONE", "OCULOS", "GRAVATA", "LACO", "COROA", "HELICE", "CAPACETE", "ORELHAS", "HALO", "VISOR" };
+    public static readonly IReadOnlySet<string> Antenas = new HashSet<string> { "RETA", "BOLINHA", "DUPLA", "NENHUMA", "MOLA", "RAIO", "PARABOLICA", "BROTO" };
+    public static readonly IReadOnlySet<string> Expressoes = new HashSet<string> { "NORMAL", "FELIZ", "CONCENTRADO", "SONOLENTO", "BRAVO", "ESPANTADO", "APAIXONADO" };
 }
 
 internal static class AgenteErros

@@ -359,12 +359,29 @@ CREATE TABLE IF NOT EXISTS agentes_personalizados (
     cor_detalhe    CHAR(7)       NOT NULL CHECK (cor_detalhe ~ '^#[0-9a-f]{6}$'),
     cor_olhos      CHAR(7)       NOT NULL CHECK (cor_olhos ~ '^#[0-9a-f]{6}$'),
     acessorio      VARCHAR(20)   NOT NULL DEFAULT 'NENHUM'
-                   CHECK (acessorio IN ('NENHUM', 'BONE', 'CHAPEU', 'FONE', 'OCULOS', 'GRAVATA', 'LACO', 'COROA')),
-    antena         VARCHAR(20)   NOT NULL DEFAULT 'RETA' CHECK (antena IN ('RETA', 'BOLINHA', 'DUPLA', 'NENHUMA')),
-    expressao      VARCHAR(20)   NOT NULL DEFAULT 'NORMAL' CHECK (expressao IN ('NORMAL', 'FELIZ', 'CONCENTRADO', 'SONOLENTO')),
+                   CHECK (acessorio IN ('NENHUM', 'BONE', 'CHAPEU', 'FONE', 'OCULOS', 'GRAVATA', 'LACO', 'COROA', 'HELICE', 'CAPACETE', 'ORELHAS', 'HALO', 'VISOR')),
+    antena         VARCHAR(20)   NOT NULL DEFAULT 'RETA' CHECK (antena IN ('RETA', 'BOLINHA', 'DUPLA', 'NENHUMA', 'MOLA', 'RAIO', 'PARABOLICA', 'BROTO')),
+    expressao      VARCHAR(20)   NOT NULL DEFAULT 'NORMAL' CHECK (expressao IN ('NORMAL', 'FELIZ', 'CONCENTRADO', 'SONOLENTO', 'BRAVO', 'ESPANTADO', 'APAIXONADO')),
     atualizado_em  TIMESTAMPTZ   NOT NULL,
     UNIQUE (usuario_id, alvo, chave, ordem)
 );
+
+-- Mais acessórios, antenas e expressões (2026-11-10): bancos que já existiam trocam os CHECKs antigos pelos novos (uma vez só).
+DO $
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = 'agentes_personalizados'::regclass AND contype = 'c' AND pg_get_constraintdef(oid) LIKE '%HELICE%') THEN
+        ALTER TABLE agentes_personalizados DROP CONSTRAINT IF EXISTS agentes_personalizados_acessorio_check;
+        ALTER TABLE agentes_personalizados ADD CONSTRAINT agentes_personalizados_acessorio_check CHECK (acessorio IN ('NENHUM', 'BONE', 'CHAPEU', 'FONE', 'OCULOS', 'GRAVATA', 'LACO', 'COROA', 'HELICE', 'CAPACETE', 'ORELHAS', 'HALO', 'VISOR'));
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = 'agentes_personalizados'::regclass AND contype = 'c' AND pg_get_constraintdef(oid) LIKE '%PARABOLICA%') THEN
+        ALTER TABLE agentes_personalizados DROP CONSTRAINT IF EXISTS agentes_personalizados_antena_check;
+        ALTER TABLE agentes_personalizados ADD CONSTRAINT agentes_personalizados_antena_check CHECK (antena IN ('RETA', 'BOLINHA', 'DUPLA', 'NENHUMA', 'MOLA', 'RAIO', 'PARABOLICA', 'BROTO'));
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = 'agentes_personalizados'::regclass AND contype = 'c' AND pg_get_constraintdef(oid) LIKE '%APAIXONADO%') THEN
+        ALTER TABLE agentes_personalizados DROP CONSTRAINT IF EXISTS agentes_personalizados_expressao_check;
+        ALTER TABLE agentes_personalizados ADD CONSTRAINT agentes_personalizados_expressao_check CHECK (expressao IN ('NORMAL', 'FELIZ', 'CONCENTRADO', 'SONOLENTO', 'BRAVO', 'ESPANTADO', 'APAIXONADO'));
+    END IF;
+END $;
 
 -- 10. Notificacoes: alertas push no celular (módulo Notificacoes) — [[ADR-016 - Alertas no Celular (Push do App)]]
 --     Um aparelho = uma inscrição de push do navegador (endpoint único). As chaves VAPID identificam este servidor perante os

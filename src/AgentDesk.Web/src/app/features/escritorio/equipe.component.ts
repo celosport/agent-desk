@@ -22,9 +22,15 @@ import { RoboPrevia } from './robo-previa.component';
 
 const ROTULO_ACESSORIO: Record<(typeof ACESSORIOS)[number], string> = {
   NENHUM: 'Nenhum', BONE: 'Boné', CHAPEU: 'Chapéu', FONE: 'Fone', OCULOS: 'Óculos', GRAVATA: 'Gravata', LACO: 'Laço', COROA: 'Coroa',
+  HELICE: 'Boné de hélice (gira)', CAPACETE: 'Capacete (lanterna pisca)', ORELHAS: 'Orelhas de gato', HALO: 'Auréola (flutua)', VISOR: 'Visor futurista',
 };
-const ROTULO_ANTENA: Record<(typeof ANTENAS)[number], string> = { RETA: 'Reta', BOLINHA: 'Bolinha', DUPLA: 'Dupla', NENHUMA: 'Sem antena' };
-const ROTULO_EXPRESSAO: Record<(typeof EXPRESSOES)[number], string> = { NORMAL: 'Normal', FELIZ: 'Feliz', CONCENTRADO: 'Concentrado', SONOLENTO: 'Sonolento' };
+const ROTULO_ANTENA: Record<(typeof ANTENAS)[number], string> = {
+  RETA: 'Reta', BOLINHA: 'Bolinha', DUPLA: 'Dupla', NENHUMA: 'Sem antena',
+  MOLA: 'Mola (balança)', RAIO: 'Raio (pisca)', PARABOLICA: 'Parabólica (sinal)', BROTO: 'Broto (vento)',
+};
+const ROTULO_EXPRESSAO: Record<(typeof EXPRESSOES)[number], string> = {
+  NORMAL: 'Normal', FELIZ: 'Feliz', CONCENTRADO: 'Concentrado', SONOLENTO: 'Sonolento', BRAVO: 'Bravo', ESPANTADO: 'Espantado', APAIXONADO: 'Apaixonado',
+};
 
 /**
  * Tela "Equipe" do Escritório: dá nome e aparência (cores, acessório, antena, expressão) aos agentes das automações e monta a equipe
