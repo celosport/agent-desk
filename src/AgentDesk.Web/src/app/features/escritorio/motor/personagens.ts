@@ -1,39 +1,9 @@
 // Personagens ORIGINAIS do Escritório: pequenos robôs-agentes desenhados em pixel art por código (sem imagens externas).
 // Cada automação vira um robô; o `codigo` da automação escolhe o visual. Automação nova sem visual próprio usa o padrão.
 import { Ponto } from './iso';
-
-/**
- * Sprite 10 × 14 em texto: cada letra é uma cor da paleta do personagem; "." é transparente.
- * a antena · b cabeça · c tela do rosto · d olhos · e pescoço · f corpo · g crachá · h pés
- */
-const ROBO_PARADO = [
-  '....a.....',
-  '....a.....',
-  '..bbbbbb..',
-  '.bccccccb.',
-  '.bcdccdcb.',
-  '.bccccccb.',
-  '..bbbbbb..',
-  '....ee....',
-  '.ffffffff.',
-  'f.ffgfff.f',
-  'f.ffffff.f',
-  '..ffffff..',
-  '..ff..ff..',
-  '..hh..hh..',
-];
-
-/** Quadro alternado da caminhada (pernas trocam). */
-const ROBO_ANDANDO = [...ROBO_PARADO.slice(0, 12), '..ff...f..', '..hh...hh.'];
-
-/** Olhos "fechados" para piscar. */
-const ROBO_PISCANDO = ROBO_PARADO.map((linha, i) => (i === 4 ? '.bccccccb.' : linha));
-
-export const SPRITES = { parado: ROBO_PARADO, andando: ROBO_ANDANDO, piscando: ROBO_PISCANDO } as const;
-export const SPRITE_L = 10;
-export const SPRITE_A = 14;
-/** Cada pixel do sprite vira 2 × 2 pixels de arte: o robô fica com 20 × 28, proporcional ao ladrilho de 32 × 16. */
-export const ROBO_ESCALA = 2;
+/** Sprite HD gerado por código (contorno, luz, sombra, vistas e quadros): [[sprite.ts]]. Reexportado aqui para quem já importa de personagens. */
+export { QUADROS, ROBO_ESCALA, SPRITE_A, SPRITE_L, coresDoSprite, montarSprite } from './sprite';
+export type { Cara, Quadro } from './sprite';
 
 export type Paleta = Record<'a' | 'b' | 'c' | 'd' | 'e' | 'f' | 'g' | 'h', string>;
 
@@ -116,58 +86,6 @@ export const PALETAS_PRONTAS: readonly { nome: string; cabeca: string; corpo: st
 /** Paleta do robô a partir das 4 cores que o usuário escolhe (o resto — tela, pescoço, pés — é fixo). */
 export function paletaDeCores(cabeca: string, corpo: string, detalhe: string, olhos: string): Paleta {
   return { ...base, a: detalhe, b: cabeca, d: olhos, f: corpo, g: detalhe };
-}
-
-// ---- camadas: corpo (fixo) + antena + expressão + acessório, tudo em texto, montado por código ----
-
-type Quadro = keyof typeof SPRITES;
-
-/** Antena: linhas 0 e 1. */
-const ANTENA_LINHAS: Record<Antena, [string, string]> = {
-  RETA: ['....a.....', '....a.....'],
-  BOLINHA: ['....aa....', '....a.....'],
-  DUPLA: ['.a......a.', '..a....a..'],
-  NENHUMA: ['..........', '..........'],
-};
-
-/** Tela do rosto: linhas 3 a 5. */
-const EXPRESSAO_LINHAS: Record<Expressao, [string, string, string]> = {
-  NORMAL: ['.bccccccb.', '.bcdccdcb.', '.bccccccb.'],
-  FELIZ: ['.bccccccb.', '.bcdccdcb.', '.bccddccb.'],
-  CONCENTRADO: ['.bccccccb.', '.bddccddb.', '.bccccccb.'],
-  SONOLENTO: ['.bccccccb.', '.bccccccb.', '.bcdccdcb.'],
-};
-
-/** Acessórios: linha → texto sobreposto (só as letras ≠ "." substituem). Usam a cor de detalhe ("a"). */
-const ACESSORIO_LINHAS: Record<Acessorio, Record<number, string>> = {
-  NENHUM: {},
-  BONE: { 2: '..aaaaaa..', 3: '.aa.......' },
-  CHAPEU: { 1: '...aaaa...', 2: '.aaaaaaaa.' },
-  FONE: { 2: '.a......a.', 3: 'a........a', 4: 'a........a', 5: 'a........a' },
-  OCULOS: { 3: '..aaaaaa..', 5: '..aaaaaa..' },
-  GRAVATA: { 8: '....aa....', 9: '....aa....' },
-  LACO: { 1: '.aa.......', 2: '.aaa......' },
-  COROA: { 1: '..a.aa.a..', 2: '..aaaaaa..' },
-};
-
-const cache = new Map<string, readonly string[]>();
-
-/** Monta o sprite do quadro com a antena, a expressão e o acessório do personagem (resultado em cache). */
-export function montarSprite(p: Pick<Personagem, 'antena' | 'expressao' | 'acessorio'>, quadro: Quadro): readonly string[] {
-  const chave = `${quadro}|${p.antena}|${p.expressao}|${p.acessorio}`;
-  const pronto = cache.get(chave);
-  if (pronto) return pronto;
-
-  const linhas = [...SPRITES[quadro]];
-  linhas.splice(0, 2, ...ANTENA_LINHAS[p.antena]);
-  // Piscar fecha os olhos de qualquer expressão (olho "d" vira tela "c")
-  EXPRESSAO_LINHAS[p.expressao].forEach((l, i) => (linhas[3 + i] = quadro === 'piscando' ? l.replaceAll('d', 'c') : l));
-  for (const [linha, texto] of Object.entries(ACESSORIO_LINHAS[p.acessorio])) {
-    const n = Number(linha);
-    linhas[n] = [...linhas[n]].map((c, i) => (texto[i] !== '.' ? texto[i] : c)).join('');
-  }
-  cache.set(chave, linhas);
-  return linhas;
 }
 
 /**

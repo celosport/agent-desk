@@ -10,7 +10,7 @@ import {
   ocupado,
 } from './agente';
 import { andar, escalaPara, paraTela, profundidade, rota } from './iso';
-import { PERSONAGENS, SPRITES, SPRITE_A, SPRITE_L, lugarDe, personagemDe } from './personagens';
+import { PERSONAGENS, QUADROS, SPRITE_A, SPRITE_L, lugarDe, montarSprite, personagemDe } from './personagens';
 
 describe('iso', () => {
   it('projeção isométrica: x anda para baixo-direita, y para baixo-esquerda', () => {
@@ -113,11 +113,13 @@ describe('agente', () => {
 
 describe('personagens', () => {
   it('sprites têm o tamanho declarado e só usam cores da paleta', () => {
-    for (const sprite of Object.values(SPRITES)) {
+    const letras = [...Object.keys(PERSONAGENS['analisar-codigo'].paleta), 'B', 'v', 'F', 'w', 'o'];
+    for (const quadro of QUADROS) {
+      const sprite = montarSprite(personagemDe('analisar-codigo'), quadro);
       expect(sprite).toHaveLength(SPRITE_A);
       for (const linha of sprite) {
         expect(linha).toHaveLength(SPRITE_L);
-        for (const c of linha) if (c !== '.') expect(Object.keys(PERSONAGENS['analisar-codigo'].paleta)).toContain(c);
+        for (const c of linha) if (c !== '.') expect(letras).toContain(c);
       }
     }
   });
