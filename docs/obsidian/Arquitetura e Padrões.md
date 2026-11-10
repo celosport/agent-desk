@@ -110,6 +110,7 @@ Ver [[Frontend (Angular PWA)]]: Angular standalone + signals, `core/shared/featu
 | Aviso das 9h sumia | `DateTimeOffset` em `-03:00` não grava no Npgsql; o `catch` engolia o erro | Sempre UTC; teste para todo `catch` que engole |
 | Teste que só falhava de manhã | Dependia do horário real | `TimeProvider` e testes determinísticos |
 | Código antigo quebrava o build | Arquivos apagados localmente não foram no commit | Conferir `git status` e rodar o build limpo antes do push |
+| `DO $$` virou `DO $` no schema.sql | Script que gerou o SQL usou `String.replace` do JS: `$$` na troca vira um `$` só; o bloco ficou inválido e salvar na Equipe deu 500 | Nunca gerar SQL com `$$` via replace de string; conferir o diff do schema.sql e rodar o schema num Postgres antes do push |
 | Senha de banco no Git | `appsettings.Development.json` com connection string real | Segredo só em `user-secrets`/variável; **girar a senha** se vazar |
 | Tela antiga em produção (PWA) | O service worker guardava a versão velha | Aviso "Nova versão — Atualizar" no front |
 | Teste de lógica de plano falhava | Teste usava usuário "Free" para recurso que virou Pro | Ao mudar uma regra, procure os testes que a assumem |
