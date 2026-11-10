@@ -367,7 +367,7 @@ CREATE TABLE IF NOT EXISTS agentes_personalizados (
 );
 
 -- Mais acessórios, antenas e expressões (2026-11-10): bancos que já existiam trocam os CHECKs antigos pelos novos (uma vez só).
-DO $
+DO $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = 'agentes_personalizados'::regclass AND contype = 'c' AND pg_get_constraintdef(oid) LIKE '%HELICE%') THEN
         ALTER TABLE agentes_personalizados DROP CONSTRAINT IF EXISTS agentes_personalizados_acessorio_check;
@@ -381,7 +381,7 @@ BEGIN
         ALTER TABLE agentes_personalizados DROP CONSTRAINT IF EXISTS agentes_personalizados_expressao_check;
         ALTER TABLE agentes_personalizados ADD CONSTRAINT agentes_personalizados_expressao_check CHECK (expressao IN ('NORMAL', 'FELIZ', 'CONCENTRADO', 'SONOLENTO', 'BRAVO', 'ESPANTADO', 'APAIXONADO'));
     END IF;
-END $;
+END $$;
 
 -- 10. Notificacoes: alertas push no celular (módulo Notificacoes) — [[ADR-016 - Alertas no Celular (Push do App)]]
 --     Um aparelho = uma inscrição de push do navegador (endpoint único). As chaves VAPID identificam este servidor perante os
