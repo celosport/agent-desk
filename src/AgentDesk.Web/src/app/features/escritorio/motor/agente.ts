@@ -1,5 +1,6 @@
 // Máquina de estados de um agente do Escritório (funções puras, testadas no Vitest). O tempo vem de fora (ms), nunca de Date.now().
 import { Ponto, andar, rota } from './iso';
+import { VELOCIDADE_PASSEIO, VIDA_INICIAL, Vida, escolherPasseio, esperaOciosa, fatorDeVelocidade, restante } from './vida';
 
 /**
  * OCIOSO (no seu canto) → INDO (andando até a mesa) → PENSANDO (balão "pensando…") → RESULTADO (balão com tokens e custo)
@@ -25,6 +26,8 @@ export interface Agente {
   balao: Balao | null;
   /** Resultado que chegou antes de o agente sentar: aparece quando ele chega. */
   pendente: Balao | null;
+  /** O que o robô faz quando está sem tarefa (passeio, janela, bebedouro…) — [[Frontend (Angular PWA)]]. */
+  vida: Vida;
 }
 
 export const VELOCIDADE = 3; // ladrilhos por segundo
@@ -35,7 +38,7 @@ export const BALAO_PENSANDO: Balao = { tipo: 'pensando', texto: 'pensando…' };
 export const LIBERAR_MS = 4000;
 
 export function novoAgente(codigo: string, canto: Ponto, mesa: Ponto): Agente {
-  return { codigo, canto, mesa, posicao: { ...canto }, caminho: [], fase: 'OCIOSO', desde: 0, balao: null, pendente: null };
+  return { codigo, canto, mesa, posicao: { ...canto }, caminho: [], fase: 'OCIOSO', desde: 0, balao: null, pendente: null, vida: VIDA_INICIAL };
 }
 
 export function ocupado(a: Agente): boolean {
@@ -45,9 +48,9 @@ export function ocupado(a: Agente): boolean {
 /** Começou uma execução: vai para a mesa (ou aparece nela, com movimento reduzido). */
 export function iniciarTarefa(a: Agente, agora: number, reduzido: boolean): Agente {
   if (reduzido || igual(a.posicao, a.mesa)) {
-    return { ...a, posicao: { ...a.mesa }, caminho: [], fase: 'PENSANDO', desde: agora, balao: BALAO_PENSANDO, pendente: null };
+    return { ...a, posicao: { ...a.mesa }, caminho: [], fase: 'PENSANDO', desde: agora, balao: BALAO_PENSANDO, pendente: null, vida: semVida(a) };
   }
-  return { ...a, caminho: rota(a.posicao, a.mesa), fase: 'INDO', desde: agora, balao: null, pendente: null };
+  return { ...a, caminho: rota(a.posicao, a.mesa), fase: 'INDO', desde: agora, balao: null, pendente: null, vida: semVida(a) };
 }
 
 /** A execução terminou (sucesso ou erro). Se ainda está andando, guarda para mostrar ao sentar. */
@@ -66,7 +69,8 @@ export function avancar(a: Agente, agora: number, dtMs: number, reduzido: boolea
     case 'INDO':
     case 'VOLTANDO': {
       if (reduzido) return chegar(a, agora);
-      const passo = andar(a.posicao, a.caminho, (VELOCIDADE * dtMs) / 1000);
+      const fator = fatorDeVelocidade(agora - a.desde, restante(a.posicao, a.caminho));
+      const passo = andar(a.posicao, a.caminho, (VELOCIDADE * fator * dtMs) / 1000);
       const andou = { ...a, posicao: passo.posicao, caminho: passo.caminho };
       return passo.caminho.length ? andou : chegar(andou, agora);
     }
@@ -77,16 +81,51 @@ export function avancar(a: Agente, agora: number, dtMs: number, reduzido: boolea
       return a;
     case 'RESULTADO':
       if (agora - a.desde < RESULTADO_MS) return a;
-      if (reduzido) return { ...a, posicao: { ...a.canto }, caminho: [], fase: 'OCIOSO', desde: agora, balao: null };
+      if (reduzido) return { ...a, posicao: { ...a.canto }, caminho: [], fase: 'OCIOSO', desde: agora, balao: null, vida: semVida(a) };
       return { ...a, caminho: rota(a.posicao, a.canto), fase: 'VOLTANDO', desde: agora, balao: null };
     default:
-      return a;
+      return viver(a, agora, dtMs, reduzido);
   }
+}
+
+/** Sem tarefa: de vez em quando o robô tem uma vontade (janela, bebedouro, espreguiçar) e depois volta para o canto. */
+function viver(a: Agente, agora: number, dtMs: number, reduzido: boolean): Agente {
+  if (a.fase !== 'OCIOSO' || reduzido) return a;
+  const v = a.vida;
+  switch (v.acao) {
+    case 'NENHUMA': {
+      if (v.ate === 0) return { ...a, vida: { ...v, ate: agora + esperaOciosa(a.codigo, v.contador) } };
+      if (agora < v.ate) return a;
+      const p = escolherPasseio(a.codigo, v.contador);
+      const caminho = p.destino ? rota(a.posicao, p.destino) : [];
+      const vida = { ...v, motivo: p.motivo, desde: agora, parado: p.parado, contador: v.contador + 1 };
+      return caminho.length
+        ? { ...a, caminho, vida: { ...vida, acao: 'INDO' } }
+        : { ...a, vida: { ...vida, acao: 'PARADO', ate: agora + p.parado } };
+    }
+    case 'INDO':
+    case 'VOLTANDO': {
+      const passo = andar(a.posicao, a.caminho, (VELOCIDADE_PASSEIO * fatorDeVelocidade(agora - v.desde, restante(a.posicao, a.caminho)) * dtMs) / 1000);
+      if (passo.caminho.length) return { ...a, posicao: passo.posicao, caminho: passo.caminho };
+      if (v.acao === 'INDO') return { ...a, posicao: passo.posicao, caminho: [], vida: { ...v, acao: 'PARADO', desde: agora, ate: agora + v.parado } };
+      return { ...a, posicao: { ...a.canto }, caminho: [], vida: { ...VIDA_INICIAL, contador: v.contador, ate: agora + esperaOciosa(a.codigo, v.contador) } };
+    }
+    case 'PARADO': {
+      if (agora < v.ate) return a;
+      const caminho = rota(a.posicao, a.canto);
+      if (!caminho.length) return { ...a, vida: { ...VIDA_INICIAL, contador: v.contador, ate: agora + esperaOciosa(a.codigo, v.contador) } };
+      return { ...a, caminho, vida: { ...v, acao: 'VOLTANDO', desde: agora } };
+    }
+  }
+}
+
+function semVida(a: Agente): Vida {
+  return { ...VIDA_INICIAL, contador: a.vida.contador };
 }
 
 /** Termina o trabalho por fora (sessão do Claude Code ficou ociosa): mostra o balão um pouco e volta para o canto. */
 export function liberar(a: Agente, balao: Balao, agora: number): Agente {
-  return { ...a, fase: 'RESULTADO', desde: agora - (RESULTADO_MS - LIBERAR_MS), balao, pendente: null };
+  return { ...a, fase: 'RESULTADO', desde: agora - (RESULTADO_MS - LIBERAR_MS), balao, pendente: null, vida: semVida(a) };
 }
 
 function chegar(a: Agente, agora: number): Agente {
@@ -94,7 +133,7 @@ function chegar(a: Agente, agora: number): Agente {
     // Quem já tem um balão (atividade de uma sessão) mantém; as automações chegam e mostram "pensando…"
     return { ...a, posicao: { ...a.mesa }, caminho: [], fase: 'PENSANDO', desde: agora, balao: a.balao ?? BALAO_PENSANDO };
   }
-  return { ...a, posicao: { ...a.canto }, caminho: [], fase: 'OCIOSO', desde: agora, balao: null };
+  return { ...a, posicao: { ...a.canto }, caminho: [], fase: 'OCIOSO', desde: agora, balao: null, vida: semVida(a) };
 }
 
 function igual(p: Ponto, q: Ponto): boolean {

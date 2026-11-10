@@ -39,3 +39,10 @@ respeitando `prefers-reduced-motion`, testável e sem atrapalhar o resto do app.
 - ⚠️ Execuções disparadas em outra tela (Automações) não animam o Escritório — ele mostra só o que é pedido nele.
 
 Relacionados: [[00 - Dashboard]] · [[Escritório Animado]] · [[Módulo Automacoes]] · [[Frontend (Angular PWA)]]
+
+## Atualização 2026-11-10 — robôs com vida
+O motor continua puro (tempo vem de fora, sorteio determinístico por código do robô + contador, nunca `Math.random`):
+- `motor/vida.ts`: tempo livre do robô ocioso — espera 6–14 s e então vai à **janela**, ao **bebedouro**, **espreguiça** no tapete ou **olha ao redor**, e volta ao canto. Aceleração/freada (`fatorDeVelocidade`). Estado em `Agente.vida`; uma tarefa nova interrompe o passeio. Com movimento reduzido ele não passeia.
+- `motor/pose.ts`: `poseDe` (balanço do passo, inclinação, pulinho de "acordar", digitar, comemorar com braços para cima e confete, balançar a cabeça no erro) e `desvios` (dois robôs andando um sobre o outro se desviam para lados opostos). O desenho (`desenho.ts`) só obedece à pose: halo neon no chão, antena que brilha, bebedouro com bolhas.
+- `versao` da cena continua mudando só com fase/balão: passear não gera re-render do HTML.
+- Testes: `motor/vida.spec.ts`. E2E do Escritório não foi rodado nesta alteração (Playwright sem navegador instalado na máquina).
