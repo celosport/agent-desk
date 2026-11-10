@@ -1,6 +1,7 @@
 // Pose do robô em cada quadro (funções puras, testadas no Vitest): balanço da caminhada, pulinho de quem acorda, digitação,
 // comemoração, "não deu" e as vontades do tempo livre. O desenho só obedece; assim dá para testar sem Canvas.
 import { Agente } from './agente';
+import type { Cara, Quadro } from './sprite';
 
 export type Efeito = 'NENHUM' | 'ACORDAR' | 'DIGITAR' | 'COMEMORAR' | 'ERRO' | 'BEBER' | 'JANELA' | 'ESPREGUICAR';
 
@@ -15,9 +16,13 @@ export interface Pose {
   /** Há quanto tempo o efeito começou (ms). */
   t: number;
   bracosParaCima: boolean;
+  /** Quadro do sprite (parado, piscando, 4 passos, 2 de digitação), a vista (frente/costas) e para onde os olhos espiam. */
+  quadro: Quadro;
+  cara: Cara;
+  olhar: -1 | 0 | 1;
 }
 
-export const POSE_PARADA: Pose = { dx: 0, dy: 0, inclinar: 0, andando: false, efeito: 'NENHUM', t: 0, bracosParaCima: false };
+export const POSE_PARADA: Pose = { dx: 0, dy: 0, inclinar: 0, andando: false, efeito: 'NENHUM', t: 0, bracosParaCima: false, quadro: 'parado', cara: 'FRENTE', olhar: 0 };
 
 export const ACORDAR_MS = 450;
 export const COMEMORAR_MS = 1500;
@@ -29,11 +34,13 @@ export function andandoAgora(a: Agente): boolean {
 }
 
 export function poseDe(a: Agente, agora: number, reduzido: boolean): Pose {
-  if (reduzido) return POSE_PARADA;
+  if (reduzido) return a.fase === 'PENSANDO' ? { ...POSE_PARADA, cara: 'COSTAS' } : POSE_PARADA;
+  const pisca = agora % 3200 < 140;
 
   if (andandoAgora(a)) {
     const alvo = a.caminho[0];
     const lado = alvo ? alvo.x - a.posicao.x - (alvo.y - a.posicao.y) : 0; // sinal na tela (isométrico)
+    const subindo = alvo ? alvo.x - a.posicao.x + (alvo.y - a.posicao.y) < -0.01 : false; // indo para o fundo da sala: de costas
     const inclinar = lado > 0.01 ? 1 : lado < -0.01 ? -1 : 0;
     let dy = -Math.round(Math.abs(Math.sin(agora / 105)) * 2);
     let efeito: Efeito = 'NENHUM';
@@ -44,11 +51,17 @@ export function poseDe(a: Agente, agora: number, reduzido: boolean): Pose {
       efeito = 'ACORDAR';
       dy -= Math.round(Math.sin((t / ACORDAR_MS) * Math.PI) * 4);
     }
-    return { dx: 0, dy, inclinar, andando: true, efeito, t, bracosParaCima: false };
+    return {
+      dx: 0, dy, inclinar, andando: true, efeito, t, bracosParaCima: false,
+      quadro: `passo${Math.floor(agora / 120) % 4}` as Quadro,
+      cara: subindo ? 'COSTAS' : 'FRENTE',
+      olhar: inclinar,
+    };
   }
 
   if (a.fase === 'PENSANDO') {
-    return { ...POSE_PARADA, dy: Math.floor(agora / 150) % 2 === 0 ? 0 : 1, efeito: 'DIGITAR', t: agora - a.desde };
+    const batida = Math.floor(agora / 150) % 2;
+    return { ...POSE_PARADA, dy: batida === 0 ? 0 : 1, efeito: 'DIGITAR', t: agora - a.desde, quadro: batida === 0 ? 'digita0' : 'digita1', cara: 'COSTAS' };
   }
 
   if (a.fase === 'RESULTADO') {
@@ -73,16 +86,16 @@ export function poseDe(a: Agente, agora: number, reduzido: boolean): Pose {
           bracosParaCima: t > 350 && t < duracao - 350,
         };
       case 'BEBEDOURO':
-        return { ...POSE_PARADA, dy: Math.floor(t / 400) % 2 === 0 ? 0 : 1, efeito: 'BEBER', t };
+        return { ...POSE_PARADA, dy: Math.floor(t / 400) % 2 === 0 ? 0 : 1, efeito: 'BEBER', t, olhar: 1 };
       case 'JANELA':
-        return { ...POSE_PARADA, dx: [0, -1, -1, 0, 1, 1][Math.floor(t / 750) % 6], efeito: 'JANELA', t };
+        return { ...POSE_PARADA, dx: [0, -1, -1, 0, 1, 1][Math.floor(t / 750) % 6], efeito: 'JANELA', t, cara: 'COSTAS' };
       case 'OLHAR_AO_REDOR':
-        return { ...POSE_PARADA, dx: [0, -1, 0, 1][Math.floor(t / 700) % 4] };
+        return { ...POSE_PARADA, dx: [0, -1, 0, 1][Math.floor(t / 700) % 4], olhar: ([0, -1, 0, 1] as const)[Math.floor(t / 700) % 4], quadro: pisca ? 'piscando' : 'parado' };
     }
   }
 
   // Parado no canto: respira devagar
-  return { ...POSE_PARADA, dy: Math.floor(agora / 600) % 2 === 0 ? 1 : 0 };
+  return { ...POSE_PARADA, dy: Math.floor(agora / 600) % 2 === 0 ? 1 : 0, quadro: pisca ? 'piscando' : 'parado' };
 }
 
 /**

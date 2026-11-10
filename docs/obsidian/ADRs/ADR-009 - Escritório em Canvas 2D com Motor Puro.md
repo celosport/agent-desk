@@ -46,3 +46,10 @@ O motor continua puro (tempo vem de fora, sorteio determinístico por código do
 - `motor/pose.ts`: `poseDe` (balanço do passo, inclinação, pulinho de "acordar", digitar, comemorar com braços para cima e confete, balançar a cabeça no erro) e `desvios` (dois robôs andando um sobre o outro se desviam para lados opostos). O desenho (`desenho.ts`) só obedece à pose: halo neon no chão, antena que brilha, bebedouro com bolhas.
 - `versao` da cena continua mudando só com fase/balão: passear não gera re-render do HTML.
 - Testes: `motor/vida.spec.ts`. E2E do Escritório não foi rodado nesta alteração (Playwright sem navegador instalado na máquina).
+
+## Atualização 2026-11-10 (2) — robôs HD, luz e partículas
+- **Sprite HD** (`motor/sprite.ts`): 18×26 px de arte (antes 10×14 a 2×; mesmo tamanho na tela, ~4× mais detalhe), gerado por código — contorno automático, luz/sombra derivadas das cores do personagem (`coresDoSprite`), vista **de frente e de costas**, olhar para o lado em que anda, ciclo de **4 passos**, 2 quadros de digitação e braços para cima. As opções da Equipe (antena, expressão, acessório) valem para todas as vistas e quadros.
+- **Pose** (`motor/pose.ts`) escolhe quadro, vista e olhar: subindo para a mesa e digitando = de costas (olhando o monitor); descendo, comemorando, bebendo = de frente.
+- **Luz e partículas** (`motor/luz.ts`, tudo função do tempo, sem estado): facho da janela (luar no escuro, sol no claro) com poeira, brilho dos monitores no chão, faíscas, poeirinha dos passos e vinheta.
+- **Equipe → Aparência**: a prévia do robô é animada com as mesmas poses (Automático, Parado, Andando, De costas, Digitando, Comemorando); respeita "movimento reduzido".
+- Testes: `camadas.spec.ts`, `vida.spec.ts`. E2E não rodado (Playwright sem navegador na máquina).

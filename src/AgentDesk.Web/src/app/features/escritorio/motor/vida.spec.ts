@@ -159,3 +159,36 @@ describe('desvios', () => {
     expect(mapa.has('d')).toBe(false);
   });
 });
+
+describe('pose: vista, olhar e quadros do sprite', () => {
+  it('andando para o fundo da sala (rumo à mesa) aparece de costas; voltando, de frente olhando para o lado', () => {
+    const indo = iniciarTarefa(novo(), 0, false); // canto (5,6) → mesa (1,2): primeiro x diminui (esquerda-cima), depois y
+    expect(poseDe(indo, 1000, false).cara).toBe('COSTAS');
+    const voltando: Agente = { ...novo(), fase: 'VOLTANDO', posicao: { x: 1, y: 2 }, caminho: [{ x: 1, y: 3 }] }; // y aumenta: desce para a esquerda
+    const p = poseDe(voltando, 1000, false);
+    expect(p.cara).toBe('FRENTE');
+    expect(p.olhar).toBe(-1);
+  });
+
+  it('o ciclo de caminhada percorre os 4 passos', () => {
+    const a = iniciarTarefa(novo(), 0, false);
+    const quadros = new Set([0, 120, 240, 360].map((t) => poseDe(a, 5000 + t, false).quadro));
+    expect([...quadros].sort()).toEqual(['passo0', 'passo1', 'passo2', 'passo3']);
+  });
+
+  it('digitando fica de costas para o monitor e alterna os braços; parado pisca de tempos em tempos', () => {
+    const a = rodar(iniciarTarefa(novo(), 0, true), 0, 100);
+    const p0 = poseDe(a, 0, false);
+    const p1 = poseDe(a, 150, false);
+    expect(p0.cara).toBe('COSTAS');
+    expect(new Set([p0.quadro, p1.quadro])).toEqual(new Set(['digita0', 'digita1']));
+    expect(poseDe(novo(), 3200 * 2 + 50, false).quadro).toBe('piscando');
+    expect(poseDe(novo(), 3200 * 2 + 1000, false).quadro).toBe('parado');
+  });
+
+  it('janela: de costas olhando para a esquerda; bebedouro: de frente olhando para a direita', () => {
+    const parado = (motivo: 'JANELA' | 'BEBEDOURO'): Agente => ({ ...novo(), vida: { acao: 'PARADO', motivo, desde: 0, ate: 3000, parado: 3000, contador: 1 } });
+    expect(poseDe(parado('JANELA'), 500, false).cara).toBe('COSTAS');
+    expect(poseDe(parado('BEBEDOURO'), 500, false)).toMatchObject({ cara: 'FRENTE', olhar: 1 });
+  });
+});

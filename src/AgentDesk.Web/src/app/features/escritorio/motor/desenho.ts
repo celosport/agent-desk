@@ -3,7 +3,8 @@ import { Agente } from './agente';
 import { CENA_A, CENA_L, LADRILHO_A, LADRILHO_L, PAREDE, Ponto, SALA, centroNaTela, paraTela, profundidade } from './iso';
 import { ACORDAR_MS, COMEMORAR_MS, Pose, desvios, poseDe } from './pose';
 import { BEBEDOURO } from './vida';
-import { Personagem, ROBO_ESCALA, SPRITE_A, SPRITE_L, montarSprite, personagemDe } from './personagens';
+import { brilhoDosMonitores, fachoDaJanela, faiscas, poeiraDosPassos, vinheta } from './luz';
+import { Cara, Personagem, ROBO_ESCALA, Quadro, SPRITE_A, SPRITE_L, coresDoSprite, montarSprite, personagemDe } from './personagens';
 
 const ROBO_L = SPRITE_L * ROBO_ESCALA;
 const ROBO_A = SPRITE_A * ROBO_ESCALA;
@@ -25,6 +26,11 @@ export interface PaletaSala {
   janela: string;
   sombra: string;
   destaque: string;
+  /** Cores de luz como "r g b" (para `rgb(r g b / alfa)`): facho da janela, poeira no ar e vinheta nas bordas. */
+  luz: string;
+  poeira: string;
+  vinheta: string;
+  vinhetaForca: number;
 }
 
 export const PALETAS: Record<'claro' | 'escuro', PaletaSala> = {
@@ -45,6 +51,10 @@ export const PALETAS: Record<'claro' | 'escuro', PaletaSala> = {
     janela: '#a5d8ff',
     sombra: 'rgb(20 22 27 / 0.18)',
     destaque: '#3b5bdb',
+    luz: '255 236 170',
+    poeira: '255 255 255',
+    vinheta: '40 60 140',
+    vinhetaForca: 0.14,
   },
   escuro: {
     fundo: '#0d1224',
@@ -63,6 +73,10 @@ export const PALETAS: Record<'claro' | 'escuro', PaletaSala> = {
     janela: '#17476b',
     sombra: 'rgb(0 0 0 / 0.35)',
     destaque: '#7fd8ff',
+    luz: '127 180 255',
+    poeira: '170 190 255',
+    vinheta: '0 0 14',
+    vinhetaForca: 0.38,
   },
 };
 
@@ -84,6 +98,8 @@ export function desenharSala(
   ctx.fillRect(0, 0, CENA_L, CENA_A);
   paredes(ctx, p);
   piso(ctx, p);
+  fachoDaJanela(ctx, p, r);
+  brilhoDosMonitores(ctx, p, agentes, r);
 
   // Objetos e agentes juntos, do fundo para a frente
   const pensando = new Set(agentes.filter((a) => a.fase === 'PENSANDO').map((a) => a.codigo));
@@ -98,6 +114,7 @@ export function desenharSala(
   itens.push({ z: profundidade({ x: 7, y: 7 }), desenhar: () => planta(ctx, { x: 7, y: 7 }, p) });
   itens.push({ z: profundidade({ x: 0, y: 1 }), desenhar: () => planta(ctx, { x: 0, y: 1 }, p) });
   itens.sort((a, b) => a.z - b.z).forEach((i) => i.desenhar());
+  vinheta(ctx, p);
 }
 
 /** Onde fica o balão de cada agente (acima da cabeça), em pixels de arte. */
@@ -217,6 +234,7 @@ function mesaComMonitor(ctx: CanvasRenderingContext2D, t: Ponto, p: PaletaSala, 
   ctx.fillRect(m.x + 5, m.y + 9, 2, 3);
   ctx.fillStyle = acesa ? (piscando ? p.telaAcesa : misturar(p.telaAcesa, p.telaApagada)) : p.telaApagada;
   ctx.fillRect(m.x + 1, m.y + 1, 10, 7);
+  if (acesa) faiscas(ctx, p, m.x + 6, m.y, r);
   if (acesa) {
     ctx.fillStyle = p.telaApagada;
     ctx.fillRect(m.x + 2, m.y + 3, 5, 1);
@@ -241,8 +259,6 @@ function agente(ctx: CanvasRenderingContext2D, a: Agente, visual: Personagem, p:
   const pe = centroNaTela(a.posicao);
   const px = pe.x + desvio;
   const trabalhando = a.fase === 'PENSANDO' || a.fase === 'INDO';
-  const pisca = !r.reduzido && r.agora % 3200 < 140;
-  const quadro = pose.andando && Math.floor(r.agora / 140) % 2 === 0 ? 'andando' : pisca ? 'piscando' : 'parado';
 
   if (selecionado) {
     const t = { x: Math.round(a.posicao.x), y: Math.round(a.posicao.y) };
@@ -276,7 +292,8 @@ function agente(ctx: CanvasRenderingContext2D, a: Agente, visual: Personagem, p:
 
   const x0 = Math.round(px - ROBO_L / 2) + pose.dx;
   const y0 = Math.round(pe.y - ROBO_A) + pose.dy;
-  desenharRobo(ctx, visual, quadro, x0, y0, ROBO_ESCALA, pose.inclinar, pose.bracosParaCima);
+  if (pose.andando) poeiraDosPassos(ctx, p, { x: px, y: pe.y }, a.caminho[0], a.posicao, r);
+  desenharRobo(ctx, visual, pose.quadro, x0, y0, ROBO_ESCALA, pose.inclinar, pose.cara, pose.olhar, pose.bracosParaCima);
 
   // A antena brilha: forte quando trabalha, respirando quando está à toa
   if (visual.antena !== 'NENHUMA') {
@@ -335,9 +352,9 @@ function efeito(ctx: CanvasRenderingContext2D, pose: Pose, x0: number, y0: numbe
     }
     case 'BEBER': {
       ctx.fillStyle = '#ffffff';
-      ctx.fillRect(x0 + ROBO_L + 1, y0 + 14, 3, 4);
+      ctx.fillRect(x0 + ROBO_L - 1, y0 + 17, 3, 4);
       ctx.fillStyle = p.telaAcesa;
-      ctx.fillRect(x0 + ROBO_L + 2, y0 + 15, 1, 2);
+      ctx.fillRect(x0 + ROBO_L, y0 + 18, 1, 2);
       break;
     }
     default:
@@ -367,33 +384,29 @@ function bebedouro(ctx: CanvasRenderingContext2D, p: PaletaSala, r: Relogio): vo
   if (!r.reduzido) ctx.fillRect(x, y - 13 - Math.round(((r.agora / 900) % 1) * 9), 1, 1);
 }
 
-/** O robô montado em camadas, com o canto de cima à esquerda em (x0, y0). Também serve para a pré-visualização do editor. */
+/** O robô HD, com o canto de cima à esquerda em (x0, y0). Também serve para a pré-visualização do editor. */
 export function desenharRobo(
   ctx: CanvasRenderingContext2D,
   visual: Personagem,
-  quadro: 'parado' | 'andando' | 'piscando',
+  quadro: Quadro,
   x0: number,
   y0: number,
   escala: number,
   inclinar: -1 | 0 | 1 = 0,
+  cara: Cara = 'FRENTE',
+  olhar: -1 | 0 | 1 = 0,
   bracosParaCima = false,
 ): void {
-  montarSprite(visual, quadro).forEach((linha, j) => {
+  const cores = coresDoSprite(visual.paleta);
+  montarSprite(visual, quadro, cara, olhar, bracosParaCima).forEach((linha, j) => {
     for (let i = 0; i < linha.length; i++) {
-      const cor = linha[i];
-      if (cor === '.') continue;
-      // braços levantados: os de baixo (pontas, linhas 9 e 10) somem e sobem ao lado da cabeça
-      if (bracosParaCima && (i === 0 || i === linha.length - 1) && (j === 9 || j === 10)) continue;
-      ctx.fillStyle = visual.paleta[cor as keyof Personagem['paleta']];
-      // cabeça e tronco se inclinam (1 px) para o lado em que o robô anda
-      ctx.fillRect(x0 + i * escala + (j < 8 ? inclinar : 0), y0 + j * escala, escala, escala);
+      const letra = linha[i];
+      if (letra === '.') continue;
+      ctx.fillStyle = cores[letra];
+      // cabeça e tronco se inclinam (1 px de arte) para o lado em que o robô anda
+      ctx.fillRect(x0 + i * escala + (j < 16 ? inclinar * Math.max(1, escala / 2) : 0), y0 + j * escala, escala, escala);
     }
   });
-  if (bracosParaCima) {
-    ctx.fillStyle = visual.paleta.f;
-    ctx.fillRect(x0 - 1, y0 + 4 * escala, escala, 5 * escala);
-    ctx.fillRect(x0 + (SPRITE_L - 1) * escala + 1, y0 + 4 * escala, escala, 5 * escala);
-  }
 }
 
 function poligono(ctx: CanvasRenderingContext2D, cor: string, pontos: Ponto[]): void {
