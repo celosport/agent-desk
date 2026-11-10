@@ -18,9 +18,8 @@
 }
 
 .marca {
-  font-size: var(--ui-t-xl);
-  font-weight: 750;
-  color: var(--ui-marca-tinta);
+  --logo-tamanho: 1.5rem;
+  margin: 0;
 }
 
 form {

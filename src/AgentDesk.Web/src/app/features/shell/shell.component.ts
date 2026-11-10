@@ -4,6 +4,7 @@ import { AuthStore } from '../../core/auth/auth.store';
 import { MoedaApp } from '../../core/moeda/moeda';
 import { MOEDAS, Moeda } from '../../shared/util/moeda-ativa';
 import { AlternarTema } from '../../shared/ui/alternar-tema.component';
+import { Logo } from '../../shared/ui/logo.component';
 import { formatarData } from '../../shared/util/formatos';
 
 /** Item do menu: um por feature. Para esconder por perfil, filtre por auth.usuario()?.perfil (e proteja a rota com perfilGuard). */
@@ -15,11 +16,11 @@ interface ItemMenu {
 /** Moldura das telas logadas: topo com o menu (rolável no celular) e a área de conteúdo. */
 @Component({
   selector: 'app-shell',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, AlternarTema],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, AlternarTema, Logo],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <header class="topo">
-      <a class="marca" routerLink="/inicio">Agent Desk</a>
+      <a class="marca" routerLink="/inicio" aria-label="Agent Desk — início"><app-logo /></a>
       <nav aria-label="Principal">
         @for (item of menu; track item.rota) {
           <a [routerLink]="item.rota" routerLinkActive="ativo" ariaCurrentWhenActive="page">{{ item.rotulo }}</a>
@@ -49,17 +50,19 @@ interface ItemMenu {
       position: sticky; top: 0; z-index: 10;
       display: flex; align-items: center; gap: var(--ui-e4);
       padding: calc(var(--ui-e2) + var(--ui-seguro-topo)) var(--ui-e4) var(--ui-e2);
-      border-bottom: 1px solid var(--ui-linha);
+      border-bottom: 1px solid transparent;
+      border-image: var(--ui-degrade) 1;
+      border-image-slice: 1;
       background: color-mix(in srgb, var(--ui-fundo) 92%, transparent);
       backdrop-filter: blur(8px);
     }
-    .marca { flex: none; font-weight: 750; white-space: nowrap; text-decoration: none; color: var(--ui-marca-tinta); }
+    .marca { flex: none; text-decoration: none; --logo-tamanho: 0.95rem; }
     nav { display: flex; gap: var(--ui-e1); flex: 1; min-width: 0; overflow-x: auto; }
     nav a {
       padding: var(--ui-e2) var(--ui-e3); border-radius: var(--ui-raio-controle);
       color: var(--ui-texto-2); text-decoration: none; white-space: nowrap; font-weight: 500;
     }
-    nav a.ativo { background: var(--ui-superficie-2); color: var(--ui-texto); }
+    nav a.ativo { background: var(--ui-superficie-2); color: var(--ui-texto); box-shadow: inset 0 -2px 0 var(--ui-neon-1), var(--ui-brilho); }
     .acoes { display: flex; align-items: center; flex: none; gap: var(--ui-e2); }
     .moeda { width: auto; min-height: 0; padding: var(--ui-e1) var(--ui-e2); }
     .usuario { display: grid; margin: 0; line-height: 1.2; text-align: right; min-width: 0; }
