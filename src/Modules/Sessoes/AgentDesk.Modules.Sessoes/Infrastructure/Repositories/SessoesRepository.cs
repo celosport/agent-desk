@@ -35,10 +35,11 @@ internal sealed class SessoesRepository(IDbConnectionFactory connectionFactory) 
         public DateTimeOffset UltimaAtividadeEm { get; set; }
         public DateTimeOffset? EncerradaEm { get; set; }
         public short? Lugar { get; set; }
+        public string? Titulo { get; set; }
 
         public Sessao ParaDominio() => new(SessaoId, Maquina, Projeto, ProjetoChave, EnumTexto.Parse<StatusSessao>(Status), Atividade, Modelo,
             new UsoTokens(Limitar(TokensEntrada), Limitar(TokensSaida), Limitar(TokensCacheLeitura), Limitar(TokensCacheEscrita)),
-            CustoUsd, Pedidos, IniciadaEm, UltimaAtividadeEm, EncerradaEm, Lugar);
+            CustoUsd, Pedidos, IniciadaEm, UltimaAtividadeEm, EncerradaEm, Lugar, Titulo);
 
         private static int Limitar(long v) => (int)Math.Min(int.MaxValue, v);
     }
@@ -47,9 +48,9 @@ internal sealed class SessoesRepository(IDbConnectionFactory connectionFactory) 
     {
         const string sql = """
             INSERT INTO cc_sessoes (usuario_id, sessao_id, maquina, projeto, projeto_chave, status, atividade, modelo,
-                                    iniciada_em, ultima_atividade_em, encerrada_em, lugar)
+                                    iniciada_em, ultima_atividade_em, encerrada_em, titulo, lugar)
             VALUES (@UsuarioId, @SessaoId, @Maquina, @Projeto, @ProjetoChave, COALESCE(@Status, 'OCIOSA'), @Atividade, @Modelo,
-                    @Quando, @Quando, CASE WHEN @Status = 'ENCERRADA' THEN @Quando END,
+                    @Quando, @Quando, CASE WHEN @Status = 'ENCERRADA' THEN @Quando END, @Titulo,
                     -- o menor lugar livre entre as sessões ainda abertas do mesmo projeto (nulo se as 8 estiverem ocupadas)
                     (SELECT MIN(n)::smallint FROM generate_series(0, 7) AS n
                       WHERE n NOT IN (SELECT lugar FROM cc_sessoes
@@ -63,7 +64,9 @@ internal sealed class SessoesRepository(IDbConnectionFactory connectionFactory) 
                                      THEN EXCLUDED.lugar ELSE cc_sessoes.lugar END,
                 projeto_chave = EXCLUDED.projeto_chave,
                 modelo        = COALESCE(EXCLUDED.modelo, cc_sessoes.modelo),
-                status        = CASE WHEN @Status IS NULL OR @Quando < cc_sessoes.ultima_atividade_em THEN cc_sessoes.status ELSE @Status END,
+                -- só os eventos que carregam o título o trazem: os outros mantêm o último
+                titulo        = COALESCE(EXCLUDED.titulo, cc_sessoes.titulo),
+                status       = CASE WHEN @Status IS NULL OR @Quando < cc_sessoes.ultima_atividade_em THEN cc_sessoes.status ELSE @Status END,
                 atividade     = CASE WHEN @Atividade IS NULL OR @Quando < cc_sessoes.ultima_atividade_em THEN cc_sessoes.atividade ELSE @Atividade END,
                 encerrada_em  = CASE WHEN @Status IS NULL OR @Quando < cc_sessoes.ultima_atividade_em THEN cc_sessoes.encerrada_em
                                      WHEN @Status = 'ENCERRADA' THEN @Quando ELSE NULL END,
@@ -76,8 +79,8 @@ internal sealed class SessoesRepository(IDbConnectionFactory connectionFactory) 
         await using var connection = await connectionFactory.OpenConnectionAsync(cancellationToken);
         await connection.ExecuteAsync(new CommandDefinition(sql, new
         {
-            UsuarioId = usuarioId, e.SessaoId, e.Maquina, e.Projeto, e.ProjetoChave, e.Evento, e.Ferramenta, e.Resumo, e.Modelo,
-            Status = t.Status?.ToTexto(), t.Atividade, Quando = e.OcorridoEm.ToUniversalTime(),
+            UsuarioId = usuarioId, e.SessaoId, e.Maquina, e.Projeto, e.ProjetoChave, e.Evento, e.Ferramenta, e.Resumo, e.Modelo, e.Titulo,
+            Status =t.Status?.ToTexto(), t.Atividade, Quando = e.OcorridoEm.ToUniversalTime(),
             LugarDesde = e.OcorridoEm.ToUniversalTime() - SessaoAoVivo.ForaDoEscritorio,
         }, cancellationToken: cancellationToken));
 
@@ -202,7 +205,7 @@ internal sealed class SessoesRepository(IDbConnectionFactory connectionFactory) 
     {
         const string sql = """
             SELECT sessao_id, maquina, projeto, projeto_chave, status, atividade, modelo, tokens_entrada, tokens_saida,
-                   tokens_cache_leitura, tokens_cache_escrita, custo_usd, pedidos, iniciada_em, ultima_atividade_em, encerrada_em, lugar
+                   tokens_cache_leitura, tokens_cache_escrita, custo_usd, pedidos, iniciada_em, ultima_atividade_em, encerrada_em, lugar, titulo
               FROM cc_sessoes
              WHERE usuario_id = @UsuarioId AND ultima_atividade_em >= @Desde
                AND (status <> 'ENCERRADA' OR encerrada_em >= @EncerradasDesde)

@@ -2,7 +2,7 @@
 // AgentDesk — coletor das sessões do Claude Code. Roda no SEU computador, chamado pelos hooks do Claude Code.
 // [[ADR-010 - Sessões do Claude Code (Hooks e Telemetria)]]
 //
-// O que sai daqui: só METADADOS — nome da pasta do projeto, nome da ferramenta, nome do arquivo (sem o caminho), as duas
+// O que sai daqui: só METADADOS — nome do projeto (repositório ou pasta), título da conversa (o nome da tarefa), nome da ferramenta, nome do arquivo (sem o caminho), as duas
 // primeiras palavras de um comando, o tipo de aviso. NUNCA o conteúdo de arquivos, o texto dos seus prompts ou respostas.
 // Tokens e custo chegam pela telemetria oficial do Claude Code (OpenTelemetry), com prompts redigidos por padrão.
 //
@@ -82,6 +82,64 @@ export function projetoDe(cwd) {
     projeto: corte(basename(caminho.replace(/\\/g, '/')) || '(raiz)', 120),
     projetoChave: createHash('sha256').update(normalizado).digest('hex').slice(0, 12),
   };
+}
+
+/**
+ * Nome do repositório de uma pasta, para a sala ter o nome do PROJETO e não o de uma pasta de trabalho (worktree, "scratch"...).
+ * Sobe pelas pastas até achar `.git`; se for um arquivo (worktree: "gitdir: <repo>/.git/worktrees/<nome>"), o repositório é a pasta
+ * dona do `.git` principal. Só leitura de arquivo, sem rodar o git (o hook roda a cada ferramenta). Sem repositório: undefined.
+ */
+export function repositorioDe(cwd) {
+  try {
+    if (!cwd || typeof cwd !== 'string') return undefined; // resolve('') seria a pasta do próprio coletor
+    let pasta = resolve(cwd);
+    for (let i = 0; i < 40; i++) {
+      const git = join(pasta, '.git');
+      if (existsSync(git)) {
+        if (statSync(git).isDirectory()) return corte(basename(pasta), 120) || undefined;
+        const apontador = /^gitdir:\s*(.+)$/m.exec(readFileSync(git, 'utf8'));
+        if (!apontador) return corte(basename(pasta), 120) || undefined;
+        const gitdir = resolve(pasta, apontador[1].trim());
+        const noWorktree = gitdir.split(/[\\/]/).lastIndexOf('worktrees');
+        const partes = gitdir.split(/[\\/]/);
+        if (noWorktree < 1 || partes[noWorktree - 1] !== '.git') return corte(basename(pasta), 120) || undefined; // submódulo: é ele mesmo
+        return corte(partes[noWorktree - 2] || basename(pasta), 120) || undefined;
+      }
+      const pai = dirname(pasta);
+      if (pai === pasta) return undefined;
+      pasta = pai;
+    }
+  } catch {
+    // sem acesso ao disco: segue com o nome da pasta
+  }
+  return undefined;
+}
+
+/** Título da conversa (o nome que o Claude Code dá à sessão), lido do FIM do transcript: o último `custom-title` (renomeada) ou `ai-title`. */
+export function tituloDaSessao(transcriptPath) {
+  try {
+    if (!transcriptPath || !existsSync(transcriptPath)) return undefined;
+    const tamanho = statSync(transcriptPath).size;
+    const LIMITE = 512 * 1024;
+    const bruto = readFileSync(transcriptPath);
+    const texto = bruto.subarray(Math.max(0, tamanho - LIMITE)).toString('utf8');
+    let custom;
+    let ia;
+    for (const linha of texto.split('\n')) {
+      if (!linha.includes('-title"')) continue;
+      try {
+        const e = JSON.parse(linha);
+        if (e.type === 'custom-title' && typeof e.customTitle === 'string' && e.customTitle.trim()) custom = e.customTitle.trim();
+        else if (e.type === 'ai-title' && typeof e.aiTitle === 'string' && e.aiTitle.trim()) ia = e.aiTitle.trim();
+      } catch {
+        // primeira linha cortada pelo limite de leitura
+      }
+    }
+    const titulo = custom ?? ia;
+    return titulo ? corte(titulo.replace(/\s+/g, ' '), 120) : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -184,18 +242,25 @@ export function comandoCurto(comando) {
   return seguras.length ? corte(seguras.join(' '), 40) : undefined;
 }
 
-/** JSON do hook → evento enxuto para a API (ou null se não for de interesse). */
-export function resumirEvento(hook, maquina, agora = new Date()) {
+/** Eventos em que vale reler o título no transcript (nos demais, o app já tem o último). */
+export const EVENTOS_COM_TITULO = ['SessionStart', 'UserPromptSubmit', 'Stop', 'Notification'];
+
+/**
+ * JSON do hook → evento enxuto para a API (ou null se não for de interesse).
+ * `extras` (lido do disco por quem chama): `repositorio` vira o nome da sala (a chave continua a do caminho) e `titulo` é o nome da tarefa.
+ */
+export function resumirEvento(hook, maquina, agora = new Date(), extras = {}) {
   if (!hook || typeof hook !== 'object' || !hook.session_id || !EVENTOS.includes(hook.hook_event_name)) return null;
   const { projeto, projetoChave } = projetoDe(hook.cwd);
   const evento = {
     sessaoId: corte(String(hook.session_id), 100),
     evento: hook.hook_event_name,
     maquina: corte(String(maquina || 'Computador'), 80),
-    projeto,
+    projeto: extras.repositorio || projeto,
     projetoChave,
     ocorridoEm: agora.toISOString(),
   };
+  if (extras.titulo) evento.titulo = corte(String(extras.titulo), 120);
   if (hook.tool_name) {
     evento.ferramenta = corte(String(hook.tool_name), 80);
     const resumo = resumoDaFerramenta(hook.tool_name, hook.tool_input);
@@ -484,7 +549,9 @@ async function modoEvento() {
     const config = lerJson(CONFIG, null);
     if (!config?.url || !config?.token) return;
     const hook = JSON.parse((await lerStdin(2000)) || '{}');
-    const evento = resumirEvento(hook, config.maquina);
+    const extras = { repositorio: repositorioDe(hook.cwd) };
+    if (EVENTOS_COM_TITULO.includes(hook.hook_event_name)) extras.titulo = tituloDaSessao(hook.transcript_path);
+    const evento = resumirEvento(hook, config.maquina, new Date(), extras);
     if (!evento) return;
     await enviar(config, evento, evento.evento === 'SessionEnd' ? 1200 : 4000);
   } catch (e) {

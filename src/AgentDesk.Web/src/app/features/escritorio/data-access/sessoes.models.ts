@@ -32,6 +32,8 @@ export interface SessaoAoVivo {
   /** Projeto (pasta) da sessão e o lugar dela na sala: o nome e a aparência da Equipe valem por (projetoChave, lugar). */
   projetoChave?: string;
   lugar?: number;
+  /** Título da tarefa (o nome da conversa no Claude Code); ausente até o coletor mandar. */
+  titulo?: string;
 }
 
 /** Um subagente: aparece como um robô ao lado da sessão que o chamou. */

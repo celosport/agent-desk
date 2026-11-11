@@ -55,3 +55,11 @@ Relacionados: [[00 - Dashboard]] · [[Módulo Sessoes]] · [[Escritório Animado
 ## Adendo (2026-10-31): ambientes de nuvem
 Sessões do Claude Code num ambiente remoto não passam pelos hooks do PC. O coletor aceita a conexão por variáveis de ambiente (`AGENTDESK_URL`, `AGENTDESK_TOKEN`, `AGENTDESK_MAQUINA`) e `instalar --sem-teste`, para rodar no script de preparação do ambiente; a tela de Configurações gera o script. Nada muda no repositório do projeto. Ver [[Módulo Sessoes]].
 
+
+## Atualização (2026-11-11): nome do projeto e título da tarefa
+
+O coletor passou a mandar dois metadados a mais, para achar a sessão certa no Escritório:
+
+- **Nome do projeto = nome do repositório** (lido do `.git`, inclusive de worktrees), em vez do nome da pasta de trabalho (ex.: `scratch-2026-11-11-7479aa` vira `zena`). A `projetoChave` continua sendo o hash do caminho.
+- **Título da tarefa** (`custom-title`/`ai-title` do transcript, o nome que a conversa tem no Claude Code), cortado em 120 caracteres e guardado em `cc_sessoes.titulo`. É a **única** informação derivada de conteúdo que sai do PC; o texto dos prompts e respostas continua não saindo. Só é relido em SessionStart, UserPromptSubmit, Stop e Notification.
+- Pastas sem repositório (ex.: conversas "scratch" sem projeto) continuam com o nome da pasta; o título ajuda a identificá-las.
