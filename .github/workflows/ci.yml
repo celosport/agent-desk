@@ -31,7 +31,8 @@ jobs:
       CI: true # não roda o npm install do app no build da API
     steps:
       - uses: actions/checkout@v4
-      # .slnx exige SDK ≥ 9.0.200; os projetos têm alvo net8.0 (o runtime 8 roda os testes)
+      # Restaura, compila e testa pelo projeto de testes (ele puxa a API e os módulos): a AgentDesk.slnx traz o app Angular como
+      # "website project" (só do Visual Studio), e o `dotnet restore` do Linux recusa isso (MSB4249). Os projetos têm alvo net8.0.
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: |
@@ -42,9 +43,9 @@ jobs:
           path: ~/.nuget/packages
           key: nuget-${{ runner.os }}-${{ hashFiles('Directory.Packages.props', '**/*.csproj') }}
           restore-keys: nuget-${{ runner.os }}-
-      - run: dotnet restore AgentDesk.slnx
-      - run: dotnet build AgentDesk.slnx --no-restore -c Release
-      - run: dotnet test AgentDesk.slnx --no-build -c Release
+      - run: dotnet restore tests/AgentDesk.IntegrationTests
+      - run: dotnet build tests/AgentDesk.IntegrationTests --no-restore -c Release
+      - run: dotnet test tests/AgentDesk.IntegrationTests --no-build -c Release
 
   frontend:
     name: Frontend (unitários + build)
