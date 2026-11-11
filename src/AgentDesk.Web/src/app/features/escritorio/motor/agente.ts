@@ -1,12 +1,27 @@
 // Máquina de estados de um agente do Escritório (funções puras, testadas no Vitest). O tempo vem de fora (ms), nunca de Date.now().
 import { Ponto, andar, rota } from './iso';
-import { VELOCIDADE_PASSEIO, VIDA_INICIAL, Vida, escolherPasseio, esperaOciosa, fatorDeVelocidade, restante } from './vida';
+import {
+  ELEVADOR_PE,
+  LUGAR_AGUA,
+  LUGAR_CAFE,
+  VELOCIDADE_PASSEIO,
+  VIDA_INICIAL,
+  Vida,
+  escolherPasseio,
+  esperaOciosa,
+  fatorDeVelocidade,
+  restante,
+  rotaPelaAvenida,
+  sorteio,
+} from './vida';
 
 /**
  * OCIOSO (no seu canto) → INDO (andando até a mesa) → PENSANDO (balão "pensando…") → RESULTADO (balão com tokens e custo)
- * → VOLTANDO → OCIOSO. Com movimento reduzido, não anda: aparece direto na mesa e volta direto para o canto.
+ * → INDO_EMBORA (até o elevador) → CRACHA (bate o ponto) → ELEVADOR (a porta abre, ele entra) → AUSENTE (foi embora).
+ * Chegou tarefa nova: sai do elevador e vai à mesa. Esperando uma aprovação: PAUSA_INDO → PAUSA (café ou água na cozinha) e volta à
+ * mesa quando você responde. Com movimento reduzido, não anda: aparece direto na mesa e some direto ao terminar.
  */
-export type Fase = 'OCIOSO' | 'INDO' | 'PENSANDO' | 'RESULTADO' | 'VOLTANDO';
+export type Fase = 'OCIOSO' | 'INDO' | 'PENSANDO' | 'RESULTADO' | 'VOLTANDO' | 'INDO_EMBORA' | 'CRACHA' | 'ELEVADOR' | 'AUSENTE' | 'PAUSA_INDO' | 'PAUSA';
 
 export interface Balao {
   /** atividade/alerta: sessões do Claude Code ("📖 Lendo api.ts", "✋ Precisa de você"). */
@@ -28,6 +43,10 @@ export interface Agente {
   pendente: Balao | null;
   /** O que o robô faz quando está sem tarefa (passeio, janela, bebedouro…) — [[Frontend (Angular PWA)]]. */
   vida: Vida;
+  /** Café ou água, na pausa enquanto espera uma aprovação (null fora da pausa). */
+  pausa: 'CAFE' | 'AGUA' | null;
+  /** Quando saiu do elevador (ms): a porta abre e ele aparece aos poucos. null = não veio do elevador. */
+  chegouEm: number | null;
 }
 
 export const VELOCIDADE = 3; // ladrilhos por segundo
@@ -36,21 +55,52 @@ export const RESULTADO_MS = 9000; // quanto tempo o balão do resultado fica
 export const BALAO_PENSANDO: Balao = { tipo: 'pensando', texto: 'pensando…' };
 /** Quanto tempo o balão de "terminou" fica quando uma sessão do Claude Code libera o robô. */
 export const LIBERAR_MS = 4000;
+/** Tempo batendo o crachá e dentro do elevador (a porta abre, ele entra, a porta fecha). */
+export const CRACHA_MS = 1100;
+export const ELEVADOR_MS = 1800;
+/** Quanto dura a porta aberta quando alguém sai do elevador. */
+export const CHEGADA_MS = 1500;
 
 export function novoAgente(codigo: string, canto: Ponto, mesa: Ponto): Agente {
-  return { codigo, canto, mesa, posicao: { ...canto }, caminho: [], fase: 'OCIOSO', desde: 0, balao: null, pendente: null, vida: VIDA_INICIAL };
+  return { codigo, canto, mesa, posicao: { ...canto }, caminho: [], fase: 'OCIOSO', desde: 0, balao: null, pendente: null, vida: VIDA_INICIAL, pausa: null, chegouEm: null };
 }
 
 export function ocupado(a: Agente): boolean {
   return a.fase === 'INDO' || a.fase === 'PENSANDO';
 }
 
-/** Começou uma execução: vai para a mesa (ou aparece nela, com movimento reduzido). */
+/** Começou uma execução: vai para a mesa (ou aparece nela, com movimento reduzido). Quem estava fora sai do elevador. */
 export function iniciarTarefa(a: Agente, agora: number, reduzido: boolean): Agente {
-  if (reduzido || igual(a.posicao, a.mesa)) {
-    return { ...a, posicao: { ...a.mesa }, caminho: [], fase: 'PENSANDO', desde: agora, balao: BALAO_PENSANDO, pendente: null, vida: semVida(a) };
+  const doElevador = a.fase === 'AUSENTE' || a.fase === 'ELEVADOR';
+  const base: Agente = doElevador ? { ...a, posicao: { ...ELEVADOR_PE }, chegouEm: reduzido ? null : agora } : { ...a, chegouEm: null };
+  if (reduzido || igual(base.posicao, base.mesa)) {
+    return { ...base, posicao: { ...base.mesa }, caminho: [], fase: 'PENSANDO', desde: agora, balao: BALAO_PENSANDO, pendente: null, vida: semVida(a), pausa: null, chegouEm: null };
   }
-  return { ...a, caminho: rota(a.posicao, a.mesa), fase: 'INDO', desde: agora, balao: null, pendente: null, vida: semVida(a) };
+  return { ...base, caminho: rotaPelaAvenida(base.posicao, base.mesa), fase: 'INDO', desde: agora, balao: null, pendente: null, vida: semVida(a), pausa: null };
+}
+
+/**
+ * Esperando uma aprovação: em vez de ficar parado na mesa, vai à cozinha tomar um café ou uma água (o balão de alerta continua
+ * acima dele). Com movimento reduzido ele fica onde está.
+ */
+export function pausarParaCafe(a: Agente, agora: number, reduzido: boolean): Agente {
+  if (reduzido || a.fase === 'PAUSA' || a.fase === 'PAUSA_INDO') return a;
+  const pausa = sorteio(a.codigo, a.vida.contador, 'pausa') < 0.5 ? 'CAFE' : 'AGUA';
+  const destino = pausa === 'CAFE' ? LUGAR_CAFE : LUGAR_AGUA;
+  const doElevador = a.fase === 'AUSENTE' || a.fase === 'ELEVADOR';
+  const de = doElevador ? { ...ELEVADOR_PE } : a.posicao;
+  const caminho = rotaPelaAvenida(de, destino);
+  return {
+    ...a,
+    posicao: de,
+    caminho,
+    fase: caminho.length ? 'PAUSA_INDO' : 'PAUSA',
+    desde: agora,
+    pendente: null,
+    pausa,
+    chegouEm: doElevador ? agora : null,
+    vida: semVida(a),
+  };
 }
 
 /** A execução terminou (sucesso ou erro). Se ainda está andando, guarda para mostrar ao sentar. */
@@ -67,7 +117,9 @@ export function concluirTarefa(a: Agente, balao: Balao, agora: number): Agente {
 export function avancar(a: Agente, agora: number, dtMs: number, reduzido: boolean): Agente {
   switch (a.fase) {
     case 'INDO':
-    case 'VOLTANDO': {
+    case 'VOLTANDO':
+    case 'INDO_EMBORA':
+    case 'PAUSA_INDO': {
       if (reduzido) return chegar(a, agora);
       const fator = fatorDeVelocidade(agora - a.desde, restante(a.posicao, a.caminho));
       const passo = andar(a.posicao, a.caminho, (VELOCIDADE * fator * dtMs) / 1000);
@@ -81,8 +133,16 @@ export function avancar(a: Agente, agora: number, dtMs: number, reduzido: boolea
       return a;
     case 'RESULTADO':
       if (agora - a.desde < RESULTADO_MS) return a;
-      if (reduzido) return { ...a, posicao: { ...a.canto }, caminho: [], fase: 'OCIOSO', desde: agora, balao: null, vida: semVida(a) };
-      return { ...a, caminho: rota(a.posicao, a.canto), fase: 'VOLTANDO', desde: agora, balao: null };
+      // Terminou o serviço: vai ao elevador, bate o crachá e vai embora (movimento reduzido: some direto)
+      if (reduzido) return { ...a, posicao: { ...ELEVADOR_PE }, caminho: [], fase: 'AUSENTE', desde: agora, balao: null, vida: semVida(a), pausa: null };
+      return { ...a, caminho: rotaPelaAvenida(a.posicao, ELEVADOR_PE), fase: 'INDO_EMBORA', desde: agora, balao: null, vida: semVida(a), pausa: null };
+    case 'CRACHA':
+      return agora - a.desde >= CRACHA_MS ? { ...a, fase: 'ELEVADOR', desde: agora } : a;
+    case 'ELEVADOR':
+      return agora - a.desde >= ELEVADOR_MS ? { ...a, fase: 'AUSENTE', desde: agora, posicao: { ...ELEVADOR_PE } } : a;
+    case 'AUSENTE':
+    case 'PAUSA':
+      return a;
     default:
       return viver(a, agora, dtMs, reduzido);
   }
@@ -129,6 +189,13 @@ export function liberar(a: Agente, balao: Balao, agora: number): Agente {
 }
 
 function chegar(a: Agente, agora: number): Agente {
+  if (a.fase === 'INDO_EMBORA') {
+    return { ...a, posicao: { ...ELEVADOR_PE }, caminho: [], fase: 'CRACHA', desde: agora, balao: null };
+  }
+  if (a.fase === 'PAUSA_INDO') {
+    const destino = a.pausa === 'CAFE' ? LUGAR_CAFE : LUGAR_AGUA;
+    return { ...a, posicao: { ...destino }, caminho: [], fase: 'PAUSA', desde: agora };
+  }
   if (a.fase === 'INDO') {
     // Quem já tem um balão (atividade de uma sessão) mantém; as automações chegam e mostram "pensando…"
     return { ...a, posicao: { ...a.mesa }, caminho: [], fase: 'PENSANDO', desde: agora, balao: a.balao ?? BALAO_PENSANDO };
@@ -151,6 +218,18 @@ export function descreverFase(a: Agente): string {
       return a.balao?.tipo === 'erro' ? `erro: ${a.balao.texto}` : `terminou: ${a.balao?.texto ?? ''}`;
     case 'VOLTANDO':
       return 'voltando para o seu canto';
+    case 'INDO_EMBORA':
+      return 'indo embora';
+    case 'CRACHA':
+      return 'batendo o crachá';
+    case 'ELEVADOR':
+      return 'pegando o elevador';
+    case 'AUSENTE':
+      return 'foi embora (ponto batido)';
+    case 'PAUSA_INDO':
+      return a.pausa === 'CAFE' ? 'foi tomar um café' : 'foi tomar uma água';
+    case 'PAUSA':
+      return a.pausa === 'CAFE' ? 'tomando um café, esperando você' : 'tomando uma água, esperando você';
     default:
       return 'disponível';
   }

@@ -1,7 +1,7 @@
 import { Agente, avancar, concluirTarefa, iniciarTarefa, novoAgente } from './agente';
 import { lugarDe } from './personagens';
-import { ACORDAR_MS, COMEMORAR_MS, andandoAgora, desvios, poseDe } from './pose';
-import { escolherPasseio, esperaOciosa, fatorDeVelocidade, restante, sorteio } from './vida';
+import { ACORDAR_MS, COMEMORAR_MS, andandoAgora, desvios, estadoDoElevador, poseDe } from './pose';
+import { ELEVADOR_PE, escolherPasseio, esperaOciosa, fatorDeVelocidade, restante, sorteio } from './vida';
 
 const lugar = lugarDe(0);
 const novo = (codigo = 'relatorio-executivo') => novoAgente(codigo, lugar.canto, lugar.mesa);
@@ -190,5 +190,54 @@ describe('pose: vista, olhar e quadros do sprite', () => {
     const parado = (motivo: 'JANELA' | 'BEBEDOURO'): Agente => ({ ...novo(), vida: { acao: 'PARADO', motivo, desde: 0, ate: 3000, parado: 3000, contador: 1 } });
     expect(poseDe(parado('JANELA'), 500, false).cara).toBe('COSTAS');
     expect(poseDe(parado('BEBEDOURO'), 500, false)).toMatchObject({ cara: 'FRENTE', olhar: 1 });
+  });
+});
+
+describe('elevador e cozinha: pose e porta', () => {
+  const base = () => novo();
+  const emFase = (fase: Agente['fase'], extra: Partial<Agente> = {}): Agente => ({ ...base(), fase, desde: 1000, posicao: { ...ELEVADOR_PE }, ...extra });
+
+  it('ausente não aparece (opacidade 0)', () => {
+    expect(poseDe(emFase('AUSENTE'), 5000, false).alfa).toBe(0);
+  });
+
+  it('crachá: de costas para a parede, encostando o crachá e voltando', () => {
+    const a = emFase('CRACHA');
+    expect(poseDe(a, 1000 + 500, false)).toMatchObject({ efeito: 'CRACHA', cara: 'COSTAS', quadro: 'digita0' });
+    expect(poseDe(a, 1000 + 1000, false).quadro).toBe('parado');
+  });
+
+  it('elevador: entra andando na parede e vai sumindo', () => {
+    const a = emFase('ELEVADOR');
+    expect(poseDe(a, 1000 + 100, false).alfa).toBe(1); // a porta ainda está abrindo
+    const meio = poseDe(a, 1000 + 700, false);
+    expect(meio.alfa).toBeGreaterThan(0);
+    expect(meio.alfa).toBeLessThan(1);
+    expect(meio.andando).toBe(true);
+    expect(poseDe(a, 1000 + 1500, false).alfa).toBe(0);
+  });
+
+  it('quem sai do elevador aparece aos poucos', () => {
+    const a = { ...iniciarTarefa(emFase('AUSENTE'), 1000, false) };
+    expect(poseDe(a, 1000 + 100, false).alfa).toBe(0);
+    expect(poseDe(a, 1000 + 500, false).alfa).toBeGreaterThan(0);
+    expect(poseDe(a, 1000 + 900, false).alfa).toBe(1);
+  });
+
+  it('na cozinha: toma o café (ou a água) de frente, olhando para a máquina', () => {
+    expect(poseDe(emFase('PAUSA', { pausa: 'CAFE' }), 3000, false)).toMatchObject({ efeito: 'CAFE', cara: 'FRENTE', olhar: 1 });
+    expect(poseDe(emFase('PAUSA', { pausa: 'AGUA' }), 3000, false).efeito).toBe('BEBER');
+    expect(andandoAgora(emFase('PAUSA_INDO', { caminho: [{ x: 1, y: 7 }] }))).toBe(true);
+    expect(andandoAgora(emFase('INDO_EMBORA', { caminho: [{ x: 1, y: 7 }] }))).toBe(true);
+  });
+
+  it('a porta do elevador abre para quem entra e para quem sai; o leitor pisca ao bater o crachá; movimento reduzido não anima', () => {
+    expect(estadoDoElevador([base()], 5000, false)).toEqual({ abertura: 0, led: false });
+    expect(estadoDoElevador([emFase('ELEVADOR')], 1000 + 800, false).abertura).toBe(1);
+    expect(estadoDoElevador([emFase('ELEVADOR')], 1000 + 1790, false).abertura).toBeLessThan(0.1); // fechando
+    expect(estadoDoElevador([emFase('CRACHA')], 1000 + 300, false).led).toBe(true);
+    const saindo = iniciarTarefa(emFase('AUSENTE'), 2000, false);
+    expect(estadoDoElevador([saindo], 2000 + 600, false).abertura).toBe(1);
+    expect(estadoDoElevador([emFase('ELEVADOR')], 1000 + 800, true)).toEqual({ abertura: 0, led: false });
   });
 });

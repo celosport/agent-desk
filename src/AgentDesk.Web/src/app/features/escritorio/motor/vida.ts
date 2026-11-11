@@ -1,6 +1,6 @@
 // "Vida" dos robôs quando estão sem tarefa: passeiam, olham pela janela, bebem água, se espreguiçam. Funções puras e determinísticas
 // (o sorteio vem do código do robô + um contador, nunca de Math.random), para os testes e para cada robô ter o seu jeito.
-import { Ponto } from './iso';
+import { Ponto, rota } from './iso';
 import { hashDe } from './personagens';
 
 export type Motivo = 'JANELA' | 'BEBEDOURO' | 'ESPREGUICAR' | 'OLHAR_AO_REDOR';
@@ -28,6 +28,31 @@ export const VELOCIDADE_PASSEIO = 1.6;
 export const BEBEDOURO = { x: 7, y: 5 };
 export const LUGAR_JANELA: Ponto = { x: 0, y: 5 };
 export const LUGAR_BEBER: Ponto = { x: 6, y: 5 };
+
+// ---- elevador e cozinha ----
+/** Onde o robô fica diante da porta do elevador (parede da esquerda, na frente da sala): bate o crachá, entra e sai por aqui. */
+export const ELEVADOR_PE: Ponto = { x: 0, y: 7 };
+/** A cafeteira (balcão do canto direito) e os lugares onde o robô toma o café e a água enquanto espera uma aprovação. */
+export const CAFETEIRA: Ponto = { x: 7, y: 4 };
+export const LUGAR_CAFE: Ponto = { x: 6, y: 4 };
+export const LUGAR_AGUA: Ponto = LUGAR_BEBER;
+/** A "avenida": a fileira livre de baixo das mesas (y = 5). De uma mesa o robô desce pela sua coluna até ela e segue por ela. */
+export const AVENIDA = 5;
+
+/**
+ * Rota que nunca atravessa as mesas: quem está atrás da avenida (y < 5) primeiro desce pela própria coluna até ela; depois segue em
+ * "L" (x e depois y) como `rota`. Para quem já está na avenida ou na frente dela é igual a `rota`.
+ */
+export function rotaPelaAvenida(de: Ponto, ate: Ponto): Ponto[] {
+  const x = Math.round(de.x);
+  let y = Math.round(de.y);
+  const passos: Ponto[] = [];
+  while (y < AVENIDA && (ate.x !== x || ate.y >= AVENIDA || y < ate.y)) {
+    y++;
+    passos.push({ x, y });
+  }
+  return [...passos, ...rota({ x, y }, ate)];
+}
 
 /** Número entre 0 e 1, sempre o mesmo para o mesmo robô e o mesmo contador. */
 export function sorteio(codigo: string, contador: number, sal = ''): number {

@@ -53,3 +53,9 @@ O motor continua puro (tempo vem de fora, sorteio determinístico por código do
 - **Luz e partículas** (`motor/luz.ts`, tudo função do tempo, sem estado): facho da janela (luar no escuro, sol no claro) com poeira, brilho dos monitores no chão, faíscas, poeirinha dos passos e vinheta.
 - **Equipe → Aparência**: a prévia do robô é animada com as mesmas poses (Automático, Parado, Andando, De costas, Digitando, Comemorando); respeita "movimento reduzido".
 - Testes: `camadas.spec.ts`, `vida.spec.ts`. E2E não rodado (Playwright sem navegador na máquina).
+
+## Atualização 2026-11-11 — elevador e cozinha
+- **Terminou o serviço** (`RESULTADO` acabou): `INDO_EMBORA` → `CRACHA` (bate o ponto no leitor) → `ELEVADOR` (a porta abre, ele entra e some) → `AUSENTE` (não é desenhado nem clicável). Tarefa nova: `iniciarTarefa` tira o robô do elevador (`chegouEm`, ele aparece aos poucos) e ele vai à mesa. Com movimento reduzido some/aparece direto.
+- **Esperando aprovação** (`ESPERANDO_VOCE`): `pausarParaCafe` → `PAUSA_INDO` → `PAUSA` na cozinha (café na cafeteira ou água no bebedouro, sorteio por robô), com o balão de alerta; ao responder volta à mesa.
+- **Rotas**: `rotaPelaAvenida` (vida.ts) faz quem está atrás da fileira y = 5 descer pela própria coluna antes de seguir, para nunca atravessar mesas.
+- Porta, leitor e cafeteira em `desenho.ts`; `estadoDoElevador` (pose.ts) dá a abertura da porta e a luz do leitor. Testes em `motor.spec.ts`, `sessao.spec.ts`, `vida.spec.ts`.

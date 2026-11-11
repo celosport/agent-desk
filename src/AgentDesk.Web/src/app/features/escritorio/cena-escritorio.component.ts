@@ -82,7 +82,7 @@ export class CenaEscritorio {
     fonte.versao();
     const escala = this.escala();
     return fonte.agentes
-      .filter((a) => a.balao && a.fase !== 'INDO' && a.fase !== 'VOLTANDO')
+      .filter((a) => a.balao && a.fase !== 'INDO' && a.fase !== 'VOLTANDO' && a.fase !== 'INDO_EMBORA' && a.fase !== 'CRACHA' && a.fase !== 'ELEVADOR' && a.fase !== 'AUSENTE')
       .map((a) => {
         const p = ancoraDoBalao(a);
         return { codigo: a.codigo, tipo: a.balao!.tipo, texto: a.balao!.texto, x: p.x * escala, y: p.y * escala };
