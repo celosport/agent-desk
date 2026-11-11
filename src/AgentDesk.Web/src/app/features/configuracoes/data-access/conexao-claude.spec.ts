@@ -1,6 +1,6 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
-import { ConexaoClaudeApi, ConexaoClaudeStore, comandosDeAtualizacao, comandosDeInstalacao, configuracaoDeNuvem, guiaParaIa } from './conexao-claude';
+import { ConexaoClaudeApi, ConexaoClaudeStore, comandosDeAtualizacao, comandosDeInstalacao, configuracaoDeNuvem } from './conexao-claude';
 
 describe('conexão do Claude Code', () => {
   it('comandos de instalação para Windows e macOS/Linux, com URL e token', () => {
@@ -36,11 +36,6 @@ describe('conexão do Claude Code', () => {
     expect(c.windows).toContain('Invoke-WebRequest "https://app.exemplo.com/coletor/agentdesk-coletor.mjs"');
     expect(c.windows.endsWith('agentdesk-coletor.mjs" atualizar')).toBe(true);
     expect(c.windows + c.unix).not.toContain('adk_');
-  });
-
-  it('guia para a IA: coloca o endereço do app e nunca um token', () => {
-    const g = guiaParaIa('Endereço: {{ENDERECO}} e de novo {{ENDERECO}}', 'https://app.exemplo.com/');
-    expect(g).toBe('Endereço: https://app.exemplo.com e de novo https://app.exemplo.com');
   });
 
   it('nuvem: variáveis do ambiente e script que lê o token da variável (nunca da linha de comando)', () => {

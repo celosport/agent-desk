@@ -15,7 +15,7 @@ export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
     { provide: LOCALE_ID, useValue: 'pt-BR' },
-    provideRouter(routes, withComponentInputBinding(), withInMemoryScrolling({ scrollPositionRestoration: 'top' })),
+    provideRouter(routes, withComponentInputBinding(), withInMemoryScrolling({ scrollPositionRestoration: 'top', anchorScrolling: 'enabled' })),
     // Ordem importa: auth anexa o token antes; o mock (só em start:mock e E2E) responde no lugar do backend.
     provideHttpClient(withInterceptors([authInterceptor, ...(environment.mockApi ? [mockApiInterceptor] : [])])),
     provideServiceWorker('ngsw-worker.js', {

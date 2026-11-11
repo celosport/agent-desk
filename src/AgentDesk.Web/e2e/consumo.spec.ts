@@ -77,6 +77,9 @@ test('histórico filtra por automação e status e pagina', async ({ page }) => 
 test('ADMIN vê o consumo de todos, com o nome de cada usuário', async ({ page }) => {
   await entrarComo(page, 'admin');
   await menu(page).getByRole('link', { name: 'Consumo' }).click();
+  // O ADMIN não rodou automações mas tem sessões do Claude Code: o painel já abre nessa aba (e a de automações segue a um clique)
+  await expect(page.getByRole('tab', { name: 'Claude Code (assinatura)' })).toHaveAttribute('aria-selected', 'true');
+  await page.getByRole('tab', { name: 'Automações (API)' }).click();
   await expect(page.getByRole('article', { name: 'Acumulado' })).toContainText('0 chamadas'); // o ADMIN não rodou nada
 
   await page.getByRole('button', { name: 'Todos os usuários' }).click();

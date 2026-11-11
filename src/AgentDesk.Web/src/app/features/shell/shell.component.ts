@@ -103,5 +103,6 @@ export class Shell {
     { rota: '/consumo', rotulo: 'Consumo' },
     { rota: '/escritorio', rotulo: 'Escritório' },
     { rota: '/configuracoes', rotulo: 'Configurações' },
+    { rota: '/ajuda', rotulo: 'Ajuda' },
   ];
 }

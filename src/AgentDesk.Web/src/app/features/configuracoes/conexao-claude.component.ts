@@ -3,9 +3,9 @@ import { NonNullableFormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { API_BASE_URL } from '../../core/config/api.config';
 import { Avisos } from '../../core/ui/avisos.service';
-import { baixarTexto } from '../../shared/util/arquivos';
+import { baixarGuiaParaIa } from '../../shared/util/guia-ia';
 import { formatarDataHora, formatarHaQuanto } from '../../shared/util/formatos';
-import { CAMINHO_GUIA_IA, ConexaoClaudeStore, comandosDeAtualizacao, comandosDeInstalacao, configuracaoDeNuvem, guiaParaIa } from './data-access/conexao-claude';
+import { ConexaoClaudeStore, comandosDeAtualizacao, comandosDeInstalacao, configuracaoDeNuvem } from './data-access/conexao-claude';
 
 /**
  * Conectar o Claude Code do computador ao AgentDesk: gera um token (mostrado uma vez) e o comando que instala o coletor
@@ -191,13 +191,7 @@ export class ConexaoClaude {
   }
 
   protected async baixarGuia(): Promise<void> {
-    try {
-      const r = await fetch(CAMINHO_GUIA_IA);
-      if (!r.ok) throw new Error(String(r.status));
-      baixarTexto('CONECTAR-COM-IA.md', guiaParaIa(await r.text(), location.origin));
-    } catch {
-      this.avisos.mostrar('Não foi possível baixar o guia agora. Tente de novo.', 'erro');
-    }
+    if (!(await baixarGuiaParaIa())) this.avisos.mostrar('Não foi possível baixar o guia agora. Tente de novo.', 'erro');
   }
 
   protected async copiar(texto: string): Promise<void> {
