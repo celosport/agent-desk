@@ -73,7 +73,7 @@ Leia a saída do comando e relate à pessoa os **avisos** (ex.: "você já tem u
    ```
    node ~/.agentdesk/agentdesk-coletor.mjs testar
    ```
-   (no Windows: `node "$HOME\.agentdesk\agentdesk-coletor.mjs" testar`). Deve confirmar que o servidor respondeu.
+   (no Windows: `node "$HOME\.agentdesk\agentdesk-coletor.mjs" testar`). Ele manda uma sessão de teste ao servidor; se não der erro, a conexão funciona.
 2. Confira que `~/.claude/settings.json` contém hooks apontando para `agentdesk-coletor.mjs` e que existe um backup do arquivo.
 3. Diga à pessoa para: **abrir uma sessão nova** do Claude Code (as sessões já abertas não pegam os hooks novos) e olhar **Escritório → Claude Code (ao vivo)** no AgentDesk. A sala "agentdesk-teste" deve ter aparecido.
 
@@ -103,7 +103,7 @@ Informe: o que foi instalado e onde, se houve avisos, como **atualizar**, como *
 # atualizar o coletor mantendo o mesmo token
 node ~/.agentdesk/agentdesk-coletor.mjs atualizar
 
-# testar a conexão
+# mandar uma sessão de teste (o robô aparece no Escritório)
 node ~/.agentdesk/agentdesk-coletor.mjs testar
 
 # remover tudo que foi instalado (depois, revogue o token no app)
