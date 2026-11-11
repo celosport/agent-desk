@@ -141,6 +141,31 @@ public sealed class SessoesTests(AgentDeskApiFactory factory)
     }
 
     [Fact]
+    public async Task Titulo_da_tarefa_aparece_na_sessao_sobrevive_a_eventos_sem_titulo_e_muda_quando_a_conversa_e_renomeada()
+    {
+        var c = await ContaComTokenAsync();
+        var s = $"sessao-{Guid.NewGuid():N}";
+        static object ComTitulo(string sessao, string evento, int segundos, string? titulo)
+            => new { sessaoId = sessao, evento, maquina = "Notebook", projeto = "zena", projetoChave = "a1b2c3d4e5f6", titulo, ocorridoEm = Base.AddSeconds(segundos) };
+
+        await EnviarAsync(c.Token, Evento(s, "SessionStart", 0));
+        Assert.Equal(JsonValueKind.Null, (await SessaoAoVivoAsync(c.Http, s))!.Value.GetProperty("titulo").ValueKind);
+
+        await EnviarAsync(c.Token, ComTitulo(s, "UserPromptSubmit", 1, "Lançamento de pagamento em dinheiro"));
+        Assert.Equal("Lançamento de pagamento em dinheiro", (await SessaoAoVivoAsync(c.Http, s))!.Value.GetProperty("titulo").GetString());
+
+        // Os eventos de ferramenta não trazem o título: o último continua valendo
+        await EnviarAsync(c.Token, Evento(s, "PreToolUse", 2, "Read", "api.ts"));
+        Assert.Equal("Lançamento de pagamento em dinheiro", (await SessaoAoVivoAsync(c.Http, s))!.Value.GetProperty("titulo").GetString());
+
+        await EnviarAsync(c.Token, ComTitulo(s, "Stop", 3, "Funcionalidade de cortesia"));
+        Assert.Equal("Funcionalidade de cortesia", (await SessaoAoVivoAsync(c.Http, s))!.Value.GetProperty("titulo").GetString());
+
+        // Título grande demais é recusado (o coletor já corta em 120)
+        Assert.Equal(HttpStatusCode.BadRequest, (await EnviarAsync(c.Token, ComTitulo(s, "Stop", 4, new string('x', 121)))).StatusCode);
+    }
+
+    [Fact]
     public async Task Cada_projeto_vira_uma_sala_mesmo_com_o_mesmo_nome_de_pasta()
     {
         var c = await ContaComTokenAsync();

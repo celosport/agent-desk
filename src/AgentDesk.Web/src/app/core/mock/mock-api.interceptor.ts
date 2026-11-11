@@ -131,6 +131,7 @@ function aoVivoMock() {
       sessao: {
         sessaoId: r.sessaoId,
         projetoChave: r.chave,
+        titulo: `Tarefa de exemplo ${i + 1}`,
         lugar: ROTEIROS.filter((o) => o.chave === r.chave).indexOf(r),
         // A sessão 3 chama um subagente Explore o tempo todo (o ajudante aparece como um robô ao lado dela)
         subagentes: r.sessaoId === 'demo-sessao-3' ? [{

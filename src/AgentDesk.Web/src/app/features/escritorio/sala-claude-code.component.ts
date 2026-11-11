@@ -114,6 +114,9 @@ const ROTULO: Record<StatusSessao, string> = {
                   <span class="cor" [style.background]="store.visualDe(s.sessaoId).paleta.b" aria-hidden="true"></span>
                   <span class="nomes"><strong>{{ store.apelido(s.sessaoId) }}</strong> <span class="ui-suave">{{ s.maquina }}@if (projeto.grupo) { · {{ nomeDoProjeto(projeto, s) }}}</span></span>
                   <span [class]="'status ' + s.status.toLowerCase()">{{ rotulo[s.status] }}</span>
+                  @if (s.titulo) {
+                    <span class="titulo-tarefa">{{ s.titulo }}</span>
+                  }
                   <span class="atividade">{{ s.atividade ?? '—' }}</span>
                   <span class="numeros ui-suave">
                     {{ tempo(s) }} · {{ numero(s.tokens) }} tokens · ≈ {{ dolar(s.custoUsd) }} · {{ s.pedidos }} pedidos · {{ haQuanto(s.ultimaAtividadeEm) }}
@@ -208,6 +211,7 @@ const ROTULO: Record<StatusSessao, string> = {
       background: var(--ui-superficie); color: inherit; font: inherit; cursor: pointer; }
     .sessao[aria-pressed='true'] { border-color: var(--ui-marca); box-shadow: 0 0 0 2px color-mix(in srgb, var(--ui-marca) 30%, transparent); }
     .cor { width: 14px; height: 14px; border-radius: 3px; }
+    .titulo-tarefa { grid-column: 1 / -1; font-weight: 600; overflow-wrap: anywhere; }
     .nomes { display: flex; flex-wrap: wrap; gap: 0 var(--ui-e2); align-items: baseline; min-width: 0; }
     .status { font-size: var(--ui-t-xs); font-weight: 700; white-space: nowrap; }
     .status.trabalhando { color: var(--ui-marca-tinta); }

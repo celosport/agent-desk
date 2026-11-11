@@ -28,6 +28,8 @@ import {
   mesclarSettings,
   projetoDe,
   removerDoSettings,
+  repositorioDe,
+  tituloDaSessao,
   resumirEvento,
   resumoDaFerramenta,
   textoDaStatusline,
@@ -42,6 +44,61 @@ test('projeto: só o nome da pasta, e um hash do caminho para separar pastas hom
   assert.equal(a.projetoChave.length, 12);
   assert.notEqual(a.projetoChave, b.projetoChave);
   assert.equal(projetoDe('C:\\Projetos\\agent-desk\\').projeto, 'agent-desk');
+});
+
+test('repositório: pasta com .git, subpasta e worktree dão o nome do projeto, não o da pasta de trabalho', () => {
+  const raiz = mkdtempSync(join(tmpdir(), 'adk-repo-'));
+  try {
+    const repo = join(raiz, 'zena');
+    mkdirSync(join(repo, '.git', 'worktrees', 'ajuste-1'), { recursive: true });
+    mkdirSync(join(repo, 'src', 'api'), { recursive: true });
+    const worktree = join(raiz, 'scratch-2026-11-11-7479aa');
+    mkdirSync(worktree);
+    writeFileSync(join(worktree, '.git'), `gitdir: ${join(repo, '.git', 'worktrees', 'ajuste-1')}\n`);
+    const solta = join(raiz, 'sem-git');
+    mkdirSync(solta);
+
+    assert.equal(repositorioDe(repo), 'zena');
+    assert.equal(repositorioDe(join(repo, 'src', 'api')), 'zena');
+    assert.equal(repositorioDe(worktree), 'zena');
+    assert.equal(repositorioDe(join(raiz, 'nao-existe')), undefined);
+    assert.equal(repositorioDe(''), undefined);
+  } finally {
+    rmSync(raiz, { recursive: true, force: true });
+  }
+});
+
+test('título: o último custom-title do transcript vale mais que o ai-title; sem título, nada', () => {
+  const raiz = mkdtempSync(join(tmpdir(), 'adk-titulo-'));
+  try {
+    const linhas = (...itens) => itens.map((i) => JSON.stringify(i)).join('\n') + '\n';
+    const so_ia = join(raiz, 'ia.jsonl');
+    writeFileSync(so_ia, linhas({ type: 'user', message: 'oi' }, { type: 'ai-title', aiTitle: 'Lançamento de pagamento em dinheiro' }));
+    const renomeada = join(raiz, 'renomeada.jsonl');
+    writeFileSync(renomeada, linhas({ type: 'ai-title', aiTitle: 'Título da IA' }, { type: 'custom-title', customTitle: 'Funcionalidade de cortesia' },
+      { type: 'custom-title', customTitle: '  Funcionalidade de cortesia e troca  ' }));
+    const sem = join(raiz, 'sem.jsonl');
+    writeFileSync(sem, linhas({ type: 'user', message: 'oi' }));
+
+    assert.equal(tituloDaSessao(so_ia), 'Lançamento de pagamento em dinheiro');
+    assert.equal(tituloDaSessao(renomeada), 'Funcionalidade de cortesia e troca');
+    assert.equal(tituloDaSessao(sem), undefined);
+    assert.equal(tituloDaSessao(join(raiz, 'nao-existe.jsonl')), undefined);
+    assert.equal(tituloDaSessao(undefined), undefined);
+  } finally {
+    rmSync(raiz, { recursive: true, force: true });
+  }
+});
+
+test('evento: o repositório vira o nome da sala (a chave continua a do caminho) e o título vai junto', () => {
+  const hook = { session_id: 's9', hook_event_name: 'Stop', cwd: '/tmp/scratch-2026-11-11-7479aa' };
+  const e = resumirEvento(hook, 'Notebook', new Date(), { repositorio: 'zena', titulo: 'Lançamento de pagamento em dinheiro' });
+  assert.equal(e.projeto, 'zena');
+  assert.equal(e.titulo, 'Lançamento de pagamento em dinheiro');
+  assert.equal(e.projetoChave, projetoDe('/tmp/scratch-2026-11-11-7479aa').projetoChave);
+  const sem = resumirEvento(hook, 'Notebook');
+  assert.equal(sem.projeto, 'scratch-2026-11-11-7479aa');
+  assert.equal('titulo' in sem, false);
 });
 
 test('arquivo: só o nome, sem caminho e sem conteúdo', () => {

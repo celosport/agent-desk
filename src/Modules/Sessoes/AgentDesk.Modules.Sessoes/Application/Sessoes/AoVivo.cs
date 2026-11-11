@@ -24,7 +24,9 @@ public sealed record SessaoAoVivoDto(
     IReadOnlyList<SubagenteAoVivoDto>? Subagentes = null,
     /// <summary>Projeto (pasta) da sessão e o lugar dela na sala: a Equipe guarda nome e aparência por (projetoChave, lugar).</summary>
     string? ProjetoChave = null,
-    int? Lugar = null);
+    int? Lugar = null,
+    /// <summary>Título da tarefa (o nome da conversa no Claude Code), para achar a sessão na lista.</summary>
+    string? Titulo = null);
 
 /// <summary>Um subagente: aparece como um robô ao lado da sessão que o chamou. Status: TRABALHANDO ou ENCERRADA.</summary>
 public sealed record SubagenteAoVivoDto(string AgenteId, string Tipo, StatusSessao Status, string? Atividade, DateTimeOffset IniciadoEm, DateTimeOffset UltimaAtividadeEm);
@@ -65,7 +67,7 @@ internal sealed class ObterAoVivoHandler(ISessoesRepository sessoes, IControleRe
                 s.Modelo, s.Uso.Entrada + (long)s.Uso.Saida + s.Uso.CacheLeitura + s.Uso.CacheEscrita, s.Uso.CacheLeitura,
                 s.CustoUsd, s.Pedidos, s.IniciadaEm, s.UltimaAtividadeEm,
                 permissoes.TryGetValue(s.SessaoId, out var p) ? new PermissaoPendenteDto(p.PermissaoId, p.Ferramenta, p.Resumo, p.CriadaEm, p.ExpiraEm) : null,
-                paradas.Contains(s.SessaoId), AjudantesDe(s, ajudantes), s.ProjetoChave, s.Lugar))
+                paradas.Contains(s.SessaoId), AjudantesDe(s, ajudantes), s.ProjetoChave, s.Lugar, s.Titulo))
                 .ToList(), gruposDasSalas.GetValueOrDefault(g.Key)))
             .OrderByDescending(p => p.Sessoes.Max(s => s.UltimaAtividadeEm))
             .ToList();

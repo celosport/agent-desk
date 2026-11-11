@@ -28,7 +28,9 @@ internal sealed record EventoHook(
     DateTimeOffset OcorridoEm,
     /// <summary>Preenchidos quando o hook roda dentro de um subagente (<c>agent_id</c> e <c>agent_type</c>).</summary>
     string? AgenteId = null,
-    string? AgenteTipo = null)
+    string? AgenteTipo = null,
+    /// <summary>Título da conversa no Claude Code, quando o coletor o encontrou.</summary>
+    string? Titulo = null)
 {
     public bool DeSubagente => AgenteId is not null;
 }
@@ -131,7 +133,9 @@ internal sealed record Sessao(
     DateTimeOffset UltimaAtividadeEm,
     DateTimeOffset? EncerradaEm,
     /// <summary>Lugar (0 a 7) na sala do projeto; liga a sessão ao nome e à aparência salvos na Equipe. Nulo em sessões antigas.</summary>
-    short? Lugar = null);
+    short? Lugar = null,
+    /// <summary>Título da tarefa (o nome da conversa no Claude Code); nulo quando o coletor ainda não mandou.</summary>
+    string? Titulo = null);
 
 internal static class SessaoAoVivo
 {

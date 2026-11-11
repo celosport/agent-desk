@@ -216,6 +216,8 @@ CREATE INDEX IF NOT EXISTS ix_cc_sessoes_atividade ON cc_sessoes (usuario_id, ul
 -- Lugar (0 a 7) do robô na sala do projeto: fixo enquanto a sessão existir. É ele que liga a sessão ao nome e à aparência salvos
 -- na Equipe (agentes_personalizados.ordem); sem isso o nome "voltava" quando a ordem de chegada das sessões mudava.
 ALTER TABLE cc_sessoes ADD COLUMN IF NOT EXISTS lugar SMALLINT;
+-- Título da tarefa (o nome que o Claude Code dá à conversa, ex.: "Lançamento de pagamento em dinheiro"): ajuda a achar a sessão na lista.
+ALTER TABLE cc_sessoes ADD COLUMN IF NOT EXISTS titulo VARCHAR(120);
 
 -- Subagentes que uma sessão chamou (cada um vira um robô ajudante no Escritório; some quando termina)
 CREATE TABLE IF NOT EXISTS cc_subagentes (
