@@ -20,7 +20,8 @@ da telemetria. Decisão: [[ADR-010 - Sessões do Claude Code (Hooks e Telemetria
 2. Colar no terminal do PC (Node 18+). Ele baixa o coletor, faz backup do `~/.claude/settings.json`, adiciona hooks e telemetria e manda
    uma sessão de teste (sala "agentdesk-teste").
 3. Abrir uma sessão **nova** do Claude Code → **Escritório → Claude Code (ao vivo)**.
-4. Para tirar: `node ~/.agentdesk/agentdesk-coletor.mjs desinstalar` e revogar o token.
+4. **Pela IA:** Configurações → Claude Code → **Baixar guia para a IA (.md)** (`coletor/CONECTAR-COM-IA.md`, servido em `/coletor/`; o app troca `{{ENDERECO}}` pelo endereço do site). O dev abre o Claude Code e pede para ler o arquivo; a IA pede o token (que a pessoa gera) e instala.
+5. Para tirar: `node ~/.agentdesk/agentdesk-coletor.mjs desinstalar` e revogar o token.
 
 ## Regras de negócio
 - Status: `TRABALHANDO` (pedido/ferramenta), `ESPERANDO_VOCE` (aviso de permissão ou pergunta), `OCIOSA` (terminou/esperando o

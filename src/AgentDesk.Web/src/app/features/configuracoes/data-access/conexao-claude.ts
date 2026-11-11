@@ -48,6 +48,13 @@ export function comandosDeInstalacao(urlApp: string, urlApi: string, token: stri
   };
 }
 
+/** O guia em Markdown (servido em /coletor) que uma IA lê para conectar o Claude Code; o endereço do app vai preenchido. */
+export const CAMINHO_GUIA_IA = '/coletor/CONECTAR-COM-IA.md';
+
+export function guiaParaIa(markdown: string, urlApp: string): string {
+  return markdown.replaceAll('{{ENDERECO}}', urlApp.replace(/\/+$/, ''));
+}
+
 /** Para um ambiente de Claude Code na nuvem: as variáveis do ambiente e o script de preparação (o token não vai na linha de comando). */
 export interface ConfiguracaoNuvem {
   variaveis: string;

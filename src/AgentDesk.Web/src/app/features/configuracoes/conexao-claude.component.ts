@@ -3,8 +3,9 @@ import { NonNullableFormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { API_BASE_URL } from '../../core/config/api.config';
 import { Avisos } from '../../core/ui/avisos.service';
+import { baixarTexto } from '../../shared/util/arquivos';
 import { formatarDataHora, formatarHaQuanto } from '../../shared/util/formatos';
-import { ConexaoClaudeStore, comandosDeAtualizacao, comandosDeInstalacao, configuracaoDeNuvem } from './data-access/conexao-claude';
+import { CAMINHO_GUIA_IA, ConexaoClaudeStore, comandosDeAtualizacao, comandosDeInstalacao, configuracaoDeNuvem, guiaParaIa } from './data-access/conexao-claude';
 
 /**
  * Conectar o Claude Code do computador ao AgentDesk: gera um token (mostrado uma vez) e o comando que instala o coletor
@@ -26,6 +27,14 @@ import { ConexaoClaudeStore, comandosDeAtualizacao, comandosDeInstalacao, config
         Só metadados saem do seu PC: nome da pasta, ferramenta, nome do arquivo, o começo do comando, tokens e custo. Código e texto dos
         prompts não saem.
       </p>
+
+      <div class="guia-ia">
+        <p class="ui-suave">
+          Prefere que a IA faça a conexão? Baixe o guia, abra o Claude Code no seu computador e peça:
+          <em>"Leia o CONECTAR-COM-IA.md e conecte o meu Claude Code ao AgentDesk"</em>. Ele já leva o endereço deste site; o token você gera abaixo.
+        </p>
+        <button type="button" class="ui-botao" (click)="baixarGuia()">Baixar guia para a IA (.md)</button>
+      </div>
 
       @if (store.criado(); as c) {
         <div class="segredo" role="region" aria-label="Token criado">
@@ -124,6 +133,7 @@ import { ConexaoClaudeStore, comandosDeAtualizacao, comandosDeInstalacao, config
     .segredo { display: grid; gap: var(--ui-e3); padding: var(--ui-e3); border-radius: var(--ui-raio-controle); background: var(--ui-alerta-fundo); }
     .sistemas, .acoes { display: flex; flex-wrap: wrap; gap: var(--ui-e2); }
     .sistemas [aria-pressed='true'] { background: var(--ui-marca); color: var(--ui-marca-texto); border-color: var(--ui-marca); }
+    .guia-ia { display: grid; gap: var(--ui-e2); justify-items: start; }
     .atualizar { margin-bottom: var(--ui-e4); display: grid; gap: var(--ui-e2); }
     .atualizar summary { cursor: pointer; font-weight: 600; }
     .comando { margin: 0; padding: var(--ui-e3); border-radius: var(--ui-raio-controle); background: var(--ui-superficie);
@@ -178,6 +188,16 @@ export class ConexaoClaude {
   protected async revogar(tokenId: string): Promise<void> {
     const erro = await this.store.revogar(tokenId);
     this.avisos.mostrar(erro ?? 'Token revogado: esse computador para de enviar na hora.', erro ? 'erro' : 'sucesso');
+  }
+
+  protected async baixarGuia(): Promise<void> {
+    try {
+      const r = await fetch(CAMINHO_GUIA_IA);
+      if (!r.ok) throw new Error(String(r.status));
+      baixarTexto('CONECTAR-COM-IA.md', guiaParaIa(await r.text(), location.origin));
+    } catch {
+      this.avisos.mostrar('Não foi possível baixar o guia agora. Tente de novo.', 'erro');
+    }
   }
 
   protected async copiar(texto: string): Promise<void> {

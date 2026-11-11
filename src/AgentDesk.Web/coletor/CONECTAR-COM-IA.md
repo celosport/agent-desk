@@ -24,7 +24,7 @@ node --version
 ### Passo 2 — Peça os dados à pessoa (não invente)
 Você precisa de **três informações**. Pergunte e espere:
 
-1. **Endereço do AgentDesk** da equipe (ex.: `https://agentdesk.suaempresa.com`). Deve começar com `https://` (ou `http://localhost`).
+1. **Endereço do AgentDesk** da equipe. Endereço sugerido por este arquivo: `{{ENDERECO}}` (se aparecer literalmente `{{ENDERECO}}` com chaves, o arquivo não veio preenchido: pergunte à pessoa). Confirme com ela. Deve começar com `https://` (ou `http://localhost`).
 2. **Token de conexão**, que começa com `adk_`. Quem gera é a pessoa, no AgentDesk: **Configurações → Claude Code → "Gerar token e comando"**. O token é mostrado **uma única vez**.
 3. **Nome do computador** (ex.: `notebook-joao`), só para identificar na tela.
 
@@ -129,4 +129,4 @@ Um ambiente de nuvem é outra máquina. Em **Configurações → Claude Code →
 - Não mede chamadas que o código do projeto faz diretamente na API da Claude: só as sessões do Claude Code e as automações executadas dentro do AgentDesk. Para essas chamadas, use o limite de gastos do Console da Anthropic, com uma chave por projeto.
 - Não precisa alterar nenhum arquivo do projeto da pessoa: a conexão fica na configuração do usuário (`~/.claude` e `~/.agentdesk`).
 
-Guia completo para o usuário final: `docs/apresentacao/index.html`.
+Guia completo para o usuário final: `docs/apresentacao/index.html` (no repositório do AgentDesk).

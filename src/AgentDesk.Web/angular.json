@@ -27,7 +27,8 @@
             "inlineStyleLanguage": "scss",
             "assets": [
               { "glob": "**/*", "input": "public" },
-              { "glob": "agentdesk-coletor.mjs", "input": "coletor", "output": "coletor" }
+              { "glob": "agentdesk-coletor.mjs", "input": "coletor", "output": "coletor" },
+              { "glob": "CONECTAR-COM-IA.md", "input": "coletor", "output": "coletor" }
             ],
             "styles": ["src/styles.scss"]
           },

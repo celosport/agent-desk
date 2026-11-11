@@ -21,6 +21,7 @@ test('o Escritório abre nas sessões do Claude Code, na sala que precisa de voc
   await expect(sessoes.getByRole('button')).toHaveCount(3);
   await expect(sessoes).toContainText('✋ Precisa de você: aprovar permissão');
   await expect(sessoes).toContainText('≈ US$');
+  await expect(sessoes).toContainText('Tarefa de exemplo 1'); // o título da tarefa (nome da conversa no Claude Code) identifica a sessão
   await expect(page.locator('[data-agente="demo-sessao-2"]')).toContainText('Precisa de você'); // balão na sala
   await expect(page.getByRole('img', { name: /Sala app-mobile com 3 sessões/ })).toBeVisible();
 
@@ -111,6 +112,18 @@ test('mandar tarefa: pasta não liberada ou limite de 5 mostram o motivo do serv
 
   await expect(page.getByRole('alert').filter({ hasText: 'Já há 5 tarefas esperando ou rodando' })).toBeVisible();
   await expect(texto).toHaveValue('A sexta não cabe'); // o que foi digitado não se perde
+});
+
+test('baixar o guia em Markdown para a IA, com o endereço do site preenchido', async ({ page }) => {
+  await entrarComo(page, 'usuario');
+  await page.goto('/configuracoes');
+  const download = page.waitForEvent('download');
+  await page.getByRole('button', { name: /Baixar guia para a IA/ }).click();
+  const arquivo = await download;
+  expect(arquivo.suggestedFilename()).toBe('CONECTAR-COM-IA.md');
+  const texto = await (await import('node:fs/promises')).readFile(await arquivo.path(), 'utf-8');
+  expect(texto).toContain('Conectar o meu Claude Code ao AgentDesk');
+  expect(texto).not.toContain('{{ENDERECO}}');
 });
 
 test('conectar o Claude Code: gera token, mostra o comando uma vez e revoga', async ({ page }) => {
