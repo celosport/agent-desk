@@ -83,7 +83,7 @@ export const MOVEIS = {
 
 /** Lugares onde os robôs fazem as coisas (ladrilho livre ao lado do móvel). */
 export const LUGARES = {
-  janela: { x: 0, y: 5 },
+  janela: { x: 0, y: 2 }, // embaixo da janela (parede da esquerda, y 2 a 4); longe do leitor de crachá do elevador (y ≈ 5,5 a 7,8)
   cafe: { x: 14, y: 1 },
   agua: { x: 14, y: 2 },
   pia: { x: 14, y: 7 },
