@@ -49,6 +49,16 @@ export function montarSalas(projetos: ProjetoAoVivo[]): Sala[] {
   return salas;
 }
 
+/**
+ * O que vai depois do nome no botão da sala: o título da tarefa quando a sala tem uma sessão só (assim se distingue uma sala
+ * "scratch-..." da outra); com mais sessões, quantas são. Título longo é cortado para o botão não crescer.
+ */
+export function detalheDaSala(sala: Pick<Sala, 'sessoes'>, maximo = 40): string {
+  const unica = sala.sessoes.length === 1 ? sala.sessoes[0].titulo?.trim() : undefined;
+  if (!unica) return String(sala.sessoes.length);
+  return unica.length <= maximo ? unica : unica.slice(0, maximo - 1).trimEnd() + '…';
+}
+
 /** Quem precisa de você aparece antes de quem trabalha, e quem trabalha antes de quem está parado. */
 const PRIORIDADE: Record<StatusSessao, number> = { ESPERANDO_VOCE: 0, TRABALHANDO: 1, OCIOSA: 2, ENCERRADA: 3 };
 

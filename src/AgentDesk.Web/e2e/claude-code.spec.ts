@@ -65,7 +65,7 @@ test('juntar duas salas num grupo mostra tudo numa sala só, e dá para tirar do
 
   await page.getByRole('button', { name: 'Tirar api-pagamentos do grupo' }).click();
   await expect(projetos.getByRole('button')).toHaveCount(2);
-  await expect(projetos.getByRole('button', { name: /api-pagamentos · 1/ })).toBeVisible();
+  await expect(projetos.getByRole('button', { name: /api-pagamentos · Tarefa de exemplo/ })).toBeVisible();
 });
 
 test('mandar tarefa: escolhe computador e pasta, envia e acompanha; pendente dá para cancelar', async ({ page }) => {

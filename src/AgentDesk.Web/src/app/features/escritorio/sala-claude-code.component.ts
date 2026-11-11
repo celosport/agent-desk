@@ -5,7 +5,7 @@ import { formatarDolarCompacto, formatarDuracao, formatarHaQuanto, formatarHora,
 import { CenaEscritorio } from './cena-escritorio.component';
 import { MandarTarefa } from './mandar-tarefa.component';
 import { EquipeStore } from './data-access/equipe.store';
-import { Sala, codigoDoSubagente } from './data-access/salas';
+import { Sala, codigoDoSubagente, detalheDaSala } from './data-access/salas';
 import { SessaoAoVivo } from './data-access/sessoes.models';
 import { SessoesStore } from './data-access/sessoes.store';
 import { acompanharMovimentoReduzido } from './movimento-reduzido';
@@ -86,7 +86,7 @@ const ROTULO: Record<StatusSessao, string> = {
       <div class="projetos" role="group" aria-label="Projetos">
         @for (p of store.projetos(); track p.chave) {
           <button type="button" class="ui-botao" [attr.aria-pressed]="p.chave === projeto.chave" (click)="store.escolherProjeto(p.chave)">
-            {{ p.grupo ? '🗂️ ' : '' }}{{ p.nome }} · {{ p.sessoes.length }}{{ temAlerta(p.sessoes) ? ' ✋' : '' }}
+            {{ p.grupo ? '🗂️ ' : '' }}{{ p.nome }} · {{ detalhe(p) }}{{ temAlerta(p.sessoes) ? ' ✋' : '' }}
           </button>
         }
       </div>
@@ -279,7 +279,8 @@ export class SalaClaudeCode {
     s.status === 'ENCERRADA'
       ? `${formatarIntervalo(s.iniciadaEm, s.ultimaAtividadeEm)}`
       : `iniciada às ${formatarHora(s.iniciadaEm)} · ${formatarDuracao(Date.now() - new Date(s.iniciadaEm).getTime())}`;
-  protected readonly temAlerta = (sessoes: { status: StatusSessao }[]) => sessoes.some((s) => s.status === 'ESPERANDO_VOCE');
+  protected readonly detalhe = detalheDaSala;
+  protected readonly temAlerta =(sessoes: { status: StatusSessao }[]) => sessoes.some((s) => s.status === 'ESPERANDO_VOCE');
 
   constructor() {
     const destroy = inject(DestroyRef);
