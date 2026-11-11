@@ -1,8 +1,8 @@
 // Desenho da sala no Canvas 2D, em pixels de arte (o contexto já vem escalado). Tudo é desenhado por código: nada de imagens.
 import { Agente } from './agente';
-import { CENA_A, CENA_L, LADRILHO_A, LADRILHO_L, PAREDE, Ponto, SALA, centroNaTela, paraTela, profundidade } from './iso';
+import { ALTURA, CENA_A, CENA_L, LADRILHO_A, LADRILHO_L, LARGURA, PAREDE, Ponto, centroNaTela, paraTela, profundidade } from './iso';
 import { ACORDAR_MS, COMEMORAR_MS, EstadoElevador, Pose, desvios, estadoDoElevador, poseDe } from './pose';
-import { BEBEDOURO, CAFETEIRA } from './vida';
+import { itensDoAndar, pisoDoAndar, rotulosDosAmbientes } from './ambientes';
 import { brilhoDosMonitores, fachoDaJanela, faiscas, poeiraDosPassos, vinheta } from './luz';
 import { Cara, Personagem, ROBO_ESCALA, Quadro, SPRITE_A, SPRITE_L, coresDoSprite, montarSprite, personagemDe } from './personagens';
 
@@ -26,6 +26,17 @@ export interface PaletaSala {
   janela: string;
   sombra: string;
   destaque: string;
+  /** Pisos dos ambientes (xadrez de 2 tons), muros baixos, sofá e bancadas da cozinha/banheiro. */
+  pisoCozinha: [string, string];
+  pisoBanheiro: [string, string];
+  pisoDescanso: [string, string];
+  pisoCorredor: [string, string];
+  muro: string;
+  muroTopo: string;
+  sofa: string;
+  sofaEscuro: string;
+  cozinhaTopo: string;
+  cozinhaLado: string;
   /** Cores de luz como "r g b" (para `rgb(r g b / alfa)`): facho da janela, poeira no ar e vinheta nas bordas. */
   luz: string;
   poeira: string;
@@ -51,6 +62,16 @@ export const PALETAS: Record<'claro' | 'escuro', PaletaSala> = {
     janela: '#a5d8ff',
     sombra: 'rgb(20 22 27 / 0.18)',
     destaque: '#3b5bdb',
+    pisoCozinha: ['#eef2f7', '#dfe6ef'],
+    pisoBanheiro: ['#dff3f5', '#cde9ee'],
+    pisoDescanso: ['#d9cdef', '#d0c2ea'],
+    pisoCorredor: ['#e9dcc3', '#e1d2b5'],
+    muro: '#aab6d0',
+    muroTopo: '#d3dbea',
+    sofa: '#7a5cd6',
+    sofaEscuro: '#5a3fb0',
+    cozinhaTopo: '#f4f6fa',
+    cozinhaLado: '#c9d2e2',
     luz: '255 236 170',
     poeira: '255 255 255',
     vinheta: '40 60 140',
@@ -73,6 +94,16 @@ export const PALETAS: Record<'claro' | 'escuro', PaletaSala> = {
     janela: '#17476b',
     sombra: 'rgb(0 0 0 / 0.35)',
     destaque: '#7fd8ff',
+    pisoCozinha: ['#2b3350', '#262d48'],
+    pisoBanheiro: ['#1f3b4d', '#1b3445'],
+    pisoDescanso: ['#35285a', '#2f2352'],
+    pisoCorredor: ['#3b342c', '#352f28'],
+    muro: '#4a5a92',
+    muroTopo: '#7081c0',
+    sofa: '#6a4fd0',
+    sofaEscuro: '#4b36a3',
+    cozinhaTopo: '#56618a',
+    cozinhaLado: '#3d476b',
     luz: '127 180 255',
     poeira: '170 190 255',
     vinheta: '0 0 14',
@@ -98,7 +129,8 @@ export function desenharSala(
   ctx.fillRect(0, 0, CENA_L, CENA_A);
   paredes(ctx, p);
   elevador(ctx, p, estadoDoElevador(agentes, r.agora, r.reduzido), r);
-  piso(ctx, p);
+  pisoDoAndar(ctx, p);
+  rotulosDosAmbientes(ctx, p);
   fachoDaJanela(ctx, p, r);
   brilhoDosMonitores(ctx, p, agentes, r);
 
@@ -112,10 +144,7 @@ export function desenharSala(
     itens.push({ z: profundidade(mesa), desenhar: () => mesaComMonitor(ctx, mesa, p, pensando.has(a.codigo), r) });
     itens.push({ z: profundidade(a.posicao) + 0.5, desenhar: () => agente(ctx, a, visualDe(a.codigo), p, r, a.codigo === selecionado, desvio.get(a.codigo) ?? 0) });
   }
-  itens.push({ z: profundidade(BEBEDOURO), desenhar: () => bebedouro(ctx, p, r) });
-  itens.push({ z: profundidade(CAFETEIRA), desenhar: () => cafeteira(ctx, p, r, agentes.some((a) => a.fase === 'PAUSA' && a.pausa === 'CAFE')) });
-  itens.push({ z: profundidade({ x: 7, y: 7 }), desenhar: () => planta(ctx, { x: 7, y: 7 }, p) });
-  itens.push({ z: profundidade({ x: 0, y: 1 }), desenhar: () => planta(ctx, { x: 0, y: 1 }, p) });
+  itens.push(...itensDoAndar(ctx, p, r, agentes));
   itens.sort((a, b) => a.z - b.z).forEach((i) => i.desenhar());
   vinheta(ctx, p);
 }
@@ -151,19 +180,10 @@ function losango(ctx: CanvasRenderingContext2D, t: Ponto, cor: string, elevacao 
   ctx.fill();
 }
 
-function piso(ctx: CanvasRenderingContext2D, p: PaletaSala): void {
-  for (let y = 0; y < SALA; y++) {
-    for (let x = 0; x < SALA; x++) {
-      const noTapete = x >= 1 && x <= 6 && y >= 5 && y <= 7;
-      losango(ctx, { x, y }, noTapete ? p.tapete : p.piso[(x + y) % 2]);
-    }
-  }
-}
-
 function paredes(ctx: CanvasRenderingContext2D, p: PaletaSala): void {
   const o = paraTela({ x: 0, y: 0 });
-  const direita = paraTela({ x: SALA, y: 0 });
-  const esquerda = paraTela({ x: 0, y: SALA });
+  const direita = paraTela({ x: LARGURA, y: 0 });
+  const esquerda = paraTela({ x: 0, y: ALTURA });
   poligono(ctx, p.paredeEsquerda, [o, esquerda, { x: esquerda.x, y: esquerda.y - PAREDE }, { x: o.x, y: o.y - PAREDE }]);
   poligono(ctx, p.paredeDireita, [o, direita, { x: direita.x, y: direita.y - PAREDE }, { x: o.x, y: o.y - PAREDE }]);
   // rodapé
@@ -245,18 +265,6 @@ function mesaComMonitor(ctx: CanvasRenderingContext2D, t: Ponto, p: PaletaSala, 
   }
 }
 
-function planta(ctx: CanvasRenderingContext2D, t: Ponto, p: PaletaSala): void {
-  const pe = centroNaTela(t);
-  const x = Math.round(pe.x);
-  const y = Math.round(pe.y);
-  ctx.fillStyle = p.sombra;
-  ctx.fillRect(x - 6, y - 1, 12, 2);
-  ctx.fillStyle = p.vaso;
-  ctx.fillRect(x - 4, y - 7, 8, 7);
-  ctx.fillStyle = p.folha;
-  for (const [dx, dy, l, a] of [[-6, -14, 4, 7], [-2, -19, 4, 12], [2, -15, 4, 8], [-4, -11, 8, 4]]) ctx.fillRect(x + dx, y + dy, l, a);
-}
-
 function agente(ctx: CanvasRenderingContext2D, a: Agente, visual: Personagem, p: PaletaSala, r: Relogio, selecionado: boolean, desvio: number): void {
   const pose = poseDe(a, r.agora, r.reduzido);
   if (pose.alfa <= 0) return;
@@ -297,7 +305,7 @@ function agente(ctx: CanvasRenderingContext2D, a: Agente, visual: Personagem, p:
   }
 
   const x0 = Math.round(px - ROBO_L / 2) + pose.dx;
-  const y0 = Math.round(pe.y - ROBO_A) + pose.dy;
+  const y0 = Math.round(pe.y - ROBO_A) + pose.dy + (pose.sentado ? 6 : 0);
   if (pose.andando) poeiraDosPassos(ctx, p, { x: px, y: pe.y }, a.caminho[0], a.posicao, r);
   const anim = r.reduzido ? 0 : Math.floor(r.agora / 120) % 4;
   desenharRobo(ctx, visual, pose.quadro, x0, y0, ROBO_ESCALA, pose.inclinar, pose.cara, pose.olhar, pose.bracosParaCima, anim);
@@ -436,6 +444,14 @@ function efeito(ctx: CanvasRenderingContext2D, pose: Pose, x0: number, y0: numbe
       ctx.fillRect(x0 - (encosta ? 4 : 1), y0 + (encosta ? 14 : 18), 3, 1);
       break;
     }
+    case 'LAVAR': {
+      // a torneira da pia (à direita) pinga e a água cai sobre as mãos
+      const gota = Math.floor(r.agora / 120) % 3;
+      ctx.fillStyle = '#74c0fc';
+      ctx.fillRect(x0 + ROBO_L + 2, y0 + 12 + gota * 3, 1, 2);
+      ctx.fillRect(x0 + ROBO_L + 4, y0 + 14 + ((gota + 1) % 3) * 3, 1, 2);
+      break;
+    }
     case 'CAFE': {
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(x0 + ROBO_L - 1, y0 + 17, 3, 4);
@@ -485,56 +501,6 @@ function elevador(ctx: CanvasRenderingContext2D, p: PaletaSala, estado: EstadoEl
   // leitor de crachá ao lado da porta: a luz fica verde quando alguém bate o ponto
   poligono(ctx, p.monitor, quadro(-0.42, -0.3, 20, 32));
   poligono(ctx, estado.led ? '#51cf66' : '#ff6b6b', quadro(-0.39, -0.33, 27, 30));
-}
-
-/** Cafeteira no balcão do canto direito (cozinha); sai fumaça quando alguém toma café. */
-function cafeteira(ctx: CanvasRenderingContext2D, p: PaletaSala, r: Relogio, fumaca: boolean): void {
-  const pe = centroNaTela(CAFETEIRA);
-  const x = Math.round(pe.x);
-  const y = Math.round(pe.y);
-  ctx.fillStyle = p.sombra;
-  ctx.fillRect(x - 8, y - 1, 16, 2);
-  ctx.fillStyle = p.mesaLado[1];
-  ctx.fillRect(x - 7, y - 10, 14, 9);
-  ctx.fillStyle = p.mesaTopo;
-  ctx.fillRect(x - 7, y - 12, 14, 3);
-  ctx.fillStyle = p.monitor;
-  ctx.fillRect(x - 4, y - 25, 8, 13);
-  ctx.fillStyle = p.rodape;
-  ctx.fillRect(x - 4, y - 25, 8, 2);
-  ctx.fillStyle = fumaca ? '#51cf66' : '#ff6b6b';
-  ctx.fillRect(x + 1, y - 20, 2, 2);
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(x - 2, y - 14, 3, 2);
-  if (fumaca && !r.reduzido) {
-    const f = (r.agora / 800) % 1;
-    ctx.save();
-    ctx.globalAlpha = 0.6 * (1 - f);
-    ctx.fillRect(x - 1 + Math.round(Math.sin(r.agora / 250)), Math.round(y - 27 - f * 8), 1, 2);
-    ctx.restore();
-  }
-}
-
-/** Bebedouro no canto direito: um passeio dos robôs termina aqui. As bolhas sobem no galão. */
-function bebedouro(ctx: CanvasRenderingContext2D, p: PaletaSala, r: Relogio): void {
-  const pe = centroNaTela(BEBEDOURO);
-  const x = Math.round(pe.x);
-  const y = Math.round(pe.y);
-  ctx.fillStyle = p.sombra;
-  ctx.fillRect(x - 7, y - 1, 14, 2);
-  ctx.fillStyle = p.monitor;
-  ctx.fillRect(x - 5, y - 12, 10, 11);
-  ctx.fillStyle = p.rodape;
-  ctx.fillRect(x - 5, y - 12, 10, 2);
-  ctx.fillStyle = p.telaAcesa;
-  ctx.fillRect(x - 1, y - 7, 2, 2);
-  ctx.fillStyle = p.janela;
-  ctx.fillRect(x - 4, y - 23, 8, 11);
-  ctx.fillStyle = '#ffffff';
-  ctx.globalAlpha = 0.45;
-  ctx.fillRect(x - 3, y - 22, 1, 8);
-  ctx.globalAlpha = 1;
-  if (!r.reduzido) ctx.fillRect(x, y - 13 - Math.round(((r.agora / 900) % 1) * 9), 1, 1);
 }
 
 /** O robô HD, com o canto de cima à esquerda em (x0, y0). Também serve para a pré-visualização do editor. */

@@ -77,10 +77,30 @@ test('clicar num robô na sala seleciona a automação dele', async ({ page }) =
   // Bit fica no canto (1, 6): acha o ponto dele no canvas pelo motor e clica
   const canvas = page.locator('canvas');
   const caixa = (await canvas.boundingBox())!;
-  const escala = caixa.width / 272; // CENA_L
-  const pe = { x: 272 / 2 + (1 - 6) * 16, y: 56 + 24 + (1 + 6) * 8 + 8 }; // centroNaTela({ x: 1, y: 6 })
+  const escala = caixa.width / 464; // CENA_L (o andar inteiro: 16 × 12 ladrilhos)
+  const pe = { x: 8 + 12 * 16 + (1 - 6) * 16, y: 56 + 24 + (1 + 6) * 8 + 8 }; // centroNaTela({ x: 1, y: 6 }); a origem x é 8 + ALTURA × 16
   await canvas.click({ position: { x: pe.x * escala, y: (pe.y - 12) * escala } });
 
   await expect(agente(page, 'Bit')).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByLabel(/Pedido para Bit/)).toBeVisible();
+});
+
+test('o andar tem ambientes: dá para aproximar num deles, ver quem está onde e abrir em tela cheia', async ({ page }) => {
+  await prepararEscritorio(page);
+
+  const focos = page.getByRole('group', { name: 'Ambiente em foco' });
+  await expect(focos.getByRole('button', { name: 'Andar todo' })).toHaveAttribute('aria-pressed', 'true');
+  for (const nome of ['Escritório', 'Cozinha', 'Banheiro', 'Descanso']) await expect(focos.getByRole('button', { name: nome })).toBeVisible();
+  await focos.getByRole('button', { name: 'Cozinha' }).click();
+  await expect(focos.getByRole('button', { name: 'Cozinha' })).toHaveAttribute('aria-pressed', 'true');
+
+  // quem está onde: cada robô com o ambiente e o que faz
+  const onde = page.getByRole('list', { name: 'Quem está onde' });
+  await expect(onde.getByRole('listitem').first()).toContainText('Escritório');
+
+  // tela cheia: o botão alterna e a tecla Esc sai
+  await page.getByRole('button', { name: 'Abrir em tela cheia' }).click();
+  await expect(page.getByRole('button', { name: 'Sair da tela cheia' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('button', { name: 'Abrir em tela cheia' })).toBeVisible();
 });
