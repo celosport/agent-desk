@@ -59,3 +59,11 @@ O motor continua puro (tempo vem de fora, sorteio determinístico por código do
 - **Esperando aprovação** (`ESPERANDO_VOCE`): `pausarParaCafe` → `PAUSA_INDO` → `PAUSA` na cozinha (café na cafeteira ou água no bebedouro, sorteio por robô), com o balão de alerta; ao responder volta à mesa.
 - **Rotas**: `rotaPelaAvenida` (vida.ts) faz quem está atrás da fileira y = 5 descer pela própria coluna antes de seguir, para nunca atravessar mesas.
 - Porta, leitor e cafeteira em `desenho.ts`; `estadoDoElevador` (pose.ts) dá a abertura da porta e a luz do leitor. Testes em `motor.spec.ts`, `sessao.spec.ts`, `vida.spec.ts`.
+
+## Atualização 2026-11-11 — andar único com 4 ambientes
+- **Mapa** (`motor/mapa.ts`): andar de 16 × 12 ladrilhos: **Escritório** (8 × 8, como antes), **corredor** (x = 9), **Cozinha** (canto direito de cima), **Banheiro** (direita) e **Sala de descanso** (faixa de baixo, com **sofá e TV**). Muros baixos (corte de casinha de boneca, para não esconder os robôs) separam os ambientes; as portas são ladrilhos livres nas linhas dos muros. `CENA_L`/`CENA_A` e a origem do desenho viraram função de `LARGURA` × `ALTURA` (`iso.ts`).
+- **Rotas** (`caminhoAte`): menor caminho ladrilho a ladrilho (Dijkstra com pena por curva, que prefere trechos retos) desviando de muros, mesas e móveis; o ladrilho de destino sempre vale (sofá, cabine…). Substitui a rota em "L" e a "avenida".
+- **Vida**: sem tarefa o robô passeia pelo andar — janela, café, água, **banheiro** (entra na cabine, a luz fica vermelha), **lavar as mãos**, **sofá vendo TV** (senta atrás do encosto, a TV pisca), espreguiçar, olhar ao redor. Esperando aprovação: café, água **ou sofá**. O elevador continua no escritório.
+- **Móveis** em `motor/ambientes.ts` (blocos isométricos com luz e sombra), piso de cada ambiente na paleta (claro e escuro).
+- **Acompanhar** (`motor/acompanhar.ts` + `cena-escritorio`): botões de **câmera** (Andar todo, Escritório, Cozinha, Banheiro, Descanso: recorte aproximado da cena) e a lista **"Quem está onde"** (📍 ambiente + o que faz), atualizada ~3×/s. Clicar na sala (fora dos robôs) ou no botão ⛶ abre em **tela cheia** (Esc sai).
+- Testes: `motor.spec.ts` (rotas, ambientes), `acompanhar.spec.ts`, `vida.spec.ts`, E2E em `escritorio.spec.ts`.

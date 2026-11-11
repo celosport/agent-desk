@@ -9,14 +9,17 @@ export interface Ponto {
 
 export const LADRILHO_L = 32; // largura do losango
 export const LADRILHO_A = 16; // altura do losango
-export const SALA = 8; // 8 × 8 ladrilhos
+export const SALA = 8; // o escritório: 8 × 8 ladrilhos
+/** O andar inteiro (escritório, cozinha, banheiro e descanso): 16 ladrilhos em x e 12 em y — [[mapa.ts]]. */
+export const LARGURA = 16;
+export const ALTURA = 12;
 export const PAREDE = 56; // altura das paredes do fundo
 
 /** Tamanho da cena em pixels de arte (sala + paredes + folga para as cabeças na fileira de trás). */
-export const CENA_L = SALA * LADRILHO_L + 16;
-export const CENA_A = SALA * LADRILHO_A + PAREDE + 36;
+export const CENA_L = ((LARGURA + ALTURA) * LADRILHO_L) / 2 + 16;
+export const CENA_A = ((LARGURA + ALTURA) * LADRILHO_A) / 2 + PAREDE + 36;
 
-const ORIGEM_X = CENA_L / 2;
+const ORIGEM_X = 8 + (ALTURA * LADRILHO_L) / 2; // o canto de trás (0, 0) fica deslocado para a direita: o andar é mais largo que alto
 const ORIGEM_Y = PAREDE + 24;
 
 /** Canto de cima do ladrilho (x, y) na tela. */
@@ -80,6 +83,6 @@ export function andar(posicao: Ponto, caminho: Ponto[], distancia: number): { po
 }
 
 /** Maior escala inteira que cabe na largura (mínimo 1). */
-export function escalaPara(larguraDisponivel: number): number {
-  return Math.max(1, Math.floor(larguraDisponivel / CENA_L));
+export function escalaPara(larguraDisponivel: number, larguraDaCena = CENA_L): number {
+  return Math.max(1, Math.floor(larguraDisponivel / larguraDaCena));
 }

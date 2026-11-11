@@ -1,7 +1,7 @@
 import { Agente, avancar, concluirTarefa, iniciarTarefa, novoAgente } from './agente';
 import { lugarDe } from './personagens';
 import { ACORDAR_MS, COMEMORAR_MS, andandoAgora, desvios, estadoDoElevador, poseDe } from './pose';
-import { ELEVADOR_PE, escolherPasseio, esperaOciosa, fatorDeVelocidade, restante, sorteio } from './vida';
+import { ELEVADOR_PE, caminhoAte, escolherPasseio, esperaOciosa, fatorDeVelocidade, restante, sorteio } from './vida';
 
 const lugar = lugarDe(0);
 const novo = (codigo = 'relatorio-executivo') => novoAgente(codigo, lugar.canto, lugar.mesa);
@@ -24,19 +24,18 @@ describe('vida do robô ocioso', () => {
     }
   });
 
-  it('os passeios cobrem janela, bebedouro, espreguiçar e olhar ao redor, sempre em ladrilhos livres do salão', () => {
+  it('os passeios cobrem janela, cozinha, banheiro, sofá, tapete e olhar ao redor, sempre num lugar do mapa que dá para chegar', () => {
     const motivos = new Set<string>();
-    for (let n = 0; n < 200; n++) {
+    for (let n = 0; n < 400; n++) {
       const p = escolherPasseio('qualquer', n);
       motivos.add(p.motivo);
       if (p.destino) {
-        expect(p.destino.y).toBeGreaterThanOrEqual(5);
-        expect(p.destino.y).toBeLessThanOrEqual(7);
-        expect(p.destino.x).toBeGreaterThanOrEqual(0);
-        expect(p.destino.x).toBeLessThanOrEqual(7);
+        const r = caminhoAte({ x: 1, y: 2 }, p.destino);
+        expect(r.length, p.motivo).toBeGreaterThan(0);
+        expect(r[r.length - 1]).toEqual(p.destino);
       }
     }
-    expect([...motivos].sort()).toEqual(['BEBEDOURO', 'ESPREGUICAR', 'JANELA', 'OLHAR_AO_REDOR']);
+    expect([...motivos].sort()).toEqual(['AGUA', 'BANHEIRO', 'CAFE', 'ESPREGUICAR', 'JANELA', 'OLHAR_AO_REDOR', 'PIA', 'SOFA']);
   });
 
   it('depois da espera sai para passear, fica um tempo no lugar e volta para o canto', () => {
@@ -134,11 +133,11 @@ describe('pose', () => {
   });
 
   it('parado no passeio: cada vontade tem a sua pose', () => {
-    const parado = (motivo: 'JANELA' | 'BEBEDOURO' | 'ESPREGUICAR' | 'OLHAR_AO_REDOR'): Agente => ({
+    const parado = (motivo: 'JANELA' | 'AGUA' | 'CAFE' | 'PIA' | 'BANHEIRO' | 'SOFA' | 'ESPREGUICAR' | 'OLHAR_AO_REDOR'): Agente => ({
       ...novo(),
       vida: { acao: 'PARADO', motivo, desde: 0, ate: 3000, parado: 3000, contador: 1 },
     });
-    expect(poseDe(parado('BEBEDOURO'), 500, false).efeito).toBe('BEBER');
+    expect(poseDe(parado('AGUA'), 500, false).efeito).toBe('BEBER');
     expect(poseDe(parado('JANELA'), 500, false).efeito).toBe('JANELA');
     const estica = poseDe(parado('ESPREGUICAR'), 1500, false);
     expect(estica).toMatchObject({ efeito: 'ESPREGUICAR', bracosParaCima: true });
@@ -187,9 +186,9 @@ describe('pose: vista, olhar e quadros do sprite', () => {
   });
 
   it('janela: de costas olhando para a esquerda; bebedouro: de frente olhando para a direita', () => {
-    const parado = (motivo: 'JANELA' | 'BEBEDOURO'): Agente => ({ ...novo(), vida: { acao: 'PARADO', motivo, desde: 0, ate: 3000, parado: 3000, contador: 1 } });
+    const parado = (motivo: 'JANELA' | 'AGUA'): Agente => ({ ...novo(), vida: { acao: 'PARADO', motivo, desde: 0, ate: 3000, parado: 3000, contador: 1 } });
     expect(poseDe(parado('JANELA'), 500, false).cara).toBe('COSTAS');
-    expect(poseDe(parado('BEBEDOURO'), 500, false)).toMatchObject({ cara: 'FRENTE', olhar: 1 });
+    expect(poseDe(parado('AGUA'), 500, false)).toMatchObject({ cara: 'FRENTE', olhar: 1 });
   });
 });
 

@@ -3,7 +3,7 @@
 import { Agente, CHEGADA_MS, ELEVADOR_MS } from './agente';
 import type { Cara, Quadro } from './sprite';
 
-export type Efeito = 'NENHUM' | 'ACORDAR' | 'DIGITAR' | 'COMEMORAR' | 'ERRO' | 'BEBER' | 'CAFE' | 'JANELA' | 'ESPREGUICAR' | 'CRACHA';
+export type Efeito = 'NENHUM' | 'ACORDAR' | 'DIGITAR' | 'COMEMORAR' | 'ERRO' | 'BEBER' | 'CAFE' | 'LAVAR' | 'JANELA' | 'ESPREGUICAR' | 'CRACHA';
 
 export interface Pose {
   /** Deslocamento do robô em pixels de arte (x para o lado, y para cima é negativo). */
@@ -22,9 +22,11 @@ export interface Pose {
   olhar: -1 | 0 | 1;
   /** Opacidade do robô (0 a 1): some ao entrar no elevador e aparece ao sair dele. */
   alfa: number;
+  /** Sentado (no sofá): o desenho abaixa o robô e o sofá cobre as pernas. */
+  sentado: boolean;
 }
 
-export const POSE_PARADA: Pose = { dx: 0, dy: 0, inclinar: 0, andando: false, efeito: 'NENHUM', t: 0, bracosParaCima: false, quadro: 'parado', cara: 'FRENTE', olhar: 0, alfa: 1 };
+export const POSE_PARADA: Pose = { dx: 0, dy: 0, inclinar: 0, andando: false, efeito: 'NENHUM', t: 0, bracosParaCima: false, quadro: 'parado', cara: 'FRENTE', olhar: 0, alfa: 1, sentado: false };
 
 export const ACORDAR_MS = 450;
 export const COMEMORAR_MS = 1500;
@@ -67,16 +69,11 @@ export function poseDe(a: Agente, agora: number, reduzido: boolean): Pose {
   }
 
   if (a.fase === 'PAUSA') {
-    // Na cozinha: de frente, tomando o café (ou a água) em golinhos
+    // Esperando você: toma o café ou a água na cozinha, de frente para o móvel, ou assiste TV no sofá (de costas para nós)
     const t = agora - a.desde;
-    return {
-      ...POSE_PARADA,
-      olhar: 1,
-      dy: Math.floor(t / 700) % 2 === 0 ? 0 : 1,
-      efeito: a.pausa === 'CAFE' ? 'CAFE' : 'BEBER',
-      t,
-      quadro: Math.floor(agora / 3200) % 1 === 0 && agora % 3200 < 140 ? 'piscando' : 'parado',
-    };
+    const base = { ...POSE_PARADA, t, quadro: agora % 3200 < 140 ? ('piscando' as Quadro) : ('parado' as Quadro) };
+    if (a.pausa === 'SOFA') return { ...base, cara: 'COSTAS', sentado: true, dy: Math.floor(t / 900) % 2 === 0 ? 0 : 1 };
+    return { ...base, olhar: 1, dy: Math.floor(t / 700) % 2 === 0 ? 0 : 1, efeito: a.pausa === 'CAFE' ? 'CAFE' : 'BEBER' };
   }
 
   if (andandoAgora(a)) {
@@ -108,6 +105,7 @@ export function poseDe(a: Agente, agora: number, reduzido: boolean): Pose {
       cara: subindo ? 'COSTAS' : 'FRENTE',
       olhar: inclinar,
       alfa: k,
+      sentado: false,
     };
   }
 
@@ -137,8 +135,20 @@ export function poseDe(a: Agente, agora: number, reduzido: boolean): Pose {
           t,
           bracosParaCima: t > 350 && t < duracao - 350,
         };
-      case 'BEBEDOURO':
+      case 'AGUA':
         return { ...POSE_PARADA, dy: Math.floor(t / 400) % 2 === 0 ? 0 : 1, efeito: 'BEBER', t, olhar: 1 };
+      case 'CAFE':
+        return { ...POSE_PARADA, dy: Math.floor(t / 500) % 2 === 0 ? 0 : 1, efeito: 'CAFE', t, olhar: 1 };
+      case 'PIA':
+        // lava as mãos: as mãos mexem sob a água (quadros de "digitar")
+        return { ...POSE_PARADA, efeito: 'LAVAR', t, olhar: 1, quadro: Math.floor(t / 180) % 2 === 0 ? 'digita0' : 'digita1' };
+      case 'BANHEIRO': {
+        // entra na cabine (a porta fecha e a luz fica vermelha) e depois sai
+        const k = t < 350 ? t / 350 : t > duracao - 350 ? Math.max(0, (duracao - t) / 350) : 0;
+        return { ...POSE_PARADA, cara: 'COSTAS', alfa: t < 350 ? 1 - k : t > duracao - 350 ? 1 - k : 0, t };
+      }
+      case 'SOFA':
+        return { ...POSE_PARADA, cara: 'COSTAS', sentado: true, dy: Math.floor(t / 1100) % 2 === 0 ? 0 : 1, t };
       case 'JANELA':
         return { ...POSE_PARADA, dx: [0, -1, -1, 0, 1, 1][Math.floor(t / 750) % 6], efeito: 'JANELA', t, cara: 'COSTAS' };
       case 'OLHAR_AO_REDOR':
@@ -199,4 +209,13 @@ export function estadoDoElevador(agentes: Agente[], agora: number, reduzido: boo
     if (a.chegouEm != null) estado.abertura = Math.max(estado.abertura, rampa(agora - a.chegouEm, CHEGADA_MS));
   }
   return estado;
+}
+
+/** A luz da cabine do banheiro: vermelha (ocupada) enquanto alguém está lá dentro. */
+export function cabineOcupada(agentes: Agente[], agora: number): boolean {
+  return agentes.some((a) => {
+    if (a.fase !== 'OCIOSO' || a.vida.acao !== 'PARADO' || a.vida.motivo !== 'BANHEIRO') return false;
+    const t = agora - a.vida.desde;
+    return t > 300 && t < a.vida.parado - 300;
+  });
 }

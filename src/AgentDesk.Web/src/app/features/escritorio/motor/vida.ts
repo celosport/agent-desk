@@ -1,9 +1,13 @@
-// "Vida" dos robôs quando estão sem tarefa: passeiam, olham pela janela, bebem água, se espreguiçam. Funções puras e determinísticas
+// "Vida" dos robôs quando estão sem tarefa: passeiam pelo andar (janela, cozinha, banheiro, sofá da sala de descanso), se espreguiçam.
+// Funções puras e determinísticas
 // (o sorteio vem do código do robô + um contador, nunca de Math.random), para os testes e para cada robô ter o seu jeito.
-import { Ponto, rota } from './iso';
+import { Ponto } from './iso';
+import { LUGARES, MOVEIS, caminhoAte } from './mapa';
 import { hashDe } from './personagens';
 
-export type Motivo = 'JANELA' | 'BEBEDOURO' | 'ESPREGUICAR' | 'OLHAR_AO_REDOR';
+export { caminhoAte };
+
+export type Motivo = 'JANELA' | 'AGUA' | 'CAFE' | 'PIA' | 'BANHEIRO' | 'SOFA' | 'ESPREGUICAR' | 'OLHAR_AO_REDOR';
 /** NENHUMA: esperando a próxima vontade · INDO: andando até o lugar · PARADO: fazendo a coisa · VOLTANDO: indo para o seu canto. */
 export type AcaoOciosa = 'NENHUMA' | 'INDO' | 'PARADO' | 'VOLTANDO';
 
@@ -24,35 +28,15 @@ export const VIDA_INICIAL: Vida = { acao: 'NENHUMA', motivo: 'OLHAR_AO_REDOR', d
 
 /** Passeio é mais calmo que a ida para a mesa (ladrilhos por segundo). */
 export const VELOCIDADE_PASSEIO = 1.6;
-/** Onde o bebedouro é desenhado (o robô bebe no ladrilho ao lado, o do `BEBER`). */
-export const BEBEDOURO = { x: 7, y: 5 };
-export const LUGAR_JANELA: Ponto = { x: 0, y: 5 };
-export const LUGAR_BEBER: Ponto = { x: 6, y: 5 };
+export const LUGAR_JANELA: Ponto = LUGARES.janela;
 
 // ---- elevador e cozinha ----
 /** Onde o robô fica diante da porta do elevador (parede da esquerda, na frente da sala): bate o crachá, entra e sai por aqui. */
 export const ELEVADOR_PE: Ponto = { x: 0, y: 7 };
-/** A cafeteira (balcão do canto direito) e os lugares onde o robô toma o café e a água enquanto espera uma aprovação. */
-export const CAFETEIRA: Ponto = { x: 7, y: 4 };
-export const LUGAR_CAFE: Ponto = { x: 6, y: 4 };
-export const LUGAR_AGUA: Ponto = LUGAR_BEBER;
-/** A "avenida": a fileira livre de baixo das mesas (y = 5). De uma mesa o robô desce pela sua coluna até ela e segue por ela. */
-export const AVENIDA = 5;
-
-/**
- * Rota que nunca atravessa as mesas: quem está atrás da avenida (y < 5) primeiro desce pela própria coluna até ela; depois segue em
- * "L" (x e depois y) como `rota`. Para quem já está na avenida ou na frente dela é igual a `rota`.
- */
-export function rotaPelaAvenida(de: Ponto, ate: Ponto): Ponto[] {
-  const x = Math.round(de.x);
-  let y = Math.round(de.y);
-  const passos: Ponto[] = [];
-  while (y < AVENIDA && (ate.x !== x || ate.y >= AVENIDA || y < ate.y)) {
-    y++;
-    passos.push({ x, y });
-  }
-  return [...passos, ...rota({ x, y }, ate)];
-}
+/** Onde o robô toma o café e a água (na cozinha) enquanto espera uma aprovação, e os lugares do sofá da sala de descanso. */
+export const LUGAR_CAFE: Ponto = LUGARES.cafe;
+export const LUGAR_AGUA: Ponto = LUGARES.agua;
+export const LUGARES_SOFA: readonly Ponto[] = LUGARES.sofa;
 
 /** Número entre 0 e 1, sempre o mesmo para o mesmo robô e o mesmo contador. */
 export function sorteio(codigo: string, contador: number, sal = ''): number {
@@ -71,12 +55,24 @@ export interface Passeio {
   parado: number;
 }
 
-/** Escolhe o que fazer: janela 30 %, bebedouro 25 %, espreguiçar no tapete 25 %, olhar ao redor 20 %. */
+/** Lugar do sofá para uma vontade (um dos 3 lugares, conforme o sorteio). */
+export function lugarNoSofa(codigo: string, contador: number): Ponto {
+  return { ...LUGARES_SOFA[Math.floor(sorteio(codigo, contador, 'sofa') * LUGARES_SOFA.length)] };
+}
+
+/**
+ * Escolhe o que fazer: janela 12 %, café 15 %, água 10 %, banheiro (cabine) 8 %, lavar as mãos 7 %, sofá vendo TV 23 %,
+ * espreguiçar no tapete 13 %, olhar ao redor 12 %.
+ */
 export function escolherPasseio(codigo: string, contador: number): Passeio {
   const r = sorteio(codigo, contador, 'escolha');
-  if (r < 0.3) return { motivo: 'JANELA', destino: LUGAR_JANELA, parado: 4500 };
-  if (r < 0.55) return { motivo: 'BEBEDOURO', destino: LUGAR_BEBER, parado: 3500 };
-  if (r < 0.8) {
+  if (r < 0.12) return { motivo: 'JANELA', destino: LUGAR_JANELA, parado: 4500 };
+  if (r < 0.27) return { motivo: 'CAFE', destino: LUGAR_CAFE, parado: 4000 };
+  if (r < 0.37) return { motivo: 'AGUA', destino: LUGAR_AGUA, parado: 3500 };
+  if (r < 0.45) return { motivo: 'BANHEIRO', destino: { ...MOVEIS.cabine }, parado: 4500 };
+  if (r < 0.52) return { motivo: 'PIA', destino: { ...LUGARES.pia }, parado: 3500 };
+  if (r < 0.75) return { motivo: 'SOFA', destino: lugarNoSofa(codigo, contador), parado: 8000 };
+  if (r < 0.88) {
     const x = 1 + Math.floor(sorteio(codigo, contador, 'x') * 6);
     const y = 5 + Math.floor(sorteio(codigo, contador, 'y') * 3);
     return { motivo: 'ESPREGUICAR', destino: { x, y }, parado: 2600 };

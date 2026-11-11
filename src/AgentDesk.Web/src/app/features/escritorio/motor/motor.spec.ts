@@ -10,7 +10,8 @@ import {
   ocupado,
 } from './agente';
 import { andar, escalaPara, paraTela, profundidade, rota } from './iso';
-import { ELEVADOR_PE, LUGAR_CAFE, rotaPelaAvenida } from './vida';
+import { LUGARES, ambienteDe, livre } from './mapa';
+import { ELEVADOR_PE, LUGAR_CAFE, caminhoAte } from './vida';
 import { PERSONAGENS, QUADROS, SPRITE_A, SPRITE_L, lugarDe, montarSprite, personagemDe } from './personagens';
 
 describe('iso', () => {
@@ -41,7 +42,7 @@ describe('iso', () => {
 
   it('escala inteira (pixel art nítida), no mínimo 1', () => {
     expect(escalaPara(100)).toBe(1);
-    expect(escalaPara(900)).toBe(3);
+    expect(escalaPara(1000)).toBe(2); // o andar inteiro é largo: 464 px de arte
   });
 });
 
@@ -115,16 +116,44 @@ describe('agente', () => {
     expect(iniciarTarefa(embora, 20000, true)).toMatchObject({ fase: 'PENSANDO', chegouEm: null }); // reduzido: aparece na mesa
   });
 
-  it('a rota pela avenida nunca atravessa as mesas: desce pela coluna até a fileira de baixo', () => {
-    const r = rotaPelaAvenida({ x: 3, y: 2 }, ELEVADOR_PE);
-    expect(r.slice(0, 3)).toEqual([{ x: 3, y: 3 }, { x: 3, y: 4 }, { x: 3, y: 5 }]);
-    expect(r[r.length - 1]).toEqual(ELEVADOR_PE);
-    // quem já está na frente da sala usa a rota normal
-    expect(rotaPelaAvenida({ x: 5, y: 6 }, ELEVADOR_PE)).toEqual(rota({ x: 5, y: 6 }, ELEVADOR_PE));
-    // da cozinha de volta para uma mesa: desce à avenida, segue e sobe pela coluna da mesa
-    const volta = rotaPelaAvenida(LUGAR_CAFE, { x: 1, y: 2 });
-    expect(volta[0]).toEqual({ x: 6, y: 5 });
+  it('as rotas pelo mapa nunca atravessam mesas, muros ou móveis e terminam no destino', () => {
+    const destinos = [ELEVADOR_PE, LUGAR_CAFE, LUGARES.agua, LUGARES.pia, LUGARES.cabine, LUGARES.sofa[1], { x: 1, y: 2 }, { x: 7, y: 2 }];
+    for (const de of [{ x: 1, y: 2 }, { x: 3, y: 2 }, { x: 6, y: 4 }, { x: 5, y: 6 }, ELEVADOR_PE, LUGAR_CAFE, LUGARES.pia, { x: 4, y: 10 }]) {
+      for (const ate of destinos) {
+        const r = caminhoAte(de, ate);
+        if (de.x === ate.x && de.y === ate.y) {
+          expect(r).toEqual([]);
+          continue;
+        }
+        expect(r.length, `${de.x},${de.y} → ${ate.x},${ate.y}`).toBeGreaterThan(0);
+        expect(r[r.length - 1]).toEqual(ate);
+        let ant = { x: Math.round(de.x), y: Math.round(de.y) };
+        for (const p of r) {
+          expect(Math.abs(p.x - ant.x) + Math.abs(p.y - ant.y)).toBe(1); // um ladrilho por vez, sem diagonal
+          if (!(p.x === ate.x && p.y === ate.y)) expect(livre(p.x, p.y), `ladrilho ${p.x},${p.y} bloqueado`).toBe(true);
+          ant = p;
+        }
+      }
+    }
+  });
+
+  it('o mapa liga os ambientes: do escritório à cozinha, ao banheiro e ao sofá, pelas portas; da cozinha de volta à mesa desce pelo corredor', () => {
+    const ambientes = (de: { x: number; y: number }, ate: { x: number; y: number }) => new Set(caminhoAte(de, ate).map((p) => ambienteDe(p)));
+    expect([...ambientes({ x: 3, y: 6 }, LUGAR_CAFE)]).toEqual(expect.arrayContaining(['ESCRITORIO', 'CORREDOR', 'COZINHA']));
+    expect([...ambientes({ x: 3, y: 6 }, LUGARES.pia)]).toEqual(expect.arrayContaining(['CORREDOR', 'BANHEIRO']));
+    expect([...ambientes({ x: 3, y: 6 }, LUGARES.sofa[0])]).toEqual(expect.arrayContaining(['DESCANSO']));
+    const volta = caminhoAte(LUGAR_CAFE, { x: 1, y: 2 });
     expect(volta[volta.length - 1]).toEqual({ x: 1, y: 2 });
+    expect(ambienteDe(volta[0])).toBe('COZINHA');
+  });
+
+  it('ambienteDe nomeia onde o robô está', () => {
+    expect(ambienteDe({ x: 3, y: 2 })).toBe('ESCRITORIO');
+    expect(ambienteDe({ x: 9, y: 3 })).toBe('CORREDOR');
+    expect(ambienteDe({ x: 14, y: 1 })).toBe('COZINHA');
+    expect(ambienteDe({ x: 14, y: 7 })).toBe('BANHEIRO');
+    expect(ambienteDe({ x: 5, y: 11 })).toBe('DESCANSO');
+    expect(ambienteDe({ x: 0, y: 7 })).toBe('ESCRITORIO'); // o elevador fica na parede do escritório
   });
 
   it('com movimento reduzido não anda: aparece na mesa e some direto ao terminar', () => {

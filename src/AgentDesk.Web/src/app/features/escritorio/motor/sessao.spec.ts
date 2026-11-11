@@ -1,7 +1,7 @@
 import { LIBERAR_MS, RESULTADO_MS, avancar, descreverFase, novoAgente } from './agente';
 import { MAXIMO_AGENTES, apelidoDeSessao, lugarDe, paletaDe, personagemDe } from './personagens';
 import { sincronizarSessao } from './sessao';
-import { LUGAR_AGUA, LUGAR_CAFE } from './vida';
+import { LUGARES_SOFA, LUGAR_AGUA, LUGAR_CAFE } from './vida';
 
 describe('sessão do Claude Code → robô', () => {
   const lugar = lugarDe(4);
@@ -33,11 +33,11 @@ describe('sessão do Claude Code → robô', () => {
 
     a = sincronizarSessao(a, 'ESPERANDO_VOCE', '✋ Precisa de você: aprovar permissão', 6000, false);
     expect(a.fase).toBe('PAUSA_INDO');
-    expect(a.pausa === 'CAFE' || a.pausa === 'AGUA').toBe(true);
+    expect(['CAFE', 'AGUA', 'SOFA']).toContain(a.pausa);
     expect(a.balao?.tipo).toBe('alerta');
     a = rodar(a, 6000, 20000);
     expect(a.fase).toBe('PAUSA');
-    expect(a.posicao).toEqual(a.pausa === 'CAFE' ? LUGAR_CAFE : LUGAR_AGUA);
+    expect(a.pausa === 'CAFE' ? [LUGAR_CAFE] : a.pausa === 'AGUA' ? [LUGAR_AGUA] : LUGARES_SOFA).toContainEqual(a.posicao);
     expect(descreverFase(a)).toContain('esperando você');
     expect(sincronizarSessao(a, 'ESPERANDO_VOCE', '✋ Precisa de você: aprovar permissão', 20100, false)).toBe(a); // continua lá
 

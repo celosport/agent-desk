@@ -11,7 +11,8 @@ import {
   esperaOciosa,
   fatorDeVelocidade,
   restante,
-  rotaPelaAvenida,
+  caminhoAte,
+  lugarNoSofa,
   sorteio,
 } from './vida';
 
@@ -44,7 +45,7 @@ export interface Agente {
   /** O que o robô faz quando está sem tarefa (passeio, janela, bebedouro…) — [[Frontend (Angular PWA)]]. */
   vida: Vida;
   /** Café ou água, na pausa enquanto espera uma aprovação (null fora da pausa). */
-  pausa: 'CAFE' | 'AGUA' | null;
+  pausa: 'CAFE' | 'AGUA' | 'SOFA' | null;
   /** Quando saiu do elevador (ms): a porta abre e ele aparece aos poucos. null = não veio do elevador. */
   chegouEm: number | null;
 }
@@ -76,7 +77,7 @@ export function iniciarTarefa(a: Agente, agora: number, reduzido: boolean): Agen
   if (reduzido || igual(base.posicao, base.mesa)) {
     return { ...base, posicao: { ...base.mesa }, caminho: [], fase: 'PENSANDO', desde: agora, balao: BALAO_PENSANDO, pendente: null, vida: semVida(a), pausa: null, chegouEm: null };
   }
-  return { ...base, caminho: rotaPelaAvenida(base.posicao, base.mesa), fase: 'INDO', desde: agora, balao: null, pendente: null, vida: semVida(a), pausa: null };
+  return { ...base, caminho: caminhoAte(base.posicao, base.mesa), fase: 'INDO', desde: agora, balao: null, pendente: null, vida: semVida(a), pausa: null };
 }
 
 /**
@@ -85,11 +86,12 @@ export function iniciarTarefa(a: Agente, agora: number, reduzido: boolean): Agen
  */
 export function pausarParaCafe(a: Agente, agora: number, reduzido: boolean): Agente {
   if (reduzido || a.fase === 'PAUSA' || a.fase === 'PAUSA_INDO') return a;
-  const pausa = sorteio(a.codigo, a.vida.contador, 'pausa') < 0.5 ? 'CAFE' : 'AGUA';
-  const destino = pausa === 'CAFE' ? LUGAR_CAFE : LUGAR_AGUA;
+  const sorte = sorteio(a.codigo, a.vida.contador, 'pausa');
+  const pausa = sorte < 0.4 ? 'CAFE' : sorte < 0.7 ? 'AGUA' : 'SOFA';
+  const destino = destinoDaPausa(a, pausa);
   const doElevador = a.fase === 'AUSENTE' || a.fase === 'ELEVADOR';
   const de = doElevador ? { ...ELEVADOR_PE } : a.posicao;
-  const caminho = rotaPelaAvenida(de, destino);
+  const caminho = caminhoAte(de, destino);
   return {
     ...a,
     posicao: de,
@@ -135,7 +137,7 @@ export function avancar(a: Agente, agora: number, dtMs: number, reduzido: boolea
       if (agora - a.desde < RESULTADO_MS) return a;
       // Terminou o serviço: vai ao elevador, bate o crachá e vai embora (movimento reduzido: some direto)
       if (reduzido) return { ...a, posicao: { ...ELEVADOR_PE }, caminho: [], fase: 'AUSENTE', desde: agora, balao: null, vida: semVida(a), pausa: null };
-      return { ...a, caminho: rotaPelaAvenida(a.posicao, ELEVADOR_PE), fase: 'INDO_EMBORA', desde: agora, balao: null, vida: semVida(a), pausa: null };
+      return { ...a, caminho: caminhoAte(a.posicao, ELEVADOR_PE), fase: 'INDO_EMBORA', desde: agora, balao: null, vida: semVida(a), pausa: null };
     case 'CRACHA':
       return agora - a.desde >= CRACHA_MS ? { ...a, fase: 'ELEVADOR', desde: agora } : a;
     case 'ELEVADOR':
@@ -157,7 +159,7 @@ function viver(a: Agente, agora: number, dtMs: number, reduzido: boolean): Agent
       if (v.ate === 0) return { ...a, vida: { ...v, ate: agora + esperaOciosa(a.codigo, v.contador) } };
       if (agora < v.ate) return a;
       const p = escolherPasseio(a.codigo, v.contador);
-      const caminho = p.destino ? rota(a.posicao, p.destino) : [];
+      const caminho = p.destino ? caminhoAte(a.posicao, p.destino) : [];
       const vida = { ...v, motivo: p.motivo, desde: agora, parado: p.parado, contador: v.contador + 1 };
       return caminho.length
         ? { ...a, caminho, vida: { ...vida, acao: 'INDO' } }
@@ -172,11 +174,16 @@ function viver(a: Agente, agora: number, dtMs: number, reduzido: boolean): Agent
     }
     case 'PARADO': {
       if (agora < v.ate) return a;
-      const caminho = rota(a.posicao, a.canto);
+      const caminho = caminhoAte(a.posicao, a.canto);
       if (!caminho.length) return { ...a, vida: { ...VIDA_INICIAL, contador: v.contador, ate: agora + esperaOciosa(a.codigo, v.contador) } };
       return { ...a, caminho, vida: { ...v, acao: 'VOLTANDO', desde: agora } };
     }
   }
+}
+
+/** Onde fica quem espera uma aprovação: no café, no bebedouro ou no sofá da sala de descanso. */
+function destinoDaPausa(a: Agente, pausa: 'CAFE' | 'AGUA' | 'SOFA'): Ponto {
+  return pausa === 'CAFE' ? LUGAR_CAFE : pausa === 'AGUA' ? LUGAR_AGUA : lugarNoSofa(a.codigo, a.vida.contador);
 }
 
 function semVida(a: Agente): Vida {
@@ -193,7 +200,7 @@ function chegar(a: Agente, agora: number): Agente {
     return { ...a, posicao: { ...ELEVADOR_PE }, caminho: [], fase: 'CRACHA', desde: agora, balao: null };
   }
   if (a.fase === 'PAUSA_INDO') {
-    const destino = a.pausa === 'CAFE' ? LUGAR_CAFE : LUGAR_AGUA;
+    const destino = a.pausa ? destinoDaPausa(a, a.pausa) : LUGAR_CAFE;
     return { ...a, posicao: { ...destino }, caminho: [], fase: 'PAUSA', desde: agora };
   }
   if (a.fase === 'INDO') {
@@ -227,9 +234,9 @@ export function descreverFase(a: Agente): string {
     case 'AUSENTE':
       return 'foi embora (ponto batido)';
     case 'PAUSA_INDO':
-      return a.pausa === 'CAFE' ? 'foi tomar um café' : 'foi tomar uma água';
+      return a.pausa === 'CAFE' ? 'foi tomar um café' : a.pausa === 'SOFA' ? 'foi descansar no sofá' : 'foi tomar uma água';
     case 'PAUSA':
-      return a.pausa === 'CAFE' ? 'tomando um café, esperando você' : 'tomando uma água, esperando você';
+      return a.pausa === 'CAFE' ? 'tomando um café, esperando você' : a.pausa === 'SOFA' ? 'no sofá, esperando você' : 'tomando uma água, esperando você';
     default:
       return 'disponível';
   }
