@@ -1,12 +1,12 @@
 // Liga uma sessão do Claude Code (status vindo do servidor a cada poucos segundos) aos movimentos de um robô (funções puras).
-import { Agente, Balao, iniciarTarefa, liberar } from './agente';
+import { Agente, Balao, iniciarTarefa, liberar, pausarParaCafe } from './agente';
 
 /** = StatusSessao da API (SNAKE_CASE_UPPER). */
 export type StatusSessao = 'TRABALHANDO' | 'ESPERANDO_VOCE' | 'OCIOSA' | 'ENCERRADA';
 
-/** Trabalhando ou esperando você = na mesa. Ociosa ou encerrada = no canto. */
+/** Trabalhando = na mesa. Esperando você = na cozinha, com um café. Ociosa ou encerrada = vai embora pelo elevador. */
 export function querMesa(status: StatusSessao): boolean {
-  return status === 'TRABALHANDO' || status === 'ESPERANDO_VOCE';
+  return status === 'TRABALHANDO';
 }
 
 export function balaoDaSessao(status: StatusSessao, atividade: string | undefined): Balao {
@@ -22,13 +22,24 @@ export function balaoDaSessao(status: StatusSessao, atividade: string | undefine
 export function sincronizarSessao(a: Agente, status: StatusSessao, atividade: string | undefined, agora: number, reduzido: boolean): Agente {
   const balao = balaoDaSessao(status, atividade);
 
-  if (querMesa(status)) {
+  if (status === 'ESPERANDO_VOCE') {
+    // Esperando uma aprovação: vai tomar um café (ou uma água) até você responder
     let b = a;
-    if (b.fase === 'OCIOSO' || b.fase === 'VOLTANDO' || b.fase === 'RESULTADO') b = iniciarTarefa(b, agora, reduzido);
+    if (reduzido) {
+      if (b.fase !== 'INDO' && b.fase !== 'PENSANDO') b = iniciarTarefa(b, agora, reduzido); // sem andar: fica na mesa
+    } else if (b.fase !== 'PAUSA' && b.fase !== 'PAUSA_INDO') {
+      b = pausarParaCafe(b, agora, reduzido);
+    }
     return mesmoBalao(b.balao, balao) ? b : { ...b, balao };
   }
 
-  if (a.fase === 'INDO' || a.fase === 'PENSANDO') return liberar(a, balao, agora);
+  if (querMesa(status)) {
+    let b = a;
+    if (b.fase !== 'INDO' && b.fase !== 'PENSANDO') b = iniciarTarefa(b, agora, reduzido); // inclui voltar do elevador e da cozinha
+    return mesmoBalao(b.balao, balao) ? b : { ...b, balao };
+  }
+
+  if (a.fase === 'INDO' || a.fase === 'PENSANDO' || a.fase === 'PAUSA' || a.fase === 'PAUSA_INDO') return liberar(a, balao, agora);
   return a;
 }
 

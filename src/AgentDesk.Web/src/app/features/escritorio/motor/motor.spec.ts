@@ -10,6 +10,7 @@ import {
   ocupado,
 } from './agente';
 import { andar, escalaPara, paraTela, profundidade, rota } from './iso';
+import { ELEVADOR_PE, LUGAR_CAFE, rotaPelaAvenida } from './vida';
 import { PERSONAGENS, QUADROS, SPRITE_A, SPRITE_L, lugarDe, montarSprite, personagemDe } from './personagens';
 
 describe('iso', () => {
@@ -83,26 +84,57 @@ describe('agente', () => {
     expect(a.fase).toBe('RESULTADO');
   });
 
-  it('depois do resultado, volta para o canto e fica disponível', () => {
+  it('depois do resultado, vai ao elevador, bate o crachá e vai embora; segue disponível para a próxima tarefa', () => {
     let a = concluirTarefa(iniciarTarefa(parado(), 0, true), resultado, 5000);
     expect(a.fase).toBe('RESULTADO');
     a = rodar(a, 5000, 5000 + RESULTADO_MS);
-    expect(a.fase).toBe('VOLTANDO');
-    a = rodar(a, 5000 + RESULTADO_MS, 5000 + RESULTADO_MS + 3000);
-    expect(a.fase).toBe('OCIOSO');
-    expect(a.posicao).toEqual(lugar.canto);
+    expect(a.fase).toBe('INDO_EMBORA');
+    expect(a.balao).toBeNull();
+    let t = 5000 + RESULTADO_MS;
+    const fases: string[] = [a.fase];
+    while (a.fase !== 'AUSENTE' && t < 60000) {
+      t += 50;
+      a = avancar(a, t, 50, false);
+      if (fases[fases.length - 1] !== a.fase) fases.push(a.fase);
+    }
+    expect(fases).toEqual(['INDO_EMBORA', 'CRACHA', 'ELEVADOR', 'AUSENTE']);
+    expect(a.posicao).toEqual(ELEVADOR_PE);
     expect(ocupado(a)).toBe(false);
+    expect(descreverFase(a)).toBe('foi embora (ponto batido)');
   });
 
-  it('com movimento reduzido não anda: aparece na mesa e volta direto para o canto', () => {
+  it('quem foi embora volta pelo elevador quando chega tarefa e anda até a mesa', () => {
+    const embora = { ...parado(), fase: 'AUSENTE' as const, posicao: { ...ELEVADOR_PE } };
+    let a = iniciarTarefa(embora, 20000, false);
+    expect(a.fase).toBe('INDO');
+    expect(a.chegouEm).toBe(20000);
+    expect(a.posicao).toEqual(ELEVADOR_PE);
+    a = rodar(a, 20000, 40000);
+    expect(a.fase).toBe('PENSANDO');
+    expect(a.posicao).toEqual(lugar.mesa);
+    expect(iniciarTarefa(embora, 20000, true)).toMatchObject({ fase: 'PENSANDO', chegouEm: null }); // reduzido: aparece na mesa
+  });
+
+  it('a rota pela avenida nunca atravessa as mesas: desce pela coluna até a fileira de baixo', () => {
+    const r = rotaPelaAvenida({ x: 3, y: 2 }, ELEVADOR_PE);
+    expect(r.slice(0, 3)).toEqual([{ x: 3, y: 3 }, { x: 3, y: 4 }, { x: 3, y: 5 }]);
+    expect(r[r.length - 1]).toEqual(ELEVADOR_PE);
+    // quem já está na frente da sala usa a rota normal
+    expect(rotaPelaAvenida({ x: 5, y: 6 }, ELEVADOR_PE)).toEqual(rota({ x: 5, y: 6 }, ELEVADOR_PE));
+    // da cozinha de volta para uma mesa: desce à avenida, segue e sobe pela coluna da mesa
+    const volta = rotaPelaAvenida(LUGAR_CAFE, { x: 1, y: 2 });
+    expect(volta[0]).toEqual({ x: 6, y: 5 });
+    expect(volta[volta.length - 1]).toEqual({ x: 1, y: 2 });
+  });
+
+  it('com movimento reduzido não anda: aparece na mesa e some direto ao terminar', () => {
     let a = iniciarTarefa(parado(), 0, true);
     expect(a.fase).toBe('PENSANDO');
     expect(a.posicao).toEqual(lugar.mesa);
     a = concluirTarefa(a, { tipo: 'erro', texto: 'A Anthropic recusou a chave.' }, 1000);
     expect(descreverFase(a)).toBe('erro: A Anthropic recusou a chave.');
     a = avancar(a, 1000 + RESULTADO_MS, 50, true);
-    expect(a.fase).toBe('OCIOSO');
-    expect(a.posicao).toEqual(lugar.canto);
+    expect(a.fase).toBe('AUSENTE');
   });
 
   it('sem mudança, avancar devolve o mesmo objeto', () => {
