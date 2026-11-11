@@ -1,8 +1,9 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { AuthStore } from '../../core/auth/auth.store';
 import { atualizarPeriodicamente } from '../../core/tempo-real/atualizacao-periodica';
 import { formatarDataHora, formatarDolarCompacto, formatarNumero } from '../../shared/util/formatos';
+import { ClaudeCodeApi } from './data-access/claude-code.api';
 import { EscopoConsumo, Totais } from './data-access/consumo.models';
 import { PainelStore } from './data-access/painel.store';
 import { GraficoDias } from './grafico-dias.component';
@@ -40,6 +41,13 @@ export const INTERVALO_PAINEL_MS = 10_000;
         <button type="button" role="tab" id="aba-cc" aria-controls="painel-consumo" [attr.aria-selected]="aba() === 'claude-code'"
                 (click)="aba.set('claude-code')">Claude Code (assinatura)</button>
       </div>
+
+      <p class="ui-suave explicacao">
+        {{ aba() === 'api'
+          ? 'Automações (API): o que você gasta rodando as automações do AgentDesk com a sua chave. É dinheiro real.'
+          : 'Claude Code (assinatura): o que as suas sessões consumiriam na API. É um valor equivalente, não uma cobrança.' }}
+        <a routerLink="/ajuda" fragment="gastos">Entenda a diferença</a>
+      </p>
 
       <div id="painel-consumo" role="tabpanel" [attr.aria-labelledby]="aba() === 'api' ? 'aba-api' : 'aba-cc'">
       @if (aba() === 'claude-code') {
@@ -80,9 +88,15 @@ export const INTERVALO_PAINEL_MS = 10_000;
 
         @if (!store.temDados()) {
           <section class="ui-cartao vazio">
-            <h2>Nenhuma chamada ainda</h2>
-            <p class="ui-suave">Rode uma automação e o consumo aparece aqui em segundos.</p>
-            <a class="ui-botao ui-botao--primario" routerLink="/automacoes">Abrir Automações</a>
+            <h2>Nenhuma chamada de automação ainda</h2>
+            <p class="ui-suave">
+              Automações são tarefas de 1 clique que você roda no AgentDesk com a sua chave da API; o gasto delas aparece aqui em segundos.
+              Se você só usa o Claude Code, o consumo dele está na outra aba.
+            </p>
+            <div class="acoes-vazio">
+              <a class="ui-botao ui-botao--primario" routerLink="/automacoes">Abrir Automações</a>
+              <button type="button" class="ui-botao" (click)="aba.set('claude-code')">Ver Claude Code (assinatura)</button>
+            </div>
           </section>
         }
 
@@ -126,6 +140,8 @@ export const INTERVALO_PAINEL_MS = 10_000;
     .abas button { padding: var(--ui-e2) var(--ui-e4); border: 0; border-bottom: 3px solid transparent; background: none; color: var(--ui-texto-2);
       font: inherit; font-weight: 600; cursor: pointer; white-space: nowrap; }
     .abas button[aria-selected='true'] { color: var(--ui-texto); border-bottom-color: var(--ui-marca); }
+    .explicacao { font-size: var(--ui-t-sm); margin-bottom: var(--ui-e3); }
+    .acoes-vazio { display: flex; flex-wrap: wrap; gap: var(--ui-e2); }
     .escopo { display: flex; gap: var(--ui-e2); margin-bottom: var(--ui-e4); }
     .escopo [aria-pressed='true'] { background: var(--ui-marca); color: var(--ui-marca-texto); border-color: var(--ui-marca); }
     h2 { font-size: var(--ui-t-sm); color: var(--ui-texto-2); font-weight: 600; }
@@ -154,6 +170,8 @@ export class PainelPage {
   protected readonly store = inject(PainelStore);
   protected readonly aba = signal<'api' | 'claude-code'>('api');
   private readonly auth = inject(AuthStore);
+  private readonly claudeCodeApi = inject(ClaudeCodeApi);
+  private escolhida = false;
 
   protected readonly ehAdmin = computed(() => this.auth.usuario()?.perfil === 'ADMIN');
   protected readonly kpis = computed(() => {
@@ -175,6 +193,19 @@ export class PainelPage {
   protected readonly proporcao = (v: number) => (this.maiorRanking() > 0 ? Math.max(2, (v / this.maiorRanking()) * 100) : 0);
 
   constructor() {
+    // Quem só usa o Claude Code não deve cair numa aba vazia: se não há chamada de automação mas há pedidos do Claude Code, abre nele.
+    effect(() => {
+      const r = this.store.resumo();
+      if (!r || this.escolhida) return;
+      this.escolhida = true;
+      if (r.acumulado.chamadas > 0) return;
+      void this.claudeCodeApi
+        .painel(this.store.escopo(), 7)
+        .then((p) => {
+          if (p.acumulado.pedidos > 0 && this.aba() === 'api') this.aba.set('claude-code');
+        })
+        .catch(() => undefined);
+    });
     atualizarPeriodicamente(() => this.store.atualizar(), { intervaloMs: INTERVALO_PAINEL_MS }, inject(DestroyRef));
   }
 
