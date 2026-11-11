@@ -51,7 +51,8 @@ internal static class AutomacaoErros
 
     public static Error LimiteMensalAtingido(decimal gasto, decimal limite) => Error.Unprocessable(
         "Automacoes.LimiteMensalAtingido",
-        $"Você atingiu o limite de gasto do mês (US$ {gasto:0.00} de US$ {limite:0.00}). Aumente o limite em Configurações ou espere o próximo mês.");
+        string.Create(AgentDesk.SharedKernel.Texto.FormatoBr.Provedor,
+            $"Você atingiu o limite de gasto do mês (US$ {gasto:0.00} de US$ {limite:0.00}). Aumente o limite em Configurações ou espere o próximo mês."));
 }
 
 internal interface IAutomacoesRepository
