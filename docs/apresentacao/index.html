@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>AgentDesk — Guia da equipe</title>
+<title>AgentDesk — Guia de uso</title>
 <style>
 :root{--bg:#f7f8fb;--card:#fff;--tx:#1b1f2a;--mut:#5b6475;--bd:#e2e5ee;--ac:#3b5bdb;--acbg:#edf1ff;--ok:#2b8a3e;--okbg:#ebfbee;--warn:#e67700;--warnbg:#fff4e0;--bad:#c92a2a;--badbg:#fff0f0;--code:#f1f3f9}
 @media (prefers-color-scheme:dark){:root{--bg:#12141b;--card:#1b1e28;--tx:#e8eaf2;--mut:#9aa3b8;--bd:#2d3243;--ac:#8da2ff;--acbg:#232a4a;--ok:#69db7c;--okbg:#17301f;--warn:#ffa94d;--warnbg:#352713;--bad:#ff8787;--badbg:#3a1c1c;--code:#252a39}}
@@ -48,248 +48,209 @@ figure{margin:16px 0}figure img{max-width:100%;border:1px solid var(--bd);border
 <div class="wrap">
 <nav aria-label="Índice">
 <b>Neste guia</b>
-<a href="#oque">1. O que é o AgentDesk</a>
-<a href="#duas">2. Duas formas de gastar</a>
-<a href="#comecar">3. Colocar no ar (equipe)</a>
-<a href="#modulos">4. Os módulos</a>
-<a href="#conectar">5. Conectar o Claude Code</a>
-<a href="#gastos">6. Controlar os gastos</a>
-<a href="#equipe">7. Rotina da equipe</a>
+<a href="#oque">1. O que o AgentDesk faz</a>
+<a href="#duas">2. Dois tipos de gasto</a>
+<a href="#comecar">3. Primeiros passos</a>
+<a href="#automacoes">4. Automações</a>
+<a href="#consumo">5. Acompanhar o consumo</a>
+<a href="#escritorio">6. Escritório</a>
+<a href="#projeto">7. Usar no seu projeto</a>
 <a href="#controle">8. Parar, aprovar, mandar tarefa</a>
-<a href="#seguranca">9. Privacidade e segurança</a>
-<a href="#problemas">10. Problemas comuns</a>
-<a href="#dev">11. Para quem desenvolve</a>
-<a href="#glossario">12. Glossário</a>
+<a href="#gastos">9. Controlar os gastos</a>
+<a href="#alertas">10. Alertas, moedas, equipe</a>
+<a href="#privacidade">11. O que sai do seu PC</a>
+<a href="#problemas">12. Problemas comuns</a>
 </nav>
 <main>
 <header class="hero">
-<h1>AgentDesk</h1>
-<p>Painel de consumo e automações com a API da Claude, com um escritório animado onde cada agente é um robô — e acompanhamento ao vivo do Claude Code de cada pessoa da equipe.</p>
+<h1>AgentDesk — guia de uso</h1>
+<p>Veja o que seus agentes estão fazendo, quanto cada um gasta e controle tudo pelo navegador ou pelo celular. Este guia mostra o que o sistema oferece e o que você precisa fazer no seu projeto para ter esse controle.</p>
 </header>
 
-<h2 id="oque">1. O que é o AgentDesk</h2>
-<p>É um site (e app instalável no celular) que responde a duas perguntas: <b>"o que meus agentes estão fazendo agora?"</b> e <b>"quanto isso está custando?"</b>.</p>
+<h2 id="oque">1. O que o AgentDesk faz</h2>
 <div class="grid">
-<div class="card"><h3>⚙️ Automações</h3><p>Fluxos de 1 clique (resumir documento, analisar código, relatório executivo) que chamam a Claude pelo servidor, com a chave de cada pessoa.</p></div>
-<div class="card"><h3>📊 Consumo</h3><p>Tokens e custo de hoje, do mês e acumulado, gráfico por dia, ranking, histórico de cada chamada e limite mensal.</p></div>
-<div class="card"><h3>🏢 Escritório</h3><p>Cada automação e cada sessão do Claude Code vira um robô numa sala em pixel art. Dá para ver quem trabalha, quem espera por você e quanto gastou.</p></div>
-<div class="card"><h3>🖥️ Claude Code ao vivo</h3><p>Um coletor leve no PC manda só metadados (pasta, ferramenta, tokens). Painel por projeto/modelo, cache, dicas de economia e barras de 5 h e da semana.</p></div>
-<div class="card"><h3>✋ Controle</h3><p>Parar uma sessão, Aprovar/Negar pedidos de permissão e mandar uma tarefa para o Claude Code do PC — tudo pelo app.</p></div>
-<div class="card"><h3>🔔 Alertas e moedas</h3><p>Push no celular quando algo termina ou pede você. Valores em US$, R$, € ou £ (cotação PTAX do Banco Central).</p></div>
+<div class="card"><h3>⚙️ Automações</h3><p>Fluxos de 1 clique (resumir documento, analisar código, relatório executivo) que usam a Claude com a sua chave.</p></div>
+<div class="card"><h3>📊 Consumo</h3><p>Tokens e custo de hoje, do mês e acumulado; gráfico por dia; ranking; histórico de cada chamada; limite mensal.</p></div>
+<div class="card"><h3>🏢 Escritório</h3><p>Cada agente e cada sessão do Claude Code é um robô. Você vê quem trabalha, quem espera por você e quanto gastou.</p></div>
+<div class="card"><h3>🖥️ Claude Code ao vivo</h3><p>Acompanha as sessões do Claude Code dos seus projetos: atividade, tokens, cache, dicas de economia e barras de 5 h e da semana.</p></div>
+<div class="card"><h3>✋ Controle</h3><p>Parar uma sessão, Aprovar/Negar permissões e mandar tarefas ao Claude Code do seu PC, pelo app.</p></div>
+<div class="card"><h3>🔔 Alertas e moedas</h3><p>Aviso no celular quando algo termina ou pede você. Valores em US$, R$, € ou £.</p></div>
 </div>
-<figure><img src="../imagens/escritorio-claude-code.png" alt="Escritório com sessões do Claude Code ao vivo"><figcaption>Escritório → Claude Code (ao vivo): um robô por sessão, uma sala por projeto, pedidos de permissão em destaque.</figcaption></figure>
+<figure><img src="../imagens/escritorio-claude-code.png" alt="Escritório com sessões do Claude Code ao vivo"><figcaption>Escritório → Claude Code (ao vivo): um robô por sessão, uma sala por projeto.</figcaption></figure>
 
-<h2 id="duas">2. Entenda primeiro: existem duas "contas" de gasto</h2>
-<p>Este é o ponto que mais confunde. O AgentDesk mostra dois tipos de consumo, e eles <b>não têm o mesmo significado</b>:</p>
+<h2 id="duas">2. Dois tipos de gasto (leia primeiro)</h2>
 <div class="tw"><table>
 <tr><th></th><th>Automações (API)</th><th>Claude Code (assinatura)</th></tr>
-<tr><th>Como roda</th><td>O servidor do AgentDesk chama a API da Anthropic com a <b>chave da pessoa</b>.</td><td>A pessoa usa o Claude Code no próprio PC; o coletor só observa.</td></tr>
-<tr><th>Quem paga</th><td><b>Dinheiro de verdade</b>, por token, na conta da chave (Console da Anthropic).</td><td>A assinatura Pro/Max (ou a conta da empresa). Não se paga por token.</td></tr>
-<tr><th>O valor mostrado</th><td>Custo calculado pela tabela de preços — estimativa muito próxima da fatura.</td><td><b>≈ US$ equivalente</b>: o que aquelas chamadas custariam na API. Serve para comparar e achar desperdício, não é cobrança.</td></tr>
-<tr><th>O que limita</th><td><b>Limite mensal em US$</b> por pessoa, que pode bloquear a execução.</td><td>As <b>janelas de 5 horas e da semana</b> da assinatura (barras no painel).</td></tr>
-<tr><th>Onde ver</th><td>Consumo → aba principal / Histórico</td><td>Consumo → aba "Claude Code (assinatura)"</td></tr>
+<tr><th>Como funciona</th><td>Você executa um fluxo no AgentDesk e ele chama a Claude com a <b>sua chave</b>.</td><td>Você usa o Claude Code normalmente no PC; o AgentDesk só acompanha.</td></tr>
+<tr><th>Quem paga</th><td><b>Dinheiro real</b>, por token, na conta da sua chave.</td><td>A assinatura (Pro/Max ou da empresa). Não há cobrança por token.</td></tr>
+<tr><th>Valor mostrado</th><td>Custo calculado pela tabela de preços (estimativa).</td><td><b>≈ US$ equivalente</b>: quanto custaria na API. Serve para comparar e achar desperdício.</td></tr>
+<tr><th>O que limita</th><td>Seu <b>limite mensal</b> em US$.</td><td>As janelas de <b>5 horas</b> e da <b>semana</b>.</td></tr>
+<tr><th>Onde ver</th><td>Consumo → painel principal e Histórico</td><td>Consumo → aba "Claude Code (assinatura)"</td></tr>
 </table></div>
-<div class="box warn"><b>Atenção:</b> a fatura oficial é sempre a do Console da Anthropic. O AgentDesk mostra o custo <i>estimado</i> pela tabela de preços (editável pelo ADMIN) — use como painel de controle do dia a dia, e o Console como a verdade final.</div>
+<div class="box warn"><b>Importante:</b> o AgentDesk só enxerga o que passa por ele. Chamadas feitas por outro programa com a mesma chave <b>não aparecem</b>. A fatura oficial é a do Console da Anthropic.</div>
 
-<h2 id="comecar">3. Colocar no ar para a equipe</h2>
-<p>A equipe toda usa <b>um único servidor</b> do AgentDesk (cada pessoa com a sua conta e a sua chave). Duas opções:</p>
-<div class="grid">
-<div class="card"><h3>A) Na nuvem (Railway)</h3><p>Um serviço + um PostgreSQL. A imagem já leva o app. Push na <code>main</code> publica sozinho. É o caminho usado pelo projeto. Ver nota <i>Deploy (Railway)</i>.</p></div>
-<div class="card"><h3>B) No seu servidor (Docker)</h3><p>Um comando sobe API, app e banco. Bom para rodar dentro da rede da empresa.</p></div>
-</div>
-<h3>Opção B passo a passo</h3>
+<h2 id="comecar">3. Primeiros passos</h2>
+<p>Peça ao administrador o <b>endereço do AgentDesk</b> da equipe (precisa começar com <code>https://</code>). Depois:</p>
 <ol class="steps">
-<li><b>Pré-requisito:</b> Docker. Clone o repositório e copie o arquivo de ambiente:
-<pre><code>cp .env.example .env
-# preencha POSTGRES_PASSWORD e JWT_CHAVE_SECRETA (ex.: openssl rand -base64 48)</code></pre></li>
-<li><b>Suba tudo:</b>
-<pre><code>docker compose -f docker-compose.selfhost.yml up -d --build</code></pre>
-Abra <code>http://localhost:8080</code>. O banco é criado sozinho (o <code>schema.sql</code> é idempotente: pode reiniciar à vontade).</li>
-<li><b>Crie a primeira conta</b> no site e promova-a a <b>ADMIN</b> (quem edita prompts e preços e vê o consumo de todos):
-<pre><code>docker compose -f docker-compose.selfhost.yml exec postgres psql -U agentdesk -d agentdesk \
-  -c "UPDATE usuarios SET tipo_perfil = 'ADMIN' WHERE lower(email) = lower('voce@empresa.com');"</code></pre></li>
-<li><b>HTTPS e domínio:</b> ponha um proxy reverso na frente (Caddy: <code>reverse_proxy app:8080</code>). <b>Obrigatório para a equipe</b>: o coletor do Claude Code só aceita <code>https://</code> (ou localhost) e o alerta no celular também exige HTTPS.</li>
-<li><b>Backup:</b> <code>pg_dump</code> do banco <i>e</i> guarde o <code>JWT_CHAVE_SECRETA</code>. As chaves das pessoas são cifradas com chaves guardadas no banco: perder o banco perde as chaves (cada um cadastra de novo).</li>
-<li><b>Atualizar:</b> <code>git pull &amp;&amp; docker compose -f docker-compose.selfhost.yml up -d --build</code>. Os dados ficam no volume <code>pgdata</code>.</li>
-</ol>
-<div class="box info"><b>Cotação das moedas:</b> o servidor busca a PTAX no Banco Central ao subir e a cada 6 h; precisa de saída para a internet. Sem ela, tudo segue em dólar.</div>
-
-<h3>Primeiro acesso de cada pessoa</h3>
-<ol class="steps">
-<li>Abrir o endereço do AgentDesk e <b>criar a conta</b>.</li>
-<li>Ir em <b>Configurações</b>, colar a <b>sua chave da Anthropic</b> (<code>sk-ant-...</code>) e clicar <b>Testar chave</b> (não gasta tokens).</li>
-<li>Escolher o <b>modelo padrão</b> e definir o <b>limite mensal</b> em US$.</li>
-<li>Opcional: instalar o app no celular (Adicionar à tela inicial) e ativar <b>Alertas no celular</b>.</li>
+<li><b>Crie sua conta</b> na tela inicial.</li>
+<li>Vá em <b>Configurações</b>, cole a sua chave da Anthropic (<code>sk-ant-...</code>) e clique <b>Testar chave</b>. O teste não gasta tokens. A chave fica guardada cifrada e nunca é mostrada de volta (só os 4 últimos caracteres).</li>
+<li>Escolha o <b>modelo padrão</b>.</li>
+<li>Defina o <b>limite mensal</b> em US$ (veja a seção 9).</li>
+<li>Escolha a <b>moeda</b> no seletor do topo.</li>
 </ol>
 
-<h2 id="modulos">4. Os módulos</h2>
+<h2 id="automacoes">4. Automações</h2>
+<p>Tela <b>Automações</b>. Vêm três fluxos prontos:</p>
 <div class="tw"><table>
-<tr><th>Módulo</th><th>Para que serve</th><th>Quem usa / regras principais</th></tr>
-<tr><td><b>Contas</b></td><td>Cadastro, login, perfil.</td><td>Perfis: <code>USUARIO</code> e <code>ADMIN</code>. Cada pessoa só vê os próprios dados (dado de outro = 404).</td></tr>
-<tr><td><b>Configuracoes</b></td><td>Chave da API, modelo padrão, limite mensal, tabela de modelos e preços, cotações.</td><td>A chave <b>entra e nunca sai</b>: cifrada, só os 4 últimos caracteres aparecem. Só o ADMIN edita a tabela de preços.</td></tr>
-<tr><td><b>Automacoes</b></td><td>Fluxos de 1 clique: Relatório Executivo, Analisar Código, Resumir Documento.</td><td>Entrada de texto ou arquivo .txt/.md até 200 KB (a entrada não é guardada; o resultado sim). Confere o limite <i>antes</i> de chamar. Dá para <b>Cancelar</b> durante a execução.</td></tr>
-<tr><td><b>Consumo</b></td><td>Painel de gastos, gráfico por dia, ranking, histórico filtrável, painel do Claude Code.</td><td>"Meu consumo" para todos; "Todos os usuários" só o ADMIN. Atualiza sozinho a cada 10 s.</td></tr>
-<tr><td><b>Sessoes</b></td><td>Claude Code ao vivo: status, atividade, tokens, custo equivalente, dicas, histórico, Parar/Aprovar/Negar, tarefas.</td><td>Alimentado pelo coletor no PC com token pessoal.</td></tr>
-<tr><td><b>Equipe</b></td><td>Nome e aparência de cada robô (cores, acessório, antena, expressão).</td><td>Só personaliza; cada um vê os seus.</td></tr>
-<tr><td><b>Notificacoes</b></td><td>Push no celular.</td><td>Avisa: automação terminou/falhou, sessão terminou, sessão precisa de permissão.</td></tr>
+<tr><th>Fluxo</th><th>Modelo inicial</th><th>Uso</th></tr>
+<tr><td>Gerar Relatório Executivo</td><td>Opus 5.5</td><td>Transforma texto em relatório.</td></tr>
+<tr><td>Analisar Código</td><td>Opus 5.5</td><td>Revisão de um trecho de código.</td></tr>
+<tr><td>Resumir Documento</td><td>Haiku 5.5 (mais barato)</td><td>Resumo rápido.</td></tr>
 </table></div>
-
-<h3>Telas do app</h3>
-<ul>
-<li><b>Escritório</b> — salas <i>Claude Code (ao vivo)</i> e <i>Automações</i>, aba <i>Equipe</i>. Clique no robô para ver o que faz, tokens, tempos e botões de controle.</li>
-<li><b>Automações</b> — escolha o fluxo, cole o texto ou envie arquivo, escolha o modelo, <b>Executar</b>. O resultado traz tokens, custo e duração; dá para copiar ou baixar em .md.</li>
-<li><b>Consumo</b> — KPIs, barra do limite (alerta a partir de 80 %), gráfico por dia, ranking; <b>Histórico</b> com filtros; aba <b>Claude Code (assinatura)</b>.</li>
-<li><b>Configurações</b> — chave, modelo, limite, moeda, conexão do Claude Code, alertas; e (ADMIN) modelos e preços.</li>
-</ul>
-<figure><img src="../imagens/consumo-claude-code.png" alt="Painel de consumo do Claude Code"><figcaption>Consumo → Claude Code: tokens, ≈ custo, taxa de cache, barras de 5 horas e da semana, dicas para gastar menos.</figcaption></figure>
-<figure><img src="../imagens/equipe.png" alt="Editor de equipe"><figcaption>Equipe: nome e aparência de cada agente, com pré-visualização ao vivo.</figcaption></figure>
-
-<h2 id="conectar">5. Conectar o Claude Code de cada pessoa</h2>
-<p>Isto faz as sessões do Claude Code aparecerem no Escritório e alimenta o painel de tokens. <b>Pré-requisito:</b> Node 18+ no PC e AgentDesk em HTTPS.</p>
-<div class="flow"><span class="n">Claude Code (PC)</span><span class="a">→ hooks + telemetria →</span><span class="n">Coletor (filtra no PC)</span><span class="a">→ só metadados →</span><span class="n">Servidor AgentDesk</span><span class="a">→</span><span class="n">Escritório / Consumo</span></div>
 <ol class="steps">
-<li>No AgentDesk: <b>Configurações → Claude Code</b>. Dê um nome ao computador e clique <b>Gerar token e comando</b>. Copie o comando (versão Windows ou macOS/Linux). O token aparece <b>uma vez só</b> e é pessoal.</li>
-<li>Cole o comando num terminal do PC. Ele baixa o coletor para <code>~/.agentdesk/</code>, faz <b>backup</b> do <code>~/.claude/settings.json</code>, adiciona hooks e telemetria <i>sem sobrescrever</i> o que já existe e manda uma sessão de teste (sala "agentdesk-teste").</li>
-<li>Abra uma <b>sessão nova</b> do Claude Code. Ela aparece em <b>Escritório → Claude Code (ao vivo)</b>.</li>
-<li><b>Barras de 5 h e da semana:</b> o instalador também configura a <i>statusline</i> (só se você ainda não tiver uma). Aparecem depois da primeira resposta da sessão, só para Pro/Max.</li>
-<li><b>Atualizar o coletor</b> (quando sair versão nova): use "Já conectei antes" em Configurações, ou
-<pre><code>node ~/.agentdesk/agentdesk-coletor.mjs atualizar</code></pre>
-(no Windows PowerShell, <code>$HOME</code> no lugar de <code>~</code>).</li>
-<li><b>Remover:</b>
-<pre><code>node ~/.agentdesk/agentdesk-coletor.mjs desinstalar</code></pre>
-e revogue o token em Configurações.</li>
+<li>Escolha o fluxo.</li>
+<li>Cole o texto ou envie um arquivo <code>.txt</code>/<code>.md</code> (até 200 KB).</li>
+<li>Se quiser, troque o modelo para essa execução.</li>
+<li>Clique <b>Executar</b>. Dá para <b>Cancelar</b> enquanto roda.</li>
+<li>O resultado mostra tokens, custo e duração; use <b>Copiar</b> ou <b>Baixar .md</b>.</li>
 </ol>
-<div class="box info"><b>Claude Code na nuvem?</b> O coletor vive na máquina onde o Claude Code roda. Um ambiente de nuvem é outra máquina: use o bloco <i>Nuvem (Claude Code remoto)</i> em Configurações (variáveis de ambiente + script de preparação). O ambiente precisa de acesso de rede ao AgentDesk e o token fica só nas variáveis, nunca num repositório.</div>
-<h3>Status que o robô mostra</h3>
+<ul>
+<li>O texto que você envia <b>não é guardado</b>; o resultado fica no histórico.</li>
+<li>Se o limite mensal estiver estourado e o bloqueio ligado, o AgentDesk avisa e <b>nem chama a Claude</b>.</li>
+<li>O administrador pode editar os prompts dos fluxos.</li>
+</ul>
+
+<h2 id="consumo">5. Acompanhar o consumo</h2>
+<ul>
+<li><b>Painel:</b> hoje, mês e acumulado; barra do limite (alerta a partir de 80%); custo por dia; ranking por automação. Atualiza sozinho.</li>
+<li><b>Histórico:</b> cada chamada com data, automação, modelo, tokens, custo, duração e status (sucesso, erro, recusada). Filtre por período, automação, modelo e status; abra o resultado de qualquer chamada.</li>
+<li><b>Administrador:</b> alterna entre "Meu consumo" e "Todos os usuários", vendo quem rodou cada chamada.</li>
+</ul>
+<figure><img src="../imagens/consumo-claude-code.png" alt="Painel de consumo do Claude Code"><figcaption>Aba Claude Code (assinatura): tokens, ≈ custo, taxa de cache, barras de 5 h e da semana, dicas.</figcaption></figure>
+
+<h2 id="escritorio">6. Escritório</h2>
+<p>Tela <b>Escritório</b>, com três abas: <b>Claude Code (ao vivo)</b>, <b>Automações</b> e <b>Equipe</b>.</p>
+<ul>
+<li>Cada <b>projeto</b> do Claude Code é uma sala; cada <b>sessão</b> é um robô (até 8 por sala). Subagentes aparecem como robôs ajudantes.</li>
+<li>Clique no robô: atividade atual ("📖 Lendo api.ts", "💻 Rodando npm test"), horário de início, duração, tokens e custo equivalente.</li>
+<li>Nas Automações, o robô anda até a mesa, mostra "pensando…" e, ao terminar, um balão com tokens e custo.</li>
+</ul>
 <div class="tw"><table>
 <tr><th>Status</th><th>Significa</th></tr>
-<tr><td>Trabalhando</td><td>Processando pedido ou usando ferramenta (balão: "📖 Lendo api.ts", "💻 Rodando npm test"…).</td></tr>
-<tr><td>✋ Esperando você</td><td>Pediu permissão ou fez uma pergunta. Destaque na tela e alerta no celular.</td></tr>
-<tr><td>Ociosa</td><td>Terminou e espera o próximo pedido (ou sem sinal há 30 min).</td></tr>
-<tr><td>Encerrada</td><td>Sessão fechada; some da sala em 15 min.</td></tr>
+<tr><td>Trabalhando</td><td>Processando um pedido ou usando uma ferramenta.</td></tr>
+<tr><td>✋ Esperando você</td><td>Pediu permissão ou fez uma pergunta. Fica em destaque e avisa no celular.</td></tr>
+<tr><td>Ociosa</td><td>Terminou e espera o próximo pedido.</td></tr>
+<tr><td>Encerrada</td><td>Sessão fechada; some da sala em 15 minutos.</td></tr>
 </table></div>
-<p>Cada pasta de projeto é uma <b>sala</b> (até 8 robôs). Subagentes do Claude Code aparecem como <b>robôs ajudantes</b>. Duas pastas com o mesmo nome podem ser juntadas em um grupo ("Juntar salas").</p>
+<p>Duas pastas com o mesmo nome podem ser unidas num grupo com <b>Juntar salas</b>. Na aba <b>Equipe</b> você muda nome, cores, acessório, antena e expressão de cada robô (botão <b>Personalizar</b> na sala).</p>
+<figure><img src="../imagens/equipe.png" alt="Editor de equipe"><figcaption>Aba Equipe: nome e aparência de cada agente.</figcaption></figure>
 
-<h2 id="gastos">6. Como controlar os gastos de verdade</h2>
-<p>Pense em camadas, da mais forte para a mais fraca. O AgentDesk cuida das camadas 2 a 4; a camada 1 é no Console da Anthropic.</p>
+<h2 id="projeto">7. Usar no seu projeto: conectar o Claude Code</h2>
+<p>Para que as sessões do Claude Code de um projeto apareçam no Escritório e no painel de tokens, conecte o seu computador <b>uma vez</b>. Vale para todos os projetos que você abrir depois.</p>
+<p><b>Você precisa de:</b> Node 18 ou mais novo, Claude Code instalado e o endereço do AgentDesk com <code>https://</code>.</p>
 <ol class="steps">
-<li><b>Teto real: o Console da Anthropic.</b> O AgentDesk só enxerga o que passa por ele. Quem usar a mesma chave fora dele (scripts, outras ferramentas) não é contado. Para um teto que ninguém consegue furar, configure limites de gasto/créditos no Console (workspace ou organização) e, de preferência, <b>uma chave por pessoa</b>, para saber quem gastou o quê.</li>
-<li><b>Limite mensal por pessoa (Configurações).</b> Defina em US$. A 80 % aparece o alerta; a 100 %, com "bloquear ao atingir" ligado (padrão), a execução é recusada <i>antes</i> de chamar a Claude (nenhum token gasto). O mês conta no fuso de Brasília.</li>
-<li><b>Tabela de modelos e preços (ADMIN).</b> Mantenha os preços atualizados. Cada chamada grava o preço usado no momento, então mudar a tabela não reescreve o passado. Desative modelos caros que a equipe não deve usar: só modelo ativo pode ser escolhido.</li>
-<li><b>Acompanhar no Consumo.</b> Hoje / mês / acumulado, gráfico por dia (dia fora da curva salta aos olhos), ranking por automação, Histórico filtrável por modelo, automação e status, com o resultado de cada chamada. O ADMIN alterna para <b>Todos os usuários</b> e vê quem rodou cada uma.</li>
-<li><b>Claude Code: gastar menos.</b> Na aba <i>Claude Code (assinatura)</i> veja:
-<ul>
-<li><b>Taxa de cache</b> = leitura ÷ (entrada + leitura + escrita). Abaixo de 60 % (com 5+ pedidos) é destacada: contexto sendo reenviado sem aproveitar cache.</li>
-<li><b>Dicas</b> (últimos 7 dias), com economia estimada grosseira: <code>CACHE_BAIXO</code>, <code>SESSAO_GIGANTE</code> (150+ pedidos ou 20 mi+ tokens), <code>MUITAS_COMPACTACOES</code> (3+), <code>MODELO_CARO</code> (Opus/Fable em trabalho simples), <code>DIA_FORA_DA_CURVA</code>.</li>
-<li><b>Barras de 5 h e da semana</b>: verde, laranja a partir de 70 %, vermelho a partir de 90 %, com a hora da renovação.</li>
-<li><b>Histórico de sessões</b> com linha do tempo para ver onde o custo explodiu.</li>
-</ul></li>
+<li>No AgentDesk, vá em <b>Configurações → Claude Code</b>. Dê um nome ao computador (ex.: "notebook-joao") e clique <b>Gerar token e comando</b>.</li>
+<li><b>Copie o comando</b> (versão Windows ou macOS/Linux). O token aparece só uma vez e é pessoal: não compartilhe nem coloque em repositório.</li>
+<li><b>Cole no terminal</b> do computador. O instalador faz backup do seu <code>~/.claude/settings.json</code>, adiciona o que precisa sem apagar suas configurações e envia uma sessão de teste (sala "agentdesk-teste").</li>
+<li>Abra uma <b>sessão nova</b> do Claude Code na pasta do seu projeto.</li>
+<li>Veja o robô em <b>Escritório → Claude Code (ao vivo)</b>. A sala tem o nome da pasta do projeto.</li>
 </ol>
-<div class="box ok"><b>Boas práticas que reduzem custo</b>
-<ul>
-<li>Use o modelo menor para tarefas simples (ex.: Haiku para resumir; o fluxo "Resumir Documento" já vem assim).</li>
-<li>Prefira sessões curtas e focadas; sessões gigantes e muitas compactações encarecem.</li>
-<li>Defina limite mensal baixo no começo e suba conforme o uso real.</li>
-<li>Reveja o painel toda semana (cinco minutos) olhando o ranking e as dicas.</li>
-</ul></div>
-<div class="box warn"><b>Limites do que o painel sabe</b>
-<ul>
-<li>Custo = estimativa pela tabela. Preço por faixa (ex.: acima de 100 mil tokens de entrada) <b>não</b> é modelado.</li>
-<li>Telemetria do Claude Code informa tokens por pedido ao modelo, <b>não por ferramenta</b>: o painel não rateia custo por ferramenta.</li>
-<li>No Claude Code por assinatura o valor é equivalente, não cobrança.</li>
-<li>Usos fora do AgentDesk com a mesma chave não aparecem.</li>
-</ul></div>
+<div class="box ok"><b>Pronto.</b> Não é preciso mudar nada no código do projeto nem criar arquivos nele: a conexão fica na configuração do seu usuário do Claude Code.</div>
 
-<h2 id="equipe">7. Rotina sugerida para a equipe</h2>
-<div class="tw"><table>
-<tr><th>Quem</th><th>O que fazer</th><th>Quando</th></tr>
-<tr><td>Cada dev</td><td>Conta própria, chave própria, limite mensal definido, Claude Code conectado.</td><td>Uma vez</td></tr>
-<tr><td>Cada dev</td><td>Olhar a barra do limite e as barras de 5 h/semana; ativar alertas no celular.</td><td>Dia a dia</td></tr>
-<tr><td>ADMIN</td><td>Consumo → <i>Todos os usuários</i>: ranking, dias fora da curva, quem se aproxima do limite.</td><td>Semanal</td></tr>
-<tr><td>ADMIN</td><td>Conferir a tabela de preços contra a página de preços da Anthropic e a fatura do Console.</td><td>Mensal / a cada modelo novo</td></tr>
-<tr><td>ADMIN</td><td>Backup do banco e do <code>JWT_CHAVE_SECRETA</code>; revisar tokens de ingestão (revogar de quem saiu).</td><td>Mensal</td></tr>
-</table></div>
-<div class="box info"><b>Hoje o limite é por pessoa.</b> Não existe ainda um teto único da equipe dentro do AgentDesk; para isso use o Console. Itens como exportar histórico em CSV e fluxos criados pelo usuário estão na lista de pendências.</div>
+<h3>O que você passa a ter por projeto</h3>
+<ul>
+<li>Sala própria com os robôs das sessões e subagentes daquele projeto.</li>
+<li>Consumo do Claude Code <b>por projeto</b> e por modelo (aba Claude Code do Consumo).</li>
+<li>Taxa de cache, dicas de economia e histórico de sessões com linha do tempo.</li>
+<li>Barras de uso de 5 horas e da semana (planos Pro/Max, depois da primeira resposta da sessão).</li>
+<li>Parar, Aprovar/Negar e alertas no celular.</li>
+</ul>
+
+<h3>Manutenção</h3>
+<pre><code># atualizar o coletor quando houver versão nova (mantém o mesmo token)
+node ~/.agentdesk/agentdesk-coletor.mjs atualizar
+
+# remover tudo que foi instalado
+node ~/.agentdesk/agentdesk-coletor.mjs desinstalar</code></pre>
+<p>No Windows PowerShell, use <code>$HOME</code> no lugar de <code>~</code>. Depois de desinstalar, revogue o token em Configurações. Um token por computador; dá para ter até 10.</p>
+
+<h3>Claude Code na nuvem</h3>
+<p>Um ambiente de nuvem é outra máquina e precisa do próprio coletor. Em <b>Configurações → Claude Code → Nuvem</b> o AgentDesk gera dois blocos: as <b>variáveis de ambiente</b> e o <b>script de preparação</b>. Cole nas configurações do ambiente. O token fica só nas variáveis, nunca no repositório, e o ambiente precisa alcançar o endereço do AgentDesk pela rede.</p>
+
+<div class="box warn"><b>E o código do meu projeto que chama a API da Claude?</b> Hoje o AgentDesk mede (1) as sessões do Claude Code e (2) as automações executadas nele. Chamadas feitas por um programa seu, direto na API, não passam pelo AgentDesk e não aparecem. Para esse caso, o controle é o limite de gastos do Console da Anthropic, com uma chave separada por projeto.</div>
 
 <h2 id="controle">8. Parar, aprovar e mandar tarefas</h2>
 <h3>Parar e Aprovar/Negar</h3>
-<p>Quando o Claude Code pede permissão (ex.: rodar um comando), o pedido aparece em <b>✋ Pedidos de permissão</b> no app, com <b>Aprovar</b> e <b>Negar</b>. Sem resposta a tempo, o Claude Code <b>pergunta no terminal</b> como sempre — nada é aprovado sozinho. O botão <b>Parar</b> na sessão selecionada pede ao Claude Code para interromper. Para desligar esse controle na instalação: <code>--sem-controle</code>.</p>
-<figure><img src="../imagens/controle.gif" alt="Aprovar permissão e parar sessão"><figcaption>Aprovando um pedido de permissão e pedindo para parar uma sessão.</figcaption></figure>
-<h3>Mandar tarefa para o Claude Code do PC</h3>
+<ul>
+<li>Quando o Claude Code pede permissão, o pedido aparece em <b>✋ Pedidos de permissão</b>. Clique <b>Aprovar</b> ou <b>Negar</b>.</li>
+<li>Sem resposta a tempo, o Claude Code <b>pergunta no terminal</b> como de costume. Nada é aprovado sozinho.</li>
+<li><b>Parar</b> na sessão selecionada pede ao Claude Code para interromper.</li>
+<li>Não quer esse controle? Instale com a opção <code>--sem-controle</code>.</li>
+</ul>
+<figure><img src="../imagens/controle.gif" alt="Aprovar permissão e parar sessão"><figcaption>Aprovando um pedido e pedindo para parar uma sessão.</figcaption></figure>
+<h3>Mandar uma tarefa para o Claude Code do seu PC</h3>
 <ol class="steps">
-<li>No PC, <b>dentro da pasta do projeto</b>, libere a pasta (só quem está no PC decide; o caminho nunca sai dele):
+<li>No PC, <b>dentro da pasta do projeto</b>, libere a pasta. Só você, no PC, decide quais pastas aceitam tarefas; o caminho nunca sai do computador:
 <pre><code>node ~/.agentdesk/agentdesk-coletor.mjs liberar</code></pre></li>
-<li>Deixe o coletor escutando num terminal aberto:
+<li>Deixe o coletor escutando, num terminal aberto:
 <pre><code>node ~/.agentdesk/agentdesk-coletor.mjs escutar</code></pre>
-(<code>--claude CAMINHO</code> se o <code>claude</code> não estiver no PATH.)</li>
-<li>No app: <b>Escritório → Claude Code (ao vivo) → Mandar tarefa</b>: escolha computador e pasta, escreva (1 a 4000 caracteres) e <b>Enviar tarefa</b>. Um robô aparece na sala do projeto; Parar e Aprovar/Negar funcionam nele.</li>
+(Se o <code>claude</code> não estiver no PATH, acrescente <code>--claude CAMINHO</code>.)</li>
+<li>No app: <b>Escritório → Claude Code (ao vivo) → Mandar tarefa</b>. Escolha computador e pasta, escreva a tarefa (até 4000 caracteres) e clique <b>Enviar tarefa</b>.</li>
+<li>Um robô aparece na sala do projeto; Parar e Aprovar/Negar funcionam nele.</li>
 </ol>
-<div class="box warn">Máx. 5 tarefas abertas por usuário; pendente há mais de 10 min expira; o PC precisa estar ligado com o <code>escutar</code> aberto. O texto da tarefa fica guardado no servidor: <b>não digite segredos</b>. Esta função foi testada com um <code>claude</code> de mentira — o primeiro teste com o real é de vocês.</div>
+<div class="box warn">Máximo de 5 tarefas abertas. Tarefa não pega em 10 minutos expira; o PC precisa estar ligado com o <code>escutar</code> aberto. O texto da tarefa fica guardado no servidor: <b>não digite senhas ou chaves</b>. Esta função ainda não foi validada com o <code>claude</code> real, só com um simulado.</div>
 
-<h2 id="seguranca">9. Privacidade e segurança</h2>
+<h2 id="gastos">9. Como controlar os gastos</h2>
+<ol class="steps">
+<li><b>Defina seu limite mensal</b> (Configurações). A 80% aparece o alerta; a 100%, com "bloquear ao atingir" ligado (padrão), as automações param antes de gastar. Comece baixo e suba conforme o uso real.</li>
+<li><b>Use o modelo certo.</b> Modelos menores para tarefas simples. O administrador mantém a tabela de preços e pode desativar modelos caros.</li>
+<li><b>Olhe o painel toda semana</b> (5 minutos): dia fora da curva, ranking por automação, projetos que mais consomem.</li>
+<li><b>Siga as dicas do Claude Code</b> (aba Claude Code):
 <ul>
-<li><b>Chave da Anthropic:</b> cifrada no banco, nunca devolvida ao navegador; a chamada à Claude sai do servidor, não do navegador.</li>
-<li><b>Coletor:</b> filtra no PC. Saem: nome da pasta (+ hash do caminho), ferramenta, nome do arquivo (sem caminho), as duas primeiras palavras de um comando (descartando o que parece segredo), domínio de URL e contagem de tokens. <b>Não saem</b> código-fonte nem texto de prompts.</li>
-<li><b>Token de ingestão</b> (<code>adk_…</code>): o banco guarda só o hash; até 10 ativos por pessoa; revogar corta na hora.</li>
-<li><b>Isolamento:</b> cada usuário só acessa os próprios dados. Só o ADMIN vê o consumo de todos (e não vê janelas de assinatura pessoais).</li>
-<li>Nenhum segredo vai para o Git: senha do banco e JWT por variáveis de ambiente.</li>
+<li><b>Cache baixo:</b> menos de 60% de aproveitamento com 5+ pedidos. Sessões longas demais ou contexto trocando muito.</li>
+<li><b>Sessão gigante:</b> 150+ pedidos ou 20 milhões+ de tokens. Prefira sessões curtas e focadas.</li>
+<li><b>Muitas compactações:</b> 3 ou mais. Divida o trabalho.</li>
+<li><b>Modelo caro:</b> Opus/Fable em trabalho simples. Troque por um modelo menor.</li>
+<li><b>Dia fora da curva:</b> custo do dia mais que o dobro da média.</li>
+</ul>
+A economia exibida é só uma estimativa aproximada.</li>
+<li><b>Acompanhe as barras de 5 h e da semana</b>: verde, laranja a partir de 70%, vermelho a partir de 90%, com a hora da renovação.</li>
+<li><b>Para um teto que ninguém fura</b> (sobretudo em equipe), configure também o limite de gastos no Console da Anthropic e use uma chave por pessoa ou por projeto.</li>
+</ol>
+<div class="box info"><b>Para quem administra a equipe:</b> o perfil ADMIN vê o consumo de todos em Consumo → "Todos os usuários" e edita a tabela de modelos e preços. O limite do AgentDesk é por pessoa; não há um teto único da equipe dentro do sistema.</div>
+<div class="box warn"><b>Limites do painel:</b> custo é estimativa pela tabela (preço por faixa de tamanho não é modelado); o Claude Code informa tokens por pedido, não por ferramenta; no Claude Code por assinatura o valor é equivalente, não cobrança.</div>
+
+<h2 id="alertas">10. Alertas, moedas e equipe</h2>
+<ul>
+<li><b>Alertas no celular:</b> em Configurações → Alertas no celular, ative o aparelho. Você é avisado quando uma automação termina ou falha, quando uma sessão termina e quando ela precisa de você. No iPhone, só no app instalado (Adicionar à Tela de Início). Cancelar uma automação não gera aviso.</li>
+<li><b>Instalar como app:</b> use "Adicionar à tela inicial" no navegador. Quando sair versão nova, aparece "Atualizar".</li>
+<li><b>Moedas:</b> US$, R$, € ou £ no seletor do topo. Os dados são guardados em dólar; a conversão é só na exibição, pela cotação PTAX do Banco Central.</li>
 </ul>
 
-<h2 id="problemas">10. Problemas comuns</h2>
+<h2 id="privacidade">11. O que sai do seu computador</h2>
+<div class="grid">
+<div class="card"><h3>✅ Sai</h3><p>Nome da pasta do projeto, ferramenta usada, nome do arquivo (sem caminho), as duas primeiras palavras de um comando (sem o que parece segredo), domínio de URL, contagem de tokens e custo.</p></div>
+<div class="card"><h3>🚫 Não sai</h3><p>Código-fonte, texto dos seus prompts, respostas da Claude, caminhos completos de pastas.</p></div>
+</div>
+<ul>
+<li>Sua chave da Anthropic é cifrada e nunca volta ao navegador.</li>
+<li>O token do coletor é pessoal; só o hash fica guardado. Revogue em Configurações quando trocar de computador ou sair da equipe.</li>
+<li>Cada pessoa só vê os próprios dados (o administrador vê o consumo de todos).</li>
+</ul>
+
+<h2 id="problemas">12. Problemas comuns</h2>
 <div class="tw"><table>
-<tr><th>Sintoma</th><th>Causa provável / o que fazer</th></tr>
-<tr><td>Sessão não aparece no Escritório</td><td>Abra uma sessão <b>nova</b> depois de instalar; confira HTTPS e rede até o servidor; rode <code>atualizar</code>; verifique se o token não foi revogado.</td></tr>
-<tr><td>Execução recusada: limite atingido (<code>LimiteMensalAtingido</code>)</td><td>Suba o limite em Configurações ou desligue "bloquear ao atingir".</td></tr>
-<tr><td><code>Anthropic.ChaveInvalida</code> / <code>SemCredito</code></td><td>Chave errada/revogada, ou conta sem crédito no Console.</td></tr>
-<tr><td><code>Anthropic.LimiteDeTaxa</code> (503)</td><td>Muitas chamadas seguidas; tente de novo em instantes.</td></tr>
-<tr><td>Chave aparece "não configurada" depois de restaurar banco</td><td>As chaves de proteção ficam no banco; se foram perdidas, cadastre a chave de novo.</td></tr>
-<tr><td>Sem barras de 5 h/semana</td><td>Só Pro/Max, só depois da primeira resposta; quem instalou antes precisa rodar <code>atualizar</code>.</td></tr>
+<tr><th>Sintoma</th><th>O que fazer</th></tr>
+<tr><td>Sessão não aparece no Escritório</td><td>Abra uma sessão <b>nova</b> depois de instalar; confira se o endereço tem <code>https://</code> e se o computador alcança o servidor; rode <code>atualizar</code>; veja se o token não foi revogado.</td></tr>
+<tr><td>"Limite mensal atingido"</td><td>Suba o limite em Configurações ou desligue "bloquear ao atingir".</td></tr>
+<tr><td>Chave inválida / sem crédito</td><td>Confira a chave e o saldo no Console da Anthropic; teste a chave em Configurações.</td></tr>
+<tr><td>Erro de limite de taxa</td><td>Muitas chamadas seguidas; tente de novo em instantes.</td></tr>
+<tr><td>Sem barras de 5 h/semana</td><td>Só planos Pro/Max, só depois da primeira resposta da sessão. Se instalou há tempo, rode <code>atualizar</code>.</td></tr>
 <tr><td>Alerta no celular não ativa</td><td>Precisa de HTTPS; no iPhone, só no app instalado (iOS 16.4+).</td></tr>
-<tr><td>Cache "baixo" em tudo</td><td>Costuma indicar sessões muito longas ou contexto trocando demais; veja as dicas.</td></tr>
-<tr><td>Valores em dólar mesmo escolhendo R$</td><td>Servidor sem acesso ao Banco Central; a cotação volta quando houver internet.</td></tr>
+<tr><td>Valores em dólar mesmo escolhendo R$</td><td>A cotação do Banco Central está indisponível no momento; volta sozinha.</td></tr>
+<tr><td>"Tarefa expirada"</td><td>O <code>escutar</code> não estava aberto no PC; abra e envie de novo.</td></tr>
 </table></div>
-
-<h2 id="dev">11. Para quem desenvolve</h2>
-<p><b>Stack:</b> .NET 8 + Dapper + PostgreSQL 16 (monólito modular) e app Angular 22 PWA. Um módulo = um projeto em <code>src/Modules/&lt;Nome&gt;</code>; módulos só dependem do SharedKernel e conversam por contratos (<code>IConfiguracoesDeUso</code>, <code>IRegistroConsumo</code>, <code>INotificador</code>). A integração com a Anthropic passa só por <code>IClienteAnthropic</code>; nos testes é <code>AnthropicFalso</code> — nunca chamada nem chave reais.</p>
-<pre><code>docker compose up -d                          # PostgreSQL (+ pgAdmin :5050, Mailpit :8025)
-dotnet run --project src/Host/AgentDesk.API   # API + app juntos (app em http://localhost:4210)
-cd src/AgentDesk.Web &amp;&amp; npm run start:mock   # só o app, sem backend
-
-dotnet test                                   # backend (Docker)
-cd src/AgentDesk.Web &amp;&amp; npm test &amp;&amp; npm run e2e</code></pre>
-<ul>
-<li><b>Documentação:</b> cofre do Obsidian em <code>docs/obsidian/</code> (comece por <code>00 - Dashboard.md</code>). Uma nota por módulo, ADRs com cada decisão (ex.: ADR-007 custo/preço congelado, ADR-010 coletor, ADR-018 tarefas).</li>
-<li><b>Módulo novo:</b> receita em <code>Receita - Novo Módulo (API + App).md</code> (schema → módulo → testes → feature → rota/menu → mock + E2E → nota).</li>
-<li><b>Regras:</b> erro de negócio é <code>Result</code> com código estável; SQL explícito no Dapper; usuário sempre vem do token; <code>schema.sql</code> idempotente; coluna nova = schema + repositório + teste no mesmo commit. Detalhes no <code>CLAUDE.md</code>.</li>
-<li><b>Swagger:</b> perfil "AgentDesk.API (somente API)" do Visual Studio abre a documentação interativa da API.</li>
-<li><b>Licença:</b> AGPL-3.0 — pode usar em empresa; se oferecer versão modificada como serviço na internet, publique as modificações.</li>
-</ul>
-<h3>API em uma tabela</h3>
-<div class="tw"><table>
-<tr><th>Área</th><th>Rotas (<code>/api/v1/…</code>)</th><th>Acesso</th></tr>
-<tr><td>Contas</td><td><code>auth/cadastro</code>, <code>auth/login</code>, <code>auth/eu</code></td><td>Anônimo / logado</td></tr>
-<tr><td>Configurações</td><td><code>configuracoes</code>, <code>…/chave-api</code>, <code>…/chave-api/testar</code>, <code>…/preferencias</code>, <code>modelos</code>, <code>cotacoes</code></td><td>Logado (modelos: ADMIN escreve)</td></tr>
-<tr><td>Automações</td><td><code>automacoes</code>, <code>automacoes/{id}/executar</code>, <code>…/execucoes/{id}/cancelar</code></td><td>Logado (editar: ADMIN)</td></tr>
-<tr><td>Consumo</td><td><code>consumo/resumo</code>, <code>consumo/chamadas</code>, <code>consumo/filtros</code></td><td>Logado (<code>TODOS</code>: ADMIN)</td></tr>
-<tr><td>Sessões (app)</td><td><code>sessoes/ao-vivo</code>, <code>painel</code>, <code>dicas</code>, <code>historico</code>, <code>tokens</code>, <code>limites</code>, <code>{id}/parar</code>, <code>permissoes/{id}/decidir</code>, <code>tarefas</code>, <code>computadores</code></td><td>Logado</td></tr>
-<tr><td>Sessões (coletor)</td><td><code>sessoes/eventos</code>, <code>sessoes/otlp/v1/logs</code>, <code>sessoes/limites</code> (POST), <code>sessoes/controle/*</code></td><td>Header <code>X-AgentDesk-Token</code></td></tr>
-<tr><td>Equipe</td><td><code>equipe</code></td><td>Logado</td></tr>
-<tr><td>Alertas</td><td><code>notificacoes</code>, <code>…/dispositivos</code>, <code>…/preferencias</code>, <code>…/teste</code></td><td>Logado</td></tr>
-</table></div>
-
-<h2 id="glossario">12. Glossário</h2>
-<div class="tw"><table>
-<tr><th>Termo</th><th>Significa</th></tr>
-<tr><td>Token</td><td>Pedaço de texto cobrado pela Claude (entrada, saída e cache).</td></tr>
-<tr><td>Cache</td><td>Parte do contexto reaproveitada entre pedidos; leitura de cache é bem mais barata.</td></tr>
-<tr><td>Coletor</td><td>Programa Node que roda no PC, filtra eventos do Claude Code e envia só metadados.</td></tr>
-<tr><td>Hook</td><td>Gancho do Claude Code que roda um comando a cada evento (ferramenta, fim de sessão…).</td></tr>
-<tr><td>Token de ingestão</td><td>Credencial pessoal (<code>adk_…</code>) do coletor; diferente da chave da Anthropic.</td></tr>
-<tr><td>PTAX</td><td>Cotação oficial do dólar do Banco Central, usada para converter valores.</td></tr>
-<tr><td>ADR</td><td>Registro de decisão de arquitetura, em <code>docs/obsidian/ADRs</code>.</td></tr>
-<tr><td>≈ US$</td><td>Custo equivalente na API, não cobrado na assinatura.</td></tr>
-</table></div>
-<p style="color:var(--mut);margin-top:40px;font-size:14px">AgentDesk é um projeto independente, não um produto oficial da Anthropic; "Claude" é marca da Anthropic. Fonte desta página: README, CLAUDE.md e notas em <code>docs/obsidian</code>.</p>
+<p style="color:var(--mut);margin-top:40px;font-size:14px">AgentDesk é um projeto independente, não um produto oficial da Anthropic; "Claude" é marca da Anthropic.</p>
 </main>
 </div>
 </body>
