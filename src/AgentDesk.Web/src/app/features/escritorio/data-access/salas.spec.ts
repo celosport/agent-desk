@@ -1,4 +1,4 @@
-import { codigoDoSubagente, montarSalas, participantesDaCena, projetosHomonimos } from './salas';
+import { codigoDoSubagente, detalheDaSala, montarSalas, participantesDaCena, projetosHomonimos } from './salas';
 import { ProjetoAoVivo, SessaoAoVivo } from './sessoes.models';
 
 const sessao = (sessaoId: string, status: SessaoAoVivo['status'], extra: Partial<SessaoAoVivo> = {}): SessaoAoVivo => ({
@@ -79,6 +79,23 @@ describe('participantesDaCena', () => {
     expect(naCena).toHaveLength(8);
     expect(naCena.filter((p) => p.subagente)).toHaveLength(1);
     expect(fora).toBe(2);
+  });
+});
+
+describe('detalheDaSala', () => {
+  const com = (...titulos: (string | undefined)[]) => ({ sessoes: titulos.map((titulo) => ({ titulo }) as SessaoAoVivo) });
+
+  it('sala com uma sessão só mostra o título da tarefa; com várias (ou sem título), quantas são', () => {
+    expect(detalheDaSala(com('Lançamento de pagamento em dinheiro'))).toBe('Lançamento de pagamento em dinheiro');
+    expect(detalheDaSala(com('Uma', 'Outra'))).toBe('2');
+    expect(detalheDaSala(com(undefined))).toBe('1');
+    expect(detalheDaSala(com('   '))).toBe('1');
+  });
+
+  it('título comprido é cortado com reticências', () => {
+    const t = detalheDaSala(com('x'.repeat(80)));
+    expect(t.length).toBe(40);
+    expect(t.endsWith('…')).toBe(true);
   });
 });
 
