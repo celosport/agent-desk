@@ -1,4 +1,5 @@
 using AgentDesk.SharedKernel.Tempo;
+using AgentDesk.SharedKernel.Texto;
 
 namespace AgentDesk.Modules.Sessoes.Domain;
 
@@ -100,7 +101,8 @@ internal static class RegrasDicas
             var media = outros.Average();
             if (d.Uso.CustoUsd < ForaDaCurvaCustoMinimo || d.Uso.CustoUsd <= media * ForaDaCurvaVezes) continue;
             var dica = new Dica("DIA_FORA_DA_CURVA", "Dia fora da curva",
-                $"Em {d.Dia:dd/MM} o uso custou ≈ US$ {d.Uso.CustoUsd:0.00}, mais de {ForaDaCurvaVezes:0}× a média dos outros dias (≈ US$ {media:0.00}). " +
+                string.Create(FormatoBr.Provedor,
+                    $"Em {d.Dia:dd/MM} o uso custou ≈ US$ {d.Uso.CustoUsd:0.00}, mais de {ForaDaCurvaVezes:0}× a média dos outros dias (≈ US$ {media:0.00}). ") +
                 "Vale olhar o que rodou nesse dia no histórico de sessões.",
                 null, null, Economia(d.Uso.CustoUsd - media));
             if (pior is null || dica.EconomiaUsd > pior.EconomiaUsd) pior = dica;

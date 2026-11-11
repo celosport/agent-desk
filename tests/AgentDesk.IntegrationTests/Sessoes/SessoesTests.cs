@@ -149,7 +149,8 @@ public sealed class SessoesTests(AgentDeskApiFactory factory)
             => new { sessaoId = sessao, evento, maquina = "Notebook", projeto = "zena", projetoChave = "a1b2c3d4e5f6", titulo, ocorridoEm = Base.AddSeconds(segundos) };
 
         await EnviarAsync(c.Token, Evento(s, "SessionStart", 0));
-        Assert.Equal(JsonValueKind.Null, (await SessaoAoVivoAsync(c.Http, s))!.Value.GetProperty("titulo").ValueKind);
+        // Sem título a API omite o campo (nulos não são serializados)
+        Assert.False((await SessaoAoVivoAsync(c.Http, s))!.Value.TryGetProperty("titulo", out _));
 
         await EnviarAsync(c.Token, ComTitulo(s, "UserPromptSubmit", 1, "Lançamento de pagamento em dinheiro"));
         Assert.Equal("Lançamento de pagamento em dinheiro", (await SessaoAoVivoAsync(c.Http, s))!.Value.GetProperty("titulo").GetString());
