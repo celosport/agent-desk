@@ -31,7 +31,7 @@ tags: [painel]
 | [[Módulo Automacoes]] | `src/Modules/Automacoes` | `features/automacoes` | `automacoes` | 🟡 Fase 2: 3 fluxos chamando a Claude, edição pelo ADMIN |
 | [[Módulo Sessoes]] | `src/Modules/Sessoes` | `features/escritorio` (sala Claude Code) · `features/configuracoes` (conectar) | `tokens_ingestao`, `cc_sessoes`, `cc_eventos`, `cc_consumo_diario` | 🟢 Fase 5: sessões do Claude Code ao vivo (hooks + telemetria) |
 | [[Módulo Equipe]] | `src/Modules/Equipe` | `features/escritorio` (aba Equipe) | `agentes_personalizados` | 🟡 Fase 6a: nome e aparência dos agentes (API + app) |
-| [[Módulo Notificacoes]] | `src/Modules/Notificacoes` | `features/configuracoes` (cartão Alertas no celular) | `notificacoes_dispositivos`, `notificacoes_preferencias`, `notificacoes_vapid` | 🟡 Alertas push no celular: automação/sessão terminou, pedido de permissão (ADR-016) |
+| [[Módulo Notificacoes]] | `src/Modules/Notificacoes` | `features/configuracoes` (cartão Alertas no celular) | `notificacoes_dispositivos`, `notificacoes_preferencias`, `notificacoes_vapid` | 🟡 Alertas push no celular: automação/sessão terminou, pedido de permissão (ADR-016); aviso do ADMIN a quem escolher, ex.: convite para instalar o app (ADR-019) |
 | [[Início e Ajuda]] | — (usa Consumo, Sessoes e Configuracoes) | `features/inicio`, `features/ajuda` | — | 🟢 Painel do dia no Início e guia de uso dentro do app |
 | [[Escritório Animado]] | — (usa Automacoes) | `features/escritorio` | — | 🟢 Fase 4: sala isométrica em Canvas, robôs por automação |
 | [[Módulo Consumo]] | `src/Modules/Consumo` | `features/consumo` | `consumo_chamadas` | 🟢 Fase 3: painel (polling 10 s), gráfico por dia, ranking e histórico |
@@ -44,6 +44,7 @@ tags: [painel]
 | 2026-11-11 | **Início e Ajuda**: painel analítico no Início, tela Ajuda (`/ajuda`), Consumo abre na aba certa e explica as abas, guia `.md` para a IA baixável |
 | 2026-10-30 | Projeto criado a partir do esqueleto |
 | 2026-10-30 | Perguntas respondidas; ADR-005 a 007; **Fase 1**: módulo Configuracoes + tabela de modelos e preços |
+| 2026-11-12 | **Instalar o app no cadastro** (celular) e **aviso push do ADMIN** a usuários escolhidos, ADR-019 |
 | 2026-11-01 | **Alertas no celular**: módulo Notificacoes (push VAPID do app instalado), contrato `INotificador`, ADR-016 |
 | 2026-11-10 | **Identidade visual futurista**: logo (hexágono + A + nó do agente), ícones PWA, tema escuro azul-noite e degradê ciano→violeta ([[Identidade Visual]]) |
 | 2026-11-03 | **Mandar tarefa para o Claude Code do PC**: `escutar` no coletor, pastas liberadas no PC, tarefas pelo app (ADR-018) |

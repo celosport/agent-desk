@@ -5,6 +5,7 @@ import { Automacao, Execucao } from '../../features/automacoes/data-access/autom
 import { Chamada, StatusChamada } from '../../features/consumo/data-access/consumo.models';
 import { Dicas, DiaClaudeCode, LimitesAssinatura, EventoLinha, ItemClaudeCode, LinhaDoTempo, PaginaHistoricoSessoes, PainelClaudeCode, SessaoHistorico, UsoClaudeCode } from '../../features/consumo/data-access/claude-code.models';
 import { DispositivoAlerta, PreferenciasAlerta } from '../../features/configuracoes/data-access/alertas.models';
+import { Destinatario } from '../../features/configuracoes/data-access/avisos.models';
 import { AgenteEquipe } from '../../features/escritorio/data-access/equipe.models';
 
 /**
@@ -64,6 +65,13 @@ let equipe: AgenteEquipe[] = [];
 /** Alertas no celular (módulo Notificacoes): aparelhos que aceitaram e o que avisar. Tudo ligado até o usuário desligar. */
 let aparelhosDeAlerta: DispositivoAlerta[] = [];
 let preferenciasDeAlerta: PreferenciasAlerta = { automacoes: true, sessoes: true, permissoes: true };
+
+/** Usuários que o ADMIN vê ao mandar um aviso push (módulo Notificacoes). */
+const destinatariosMock: Destinatario[] = [
+  { usuarioId: 'u0000000-0000-4000-8000-000000000001', nome: 'Maria Souza', email: 'maria@exemplo.com', aparelhos: 1 },
+  { usuarioId: 'u0000000-0000-4000-8000-000000000002', nome: 'João Lima', email: 'joao@exemplo.com', aparelhos: 0 },
+  { usuarioId: 'u0000000-0000-4000-8000-000000000003', nome: 'Ana Costa', email: 'ana@exemplo.com', aparelhos: 2 },
+];
 
 let automacoes: Automacao[] = [
   automacaoMock('a1e5c1a0-0000-4000-8000-000000000001', 'relatorio-executivo', 'Gerar Relatório Executivo',
@@ -892,6 +900,16 @@ function responder(req: HttpRequest<unknown>, url: URL): Observable<HttpResponse
     if (aparelhosDeAlerta.length === 0)
       return erro(409, 'Notificacoes.SemDispositivos', 'Nenhum aparelho está recebendo alertas. Ative os alertas neste aparelho primeiro.');
     return ok({ entregues: aparelhosDeAlerta.length });
+  }
+
+  if (c === '/api/v1/notificacoes/admin/destinatarios' && req.method === 'GET') return ok(destinatariosMock);
+  if (c === '/api/v1/notificacoes/admin/aviso' && req.method === 'POST') {
+    if (!String(corpo['titulo'] ?? '').trim() || !String(corpo['mensagem'] ?? '').trim())
+      return invalido({ titulo: ['Informe o título e a mensagem.'] });
+    const ids = corpo['usuarioIds'] as string[] | null;
+    const escolhidos = ids === null ? destinatariosMock : destinatariosMock.filter((d) => ids.includes(d.usuarioId));
+    const alcancados = escolhidos.filter((d) => d.aparelhos > 0).length;
+    return ok({ escolhidos: escolhidos.length, alcancados, semAparelho: escolhidos.length - alcancados, falhas: 0 });
   }
 
   // ---- Consumo ----

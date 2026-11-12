@@ -1,16 +1,18 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { rotaInicial } from '../../core/auth/auth.guards';
 import { AuthStore } from '../../core/auth/auth.store';
 import { mensagemDeErro } from '../../core/http/problema';
+import { InstalarAppCartao } from '../../core/nativo/instalar-app.component';
+import { InstalarApp } from '../../core/nativo/instalar-app.service';
 import { AlternarTema } from '../../shared/ui/alternar-tema.component';
 import { Logo } from '../../shared/ui/logo.component';
 
 /** Mesmas regras do CadastrarValidator da API (a API continua sendo quem decide). */
 @Component({
   selector: 'app-cadastro',
-  imports: [ReactiveFormsModule, RouterLink, AlternarTema, Logo],
+  imports: [ReactiveFormsModule, RouterLink, AlternarTema, Logo, InstalarAppCartao],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './auth.page.scss',
   template: `
@@ -21,6 +23,9 @@ import { Logo } from '../../shared/ui/logo.component';
         <h1>Criar conta</h1>
       </header>
 
+      @if (etapaInstalar()) {
+        <app-instalar-app [etapa]="true" (continuar)="instalacaoFeita.set(true)" />
+      } @else {
       <form [formGroup]="form" (ngSubmit)="cadastrar()" novalidate>
         <div class="ui-campo">
           <label for="nome">Nome</label>
@@ -41,6 +46,7 @@ import { Logo } from '../../shared/ui/logo.component';
           {{ enviando() ? 'Criando…' : 'Criar conta' }}
         </button>
       </form>
+      }
 
       <p class="rodape">Já tem conta? <a routerLink="/entrar">Entrar</a></p>
     </main>
@@ -55,6 +61,11 @@ export class CadastroPage {
     email: ['', [Validators.required, Validators.email]],
     senha: ['', [Validators.required, Validators.minLength(8)]],
   });
+  private readonly instalarApp = inject(InstalarApp);
+  protected readonly instalacaoFeita = signal(false);
+  // Primeiro "Instale o app", depois a conta — só no celular/tablet. Reage ao sinal (o evento do Chrome pode chegar
+  // atrasado); sem suporte (computador) o cadastro abre direto no formulário. Nunca bloqueia o cadastro.
+  protected readonly etapaInstalar = computed(() => !this.instalacaoFeita() && this.instalarApp.modo() !== 'nenhum');
   protected readonly enviando = signal(false);
   protected readonly erro = signal<string | null>(null);
 

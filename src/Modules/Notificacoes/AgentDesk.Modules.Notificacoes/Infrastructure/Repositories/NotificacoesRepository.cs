@@ -30,6 +30,15 @@ internal sealed class NotificacoesRepository(IDbConnectionFactory connectionFact
         return linhas.Select(l => l.ParaDominio()).ToList();
     }
 
+    public async Task<IReadOnlyList<Dispositivo>> ListarDispositivosDeAsync(IReadOnlyCollection<Guid> usuarioIds, CancellationToken cancellationToken)
+    {
+        if (usuarioIds.Count == 0) return [];
+        const string sql = $"SELECT {ColunasDispositivo} FROM notificacoes_dispositivos WHERE usuario_id = ANY(@Ids) ORDER BY usuario_id, criado_em;";
+        await using var connection = await connectionFactory.OpenConnectionAsync(cancellationToken);
+        var linhas = await connection.QueryAsync<LinhaDispositivo>(new CommandDefinition(sql, new { Ids = usuarioIds.Distinct().ToArray() }, cancellationToken: cancellationToken));
+        return linhas.Select(l => l.ParaDominio()).ToList();
+    }
+
     public async Task<Dispositivo> SalvarDispositivoAsync(Dispositivo d, CancellationToken cancellationToken)
     {
         const string sql = $"""

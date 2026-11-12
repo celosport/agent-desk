@@ -53,6 +53,9 @@ internal interface INotificacoesRepository
     /// <summary>Cria ou atualiza (mesmo endpoint = mesmo aparelho; se era de outro usuário, passa para quem acabou de aceitar).</summary>
     Task<Dispositivo> SalvarDispositivoAsync(Dispositivo dispositivo, CancellationToken cancellationToken);
 
+    /// <summary>Aparelhos de vários usuários de uma vez (aviso do ADMIN). Lista vazia = ninguém.</summary>
+    Task<IReadOnlyList<Dispositivo>> ListarDispositivosDeAsync(IReadOnlyCollection<Guid> usuarioIds, CancellationToken cancellationToken);
+
     Task<bool> RemoverDispositivoAsync(Guid usuarioId, string endpoint, CancellationToken cancellationToken);
     Task RemoverDispositivoPorIdAsync(Guid dispositivoId, CancellationToken cancellationToken);
 

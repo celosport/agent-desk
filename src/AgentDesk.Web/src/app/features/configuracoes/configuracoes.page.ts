@@ -5,6 +5,7 @@ import { Avisos } from '../../core/ui/avisos.service';
 import { formatarDolarFixo } from '../../shared/util/formatos';
 import { ConfiguracoesStore, ResultadoTeste } from './data-access/configuracoes.store';
 import { AlertasCelular } from './alertas-celular.component';
+import { AvisoAdmin } from './aviso-admin.component';
 import { ConexaoClaude } from './conexao-claude.component';
 import { ModelosPrecos, numero } from './modelos-precos.component';
 
@@ -14,7 +15,7 @@ import { ModelosPrecos, numero } from './modelos-precos.component';
  */
 @Component({
   selector: 'app-configuracoes',
-  imports: [ReactiveFormsModule, ConexaoClaude, AlertasCelular, ModelosPrecos],
+  imports: [ReactiveFormsModule, ConexaoClaude, AlertasCelular, AvisoAdmin, ModelosPrecos],
   providers: [ConfiguracoesStore],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -110,6 +111,7 @@ import { ModelosPrecos, numero } from './modelos-precos.component';
         <app-alertas-celular />
 
         @if (ehAdmin()) {
+          <app-aviso-admin />
           <app-modelos-precos />
         }
       }

@@ -14,6 +14,8 @@ public sealed record RemoverDispositivoRequestDto(string? Endpoint);
 
 public sealed record PreferenciasAlertaRequestDto(bool Automacoes, bool Sessoes, bool Permissoes);
 
+public sealed record EnviarAvisoRequestDto(IReadOnlyList<Guid>? UsuarioIds, string? Titulo, string? Mensagem, string? Url);
+
 /// <summary>Alertas push no celular do usuário do token. [[ADR-016 - Alertas no Celular (Push do App)]]</summary>
 [ApiController]
 [Route("api/v1/notificacoes")]
@@ -55,6 +57,28 @@ public sealed class NotificacoesController(IUsuarioAtual usuarioAtual) : Control
         [FromBody] PreferenciasAlertaRequestDto r, [FromServices] ICommandHandler<SalvarPreferenciasCommand, PreferenciasAlertaDto> handler, CancellationToken ct)
     {
         var result = await handler.Handle(new SalvarPreferenciasCommand(usuarioAtual.UsuarioId, r.Automacoes, r.Sessoes, r.Permissoes), ct);
+        return result.IsSuccess ? Ok(result.Value) : this.ToProblem(result.Error);
+    }
+
+    /// <summary>ADMIN: todos os usuários, com quantos aparelhos recebem alertas, para escolher quem recebe o aviso.</summary>
+    [HttpGet("admin/destinatarios")]
+    [Authorize(Roles = Perfis.Admin)]
+    [ProducesResponseType<IReadOnlyList<DestinatarioDto>>(StatusCodes.Status200OK)]
+    public async Task<IActionResult> Destinatarios([FromServices] IQueryHandler<ListarDestinatariosQuery, IReadOnlyList<DestinatarioDto>> handler, CancellationToken ct)
+    {
+        var result = await handler.Handle(new ListarDestinatariosQuery(), ct);
+        return result.IsSuccess ? Ok(result.Value) : this.ToProblem(result.Error);
+    }
+
+    /// <summary>ADMIN: manda um aviso push (ex.: "instale o app") a quem foi escolhido; sem <c>usuarioIds</c>, a todos.</summary>
+    [HttpPost("admin/aviso")]
+    [Authorize(Roles = Perfis.Admin)]
+    [ProducesResponseType<EnvioAvisoDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> EnviarAviso(
+        [FromBody] EnviarAvisoRequestDto r, [FromServices] ICommandHandler<EnviarAvisoCommand, EnvioAvisoDto> handler, CancellationToken ct)
+    {
+        var result = await handler.Handle(new EnviarAvisoCommand(r.UsuarioIds, r.Titulo, r.Mensagem, r.Url), ct);
         return result.IsSuccess ? Ok(result.Value) : this.ToProblem(result.Error);
     }
 
