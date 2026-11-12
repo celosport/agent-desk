@@ -5,6 +5,8 @@ export interface Destinatario {
   email: string;
   /** Aparelhos que aceitaram alertas; com 0 o push não tem para onde ir. */
   aparelhos: number;
+  /** Administradores não podem ser vistos pelo "Ver como". */
+  ehAdmin: boolean;
 }
 
 export interface EnviarAvisoRequest {

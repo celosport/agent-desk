@@ -7,6 +7,7 @@ import { ConfiguracoesStore, ResultadoTeste } from './data-access/configuracoes.
 import { AlertasCelular } from './alertas-celular.component';
 import { AvisoAdmin } from './aviso-admin.component';
 import { ConexaoClaude } from './conexao-claude.component';
+import { VerComoAdmin } from './ver-como-admin.component';
 import { ModelosPrecos, numero } from './modelos-precos.component';
 
 /**
@@ -15,7 +16,7 @@ import { ModelosPrecos, numero } from './modelos-precos.component';
  */
 @Component({
   selector: 'app-configuracoes',
-  imports: [ReactiveFormsModule, ConexaoClaude, AlertasCelular, AvisoAdmin, ModelosPrecos],
+  imports: [ReactiveFormsModule, ConexaoClaude, AlertasCelular, AvisoAdmin, VerComoAdmin, ModelosPrecos],
   providers: [ConfiguracoesStore],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -111,6 +112,7 @@ import { ModelosPrecos, numero } from './modelos-precos.component';
         <app-alertas-celular />
 
         @if (ehAdmin()) {
+          <app-ver-como-admin />
           <app-aviso-admin />
           <app-modelos-precos />
         }

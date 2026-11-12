@@ -6,6 +6,8 @@ import { API_BASE_URL } from '../config/api.config';
 import { Sessao, UsuarioLogado } from './auth.models';
 
 export const CHAVE_SESSAO = 'agentdesk.sessao';
+/** Sessão do ADMIN guardada enquanto ele olha o app como outro usuário ("Ver como"). */
+export const CHAVE_SESSAO_ADMIN = 'agentdesk.sessao.admin';
 
 /**
  * Estado de autenticação com signals. A sessão fica no localStorage para o app abrir já logado
@@ -25,6 +27,8 @@ export class AuthStore {
     const s = this.sessao();
     return !!s && new Date(s.expiraEm).getTime() > Date.now();
   });
+  /** Nome do ADMIN quando o app está no modo "Ver como" (somente leitura); null no uso normal. */
+  readonly verComoPor = computed(() => this.sessao()?.verComoPor ?? null);
   readonly primeiroNome = computed(() => this.usuario()?.nome.split(' ')[0] ?? '');
 
   /** Muda a cada edição do usuário: descarta respostas de perfil que ficaram para trás. */
@@ -65,9 +69,55 @@ export class AuthStore {
     this.definir(await firstValueFrom(this.http.post<Sessao>(`${this.api}/api/v1/auth/cadastro`, { nome, email, senha })));
   }
 
+  /**
+   * ADMIN: passa a ver o app como o usuário escolhido, só leitura (a API recusa qualquer alteração). A sessão do ADMIN fica guardada
+   * para "Sair do modo" voltar sem pedir senha. [[ADR-020 - Ver Como (Admin em Somente Leitura)]]
+   */
+  async verComo(usuarioId: string): Promise<void> {
+    const admin = this.sessao();
+    const nova = await firstValueFrom(this.http.post<Sessao>(`${this.api}/api/v1/auth/ver-como`, { usuarioId }));
+    if (admin && !admin.verComoPor) this.guardarAdmin(admin);
+    this.definir(nova);
+    await this.router.navigateByUrl('/inicio');
+  }
+
+  /** Volta para a sessão do ADMIN (ou, se ela não existe mais, para o login). */
+  async sairDoVerComo(): Promise<void> {
+    const admin = this.lerAdminGuardado();
+    if (!admin || new Date(admin.expiraEm).getTime() <= Date.now()) {
+      this.sair();
+      return;
+    }
+    try {
+      localStorage.removeItem(CHAVE_SESSAO_ADMIN);
+    } catch {
+      /* armazenamento indisponível */
+    }
+    this.definir(admin);
+    await this.router.navigateByUrl('/configuracoes');
+  }
+
+  private guardarAdmin(admin: Sessao): void {
+    try {
+      localStorage.setItem(CHAVE_SESSAO_ADMIN, JSON.stringify(admin));
+    } catch {
+      /* sem armazenamento: ao sair do modo o ADMIN entra de novo */
+    }
+  }
+
+  private lerAdminGuardado(): Sessao | null {
+    try {
+      const bruto = localStorage.getItem(CHAVE_SESSAO_ADMIN);
+      return bruto ? (JSON.parse(bruto) as Sessao) : null;
+    } catch {
+      return null;
+    }
+  }
+
   sair(): void {
     this.sessao.set(null);
     try {
+      localStorage.removeItem(CHAVE_SESSAO_ADMIN);
       localStorage.removeItem(CHAVE_SESSAO);
     } catch {
       /* armazenamento indisponível */

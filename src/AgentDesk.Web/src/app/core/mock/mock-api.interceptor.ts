@@ -34,6 +34,9 @@ const USUARIOS = {
 
 type Quem = keyof typeof USUARIOS;
 
+/** Token do modo "Ver como": começa com token-mock- (vale como login) mas não é o do admin, então age como usuário comum. */
+const TOKEN_VER_COMO = 'token-mock-usuario-ver-como';
+
 /** Nome e foto editáveis pelo perfil (módulo Contas). A foto do mock é sempre a mesma imagem de 1 pixel. */
 const perfisMock: Record<Quem, { nome: string; email: string; fotoUrl?: string }> = {
   usuario: { nome: USUARIOS.usuario.nome, email: USUARIOS.usuario.email },
@@ -68,9 +71,10 @@ let preferenciasDeAlerta: PreferenciasAlerta = { automacoes: true, sessoes: true
 
 /** Usuários que o ADMIN vê ao mandar um aviso push (módulo Notificacoes). */
 const destinatariosMock: Destinatario[] = [
-  { usuarioId: 'u0000000-0000-4000-8000-000000000001', nome: 'Maria Souza', email: 'maria@exemplo.com', aparelhos: 1 },
-  { usuarioId: 'u0000000-0000-4000-8000-000000000002', nome: 'João Lima', email: 'joao@exemplo.com', aparelhos: 0 },
-  { usuarioId: 'u0000000-0000-4000-8000-000000000003', nome: 'Ana Costa', email: 'ana@exemplo.com', aparelhos: 2 },
+  { usuarioId: 'u0000000-0000-4000-8000-000000000001', nome: 'Maria Souza', email: 'maria@exemplo.com', aparelhos: 1, ehAdmin: false },
+  { usuarioId: 'u0000000-0000-4000-8000-000000000002', nome: 'João Lima', email: 'joao@exemplo.com', aparelhos: 0, ehAdmin: false },
+  { usuarioId: 'u0000000-0000-4000-8000-000000000003', nome: 'Ana Costa', email: 'ana@exemplo.com', aparelhos: 2, ehAdmin: false },
+  { usuarioId: 'u0000000-0000-4000-8000-000000000009', nome: 'Admin do Sistema', email: 'admin@exemplo.com', aparelhos: 1, ehAdmin: true },
 ];
 
 let automacoes: Automacao[] = [
@@ -676,6 +680,20 @@ function responder(req: HttpRequest<unknown>, url: URL): Observable<HttpResponse
   }
 
   if (!autenticado(req)) return erro(401, 'Auth.NaoAutenticado', 'Entre novamente.');
+
+  // ---- Contas: "Ver como" (ADMIN olha o app como um usuário, só leitura) ----
+  if (c === '/api/v1/auth/ver-como' && req.method === 'POST') {
+    if (!ehAdmin(req)) return erro(403, 'Auth.Proibido', 'Sem permissão.');
+    const alvo = destinatariosMock.find((d) => d.usuarioId === corpo['usuarioId']);
+    if (!alvo) return erro(404, 'Conta.UsuarioNaoEncontrado', 'Conta não encontrada.');
+    if (alvo.ehAdmin) return erro(403, 'Conta.VerComoSoUsuario', 'O "Ver como" vale só para contas de usuário (não para administradores).');
+    return ok({
+      accessToken: TOKEN_VER_COMO, tokenType: 'Bearer', expiraEm: new Date(Date.now() + 60 * 60_000).toISOString(),
+      usuario: { usuarioId: alvo.usuarioId, nome: alvo.nome, email: alvo.email, perfil: 'USUARIO' }, verComoPor: USUARIOS.admin.nome,
+    });
+  }
+  if (req.headers.get('Authorization') === `Bearer ${TOKEN_VER_COMO}` && !['GET', 'HEAD'].includes(req.method))
+    return erro(403, 'Auth.SomenteLeitura', 'Você está vendo como outro usuário: nada pode ser alterado neste modo.');
 
   // ---- Contas: perfil (nome e foto de quem está logado) ----
   if (c === '/api/v1/conta/perfil' || c === '/api/v1/conta/foto') {

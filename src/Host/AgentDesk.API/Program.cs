@@ -99,6 +99,7 @@ app.UseHttpsRedirection();
 app.UseStaticFiles(new StaticFileOptions { OnPrepareResponse = CacheDoApp.Aplicar, ContentTypeProvider = CacheDoApp.TiposDeArquivo });
 
 app.UseAuthentication();
+app.UseVerComoSomenteLeitura(); // token do "Ver como" só lê [[ADR-020 - Ver Como (Admin em Somente Leitura)]]
 app.UseAuthorization();
 app.UseRateLimiter();
 

@@ -25,6 +25,7 @@ public sealed class ContasModule : IModule
         services.AddScoped<IValidator<LoginCommand>, LoginValidator>();
         services.AddCommandHandler<CadastrarCommand, SessaoDto, CadastrarHandler>();
         services.AddCommandHandler<LoginCommand, SessaoDto, LoginHandler>();
+        services.AddCommandHandler<IniciarVerComoCommand, SessaoDto, IniciarVerComoHandler>();
 
         services.AddScoped<IValidator<AtualizarNomeCommand>, AtualizarNomeValidator>();
         services.AddQueryHandler<ObterPerfilQuery, UsuarioDto, ObterPerfilHandler>();

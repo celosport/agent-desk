@@ -7,7 +7,7 @@ using AgentDesk.SharedKernel.Results;
 namespace AgentDesk.Modules.Notificacoes.Application;
 
 /// <summary>Um usuário na lista do ADMIN, com quantos aparelhos já aceitaram alertas (sem aparelho, o push não tem para onde ir).</summary>
-public sealed record DestinatarioDto(Guid UsuarioId, string Nome, string Email, int Aparelhos);
+public sealed record DestinatarioDto(Guid UsuarioId, string Nome, string Email, int Aparelhos, bool EhAdmin);
 
 /// <summary>Resultado do aviso: quantas pessoas foram escolhidas, em quantas o push chegou e quantas não têm aparelho com alertas.</summary>
 public sealed record EnvioAvisoDto(int Escolhidos, int Alcancados, int SemAparelho, int Falhas);
@@ -24,7 +24,7 @@ internal sealed class ListarDestinatariosHandler(INotificacoesRepository reposit
         var todos = await usuarios.ListarAsync(cancellationToken);
         var aparelhos = (await repositorio.ListarDispositivosDeAsync(todos.Select(u => u.UsuarioId).ToList(), cancellationToken))
             .GroupBy(d => d.UsuarioId).ToDictionary(g => g.Key, g => g.Count());
-        return todos.Select(u => new DestinatarioDto(u.UsuarioId, u.Nome, u.Email, aparelhos.GetValueOrDefault(u.UsuarioId))).ToList();
+        return todos.Select(u => new DestinatarioDto(u.UsuarioId, u.Nome, u.Email, aparelhos.GetValueOrDefault(u.UsuarioId), u.EhAdmin)).ToList();
     }
 }
 

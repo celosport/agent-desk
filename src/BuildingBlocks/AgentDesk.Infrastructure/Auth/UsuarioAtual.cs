@@ -21,4 +21,7 @@ internal sealed class UsuarioAtual(IHttpContextAccessor accessor) : IUsuarioAtua
         Principal?.FindFirst(ClaimsAgentDesk.Perfil)?.Value is { } perfil
             ? EnumTexto.Parse<PerfilUsuario>(perfil)
             : throw new InvalidOperationException("Requisição sem usuário autenticado.");
+
+    public Guid? VerComoAdminId =>
+        Guid.TryParse(Principal?.FindFirst(ClaimsAgentDesk.VerComo)?.Value, out var id) ? id : null;
 }
