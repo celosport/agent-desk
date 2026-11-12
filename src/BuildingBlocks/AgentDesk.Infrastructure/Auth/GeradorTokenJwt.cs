@@ -12,10 +12,16 @@ internal sealed class GeradorTokenJwt(IOptions<JwtOptions> options, TimeProvider
     private static readonly JsonWebTokenHandler Handler = new();
 
     public TokenAcesso Gerar(Guid usuarioId, string nome, string email, PerfilUsuario perfil)
+        => Emitir(usuarioId, nome, email, perfil, options.Value.ExpiracaoMinutos, null);
+
+    public TokenAcesso GerarVerComo(Guid usuarioId, string nome, string email, PerfilUsuario perfil, Guid adminId, int minutos)
+        => Emitir(usuarioId, nome, email, perfil, minutos, adminId);
+
+    private TokenAcesso Emitir(Guid usuarioId, string nome, string email, PerfilUsuario perfil, int minutos, Guid? verComoAdminId)
     {
         var jwt = options.Value;
         var agora = clock.GetUtcNow();
-        var expiraEm = agora.AddMinutes(jwt.ExpiracaoMinutos);
+        var expiraEm = agora.AddMinutes(minutos);
 
         var descriptor = new SecurityTokenDescriptor
         {
@@ -35,6 +41,8 @@ internal sealed class GeradorTokenJwt(IOptions<JwtOptions> options, TimeProvider
             SigningCredentials = new SigningCredentials(
                 new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.ChaveSecreta)), SecurityAlgorithms.HmacSha256),
         };
+
+        if (verComoAdminId is { } admin) descriptor.Claims[ClaimsAgentDesk.VerComo] = admin.ToString();
 
         return new TokenAcesso(Handler.CreateToken(descriptor), expiraEm);
     }

@@ -46,6 +46,13 @@ internal sealed class UsuariosRepository(IDbConnectionFactory connectionFactory)
         return l?.ParaDominio();
     }
 
+    public async Task RegistrarVerComoAsync(Guid adminId, Guid usuarioId, DateTimeOffset em, CancellationToken cancellationToken)
+    {
+        const string sql = "INSERT INTO auditoria_ver_como (auditoria_id, admin_id, usuario_id, iniciado_em) VALUES (@Id, @AdminId, @UsuarioId, @Em);";
+        await using var connection = await connectionFactory.OpenConnectionAsync(cancellationToken);
+        await connection.ExecuteAsync(new CommandDefinition(sql, new { Id = Guid.NewGuid(), AdminId = adminId, UsuarioId = usuarioId, Em = em.ToUniversalTime() }, cancellationToken: cancellationToken));
+    }
+
     public async Task<bool> InserirAsync(Usuario u, CancellationToken cancellationToken)
     {
         const string sql = """

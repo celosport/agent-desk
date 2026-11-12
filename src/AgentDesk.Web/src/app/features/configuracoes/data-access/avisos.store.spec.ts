@@ -4,7 +4,7 @@ import { Destinatario } from './avisos.models';
 import { AvisosStore, resumoDoEnvio } from './avisos.store';
 
 describe('AvisosStore', () => {
-  const pessoa = (id: string, aparelhos: number): Destinatario => ({ usuarioId: id, nome: `Pessoa ${id}`, email: `${id}@x.dev`, aparelhos });
+  const pessoa = (id: string, aparelhos: number): Destinatario => ({ usuarioId: id, nome: `Pessoa ${id}`, email: `${id}@x.dev`, aparelhos, ehAdmin: false });
   const api = { destinatarios: vi.fn(), enviar: vi.fn() };
   let store: AvisosStore;
 

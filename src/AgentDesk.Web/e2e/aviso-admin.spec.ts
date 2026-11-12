@@ -24,6 +24,6 @@ test.describe('Aviso push do admin', () => {
 
     await bloco.getByRole('button', { name: 'Marcar todos' }).click();
     await bloco.getByRole('button', { name: 'Enviar aviso' }).click();
-    await expect(bloco.getByRole('status')).toContainText('2 de 3 pessoas');
+    await expect(bloco.getByRole('status')).toContainText('3 de 4 pessoas');
   });
 });

@@ -44,6 +44,7 @@ tags: [painel]
 | 2026-11-11 | **Início e Ajuda**: painel analítico no Início, tela Ajuda (`/ajuda`), Consumo abre na aba certa e explica as abas, guia `.md` para a IA baixável |
 | 2026-10-30 | Projeto criado a partir do esqueleto |
 | 2026-10-30 | Perguntas respondidas; ADR-005 a 007; **Fase 1**: módulo Configuracoes + tabela de modelos e preços |
+| 2026-11-12 | **Ver como**: ADMIN olha o app como um usuário, só leitura, com faixa no topo e auditoria (ADR-020) |
 | 2026-11-12 | **Instalar o app no cadastro** (celular) e **aviso push do ADMIN** a usuários escolhidos, ADR-019 |
 | 2026-11-01 | **Alertas no celular**: módulo Notificacoes (push VAPID do app instalado), contrato `INotificador`, ADR-016 |
 | 2026-11-10 | **Identidade visual futurista**: logo (hexágono + A + nó do agente), ícones PWA, tema escuro azul-noite e degradê ciano→violeta ([[Identidade Visual]]) |

@@ -14,6 +14,7 @@ internal static class ContaErros
     public static readonly Error CredenciaisInvalidas = Error.Unauthorized("Auth.CredenciaisInvalidas", "E-mail ou senha inválidos.");
     public static readonly Error EmailEmUso = Error.Conflict("Auth.EmailEmUso", "Este e-mail já tem cadastro.");
     public static readonly Error UsuarioNaoEncontrado = Error.NotFound("Conta.UsuarioNaoEncontrado", "Conta não encontrada.");
+    public static readonly Error VerComoSoUsuario = Error.Forbidden("Conta.VerComoSoUsuario", "O \"Ver como\" vale só para contas de usuário (não para administradores).");
     public static readonly Error FotoInvalida = Error.Unprocessable("Conta.FotoInvalida", "A foto deve ser uma imagem PNG, JPEG ou WEBP.");
     public static readonly Error FotoGrande = Error.Unprocessable("Conta.FotoGrande", "A foto tem no máximo 1 MB.");
     public static readonly Error FotoNaoEncontrada = Error.NotFound("Conta.FotoNaoEncontrada", "Esta conta não tem foto.");
@@ -23,6 +24,9 @@ internal interface IUsuariosRepository
 {
     Task<Usuario?> ObterPorEmailAsync(string email, CancellationToken cancellationToken);
     Task<Usuario?> ObterPorIdAsync(Guid usuarioId, CancellationToken cancellationToken);
+
+    /// <summary>Auditoria: o ADMIN abriu o "Ver como" deste usuário.</summary>
+    Task RegistrarVerComoAsync(Guid adminId, Guid usuarioId, DateTimeOffset em, CancellationToken cancellationToken);
 
     /// <summary>False se o e-mail já existe (índice único em lower(email)).</summary>
     Task<bool> InserirAsync(Usuario usuario, CancellationToken cancellationToken);

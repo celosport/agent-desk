@@ -7,7 +7,8 @@ using Microsoft.AspNetCore.Identity;
 
 namespace AgentDesk.Modules.Contas.Application.Auth;
 
-public sealed record SessaoDto(string AccessToken, string TokenType, DateTimeOffset ExpiraEm, UsuarioDto Usuario);
+/// <param name="VerComoPor">Nome do ADMIN quando é o modo "Ver como" (somente leitura); nulo no login normal.</param>
+public sealed record SessaoDto(string AccessToken, string TokenType, DateTimeOffset ExpiraEm, UsuarioDto Usuario, string? VerComoPor = null);
 /// <summary>Quem está logado. <see cref="FotoUrl"/> é um caminho relativo da API (o <c>v</c> muda a cada troca de foto); nulo se não tem foto.</summary>
 public sealed record UsuarioDto(Guid UsuarioId, string Nome, string Email, PerfilUsuario Perfil, string? FotoUrl = null)
 {

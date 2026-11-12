@@ -20,6 +20,13 @@ interface ItemMenu {
   imports: [RouterOutlet, RouterLink, RouterLinkActive, AlternarTema, Avatar, Logo],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
+    <div class="cabecalho">
+    @if (auth.verComoPor(); as admin) {
+      <div class="ver-como" role="status">
+        <span>Você está vendo como <strong>{{ auth.usuario()?.nome }}</strong> (somente leitura) · aberto por {{ admin }}</span>
+        <button type="button" class="ui-botao" (click)="auth.sairDoVerComo()">Sair do modo</button>
+      </div>
+    }
     <header class="topo">
       <a class="marca" routerLink="/inicio" aria-label="Agent Desk — início"><app-logo /></a>
       <nav aria-label="Principal">
@@ -47,11 +54,20 @@ interface ItemMenu {
         <button type="button" class="ui-botao ui-botao--fantasma" (click)="auth.sair()">Sair</button>
       </div>
     </header>
+    </div>
     <router-outlet />
   `,
   styles: `
+    .cabecalho { position: sticky; top: 0; z-index: 10; }
+    .ver-como {
+      display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: var(--ui-e3);
+      padding: calc(var(--ui-e2) + var(--ui-seguro-topo)) var(--ui-e4) var(--ui-e2);
+      background: var(--ui-amarelo, #f59f00); color: #1a1a1a; font-size: var(--ui-t-sm, .875rem);
+    }
+    .ver-como .ui-botao { color: inherit; border-color: currentColor; background: transparent; }
+    .ver-como + .topo { padding-top: var(--ui-e2); }
     .topo {
-      position: sticky; top: 0; z-index: 10;
+      position: relative;
       display: flex; align-items: center; gap: var(--ui-e4);
       padding: calc(var(--ui-e2) + var(--ui-seguro-topo)) var(--ui-e4) var(--ui-e2);
       border-bottom: 1px solid transparent;

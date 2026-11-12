@@ -417,3 +417,12 @@ CREATE TABLE IF NOT EXISTS notificacoes_vapid (
 );
 
 COMMIT;
+
+-- Auditoria do "Ver como": quando um ADMIN abriu o app como um usuário (somente leitura) · [[ADR-020 - Ver Como (Admin em Somente Leitura)]]
+CREATE TABLE IF NOT EXISTS auditoria_ver_como (
+    auditoria_id UUID        PRIMARY KEY,
+    admin_id     UUID        NOT NULL,
+    usuario_id   UUID        NOT NULL,
+    iniciado_em  TIMESTAMPTZ NOT NULL
+);
+CREATE INDEX IF NOT EXISTS ix_auditoria_ver_como_usuario ON auditoria_ver_como (usuario_id, iniciado_em DESC);

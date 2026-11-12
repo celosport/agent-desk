@@ -16,4 +16,6 @@ export interface Sessao {
   tokenType: 'Bearer';
   expiraEm: string;
   usuario: UsuarioLogado;
+  /** Nome do ADMIN quando é o modo "Ver como" (somente leitura); ausente no login normal. */
+  verComoPor?: string;
 }

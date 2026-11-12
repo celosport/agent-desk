@@ -39,6 +39,19 @@ public sealed class AuthController(IUsuarioAtual usuarioAtual) : ControllerBase
         return result.IsSuccess ? Ok(result.Value) : this.ToProblem(result.Error);
     }
 
+    /// <summary>ADMIN: entra no app como um usuário, em somente leitura (token de 60 min, auditado). Não vale para outro ADMIN.</summary>
+    [HttpPost("ver-como")]
+    [Authorize(Roles = Perfis.Admin)]
+    [ProducesResponseType<SessaoDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> VerComo(
+        [FromBody] VerComoRequestDto request, [FromServices] ICommandHandler<IniciarVerComoCommand, SessaoDto> handler, CancellationToken ct)
+    {
+        var result = await handler.Handle(new IniciarVerComoCommand(usuarioAtual.UsuarioId, request.UsuarioId), ct);
+        return result.IsSuccess ? Ok(result.Value) : this.ToProblem(result.Error);
+    }
+
     /// <summary>Quem sou eu (exige token): útil para o front validar a sessão.</summary>
     [HttpGet("eu")]
     [ProducesResponseType(StatusCodes.Status200OK)]

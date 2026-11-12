@@ -150,7 +150,7 @@ public sealed class AgentDeskApiFactory : WebApplicationFactory<Program>, IAsync
     public static async Task<Guid> IdAsync(HttpClient http)
         => (await (await http.GetAsync("/api/v1/auth/eu")).JsonAsync()).GetProperty("usuarioId").GetGuid();
 
-    private HttpClient ClienteComToken(string token)
+    public HttpClient ClienteComToken(string token)
     {
         var client = CreateClient();
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
