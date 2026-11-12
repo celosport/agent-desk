@@ -17,7 +17,15 @@ function adiadoAte(): number {
   selector: 'app-instalar-app',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    @if (visivel()) {
+    @if (instalarApp.avisoInstalado()) {
+      <section class="instalar" aria-live="polite">
+        <p role="status">
+          <strong>Agent Desk instalado!</strong>
+          {{ etapa() ? 'Crie sua conta aqui; depois pode fechar esta aba e abrir pelo ícone.' : 'Já pode fechar esta aba e abrir o Agent Desk pelo ícone na tela inicial.' }}
+        </p>
+        <button type="button" class="ui-botao ui-botao--bloco" (click)="instalarApp.fecharAviso()">Ok</button>
+      </section>
+    } @else if (visivel()) {
       <section class="instalar" aria-labelledby="instalar-titulo">
         <h2 id="instalar-titulo">Instale o Agent Desk</h2>
         <p>Use como um aplicativo do celular: abre pelo ícone, em tela cheia, e recebe os alertas quando uma tarefa termina.</p>
@@ -28,6 +36,7 @@ function adiadoAte(): number {
             <li>Toque em <strong>Compartilhar</strong> (o quadrado com a seta) no Safari.</li>
             <li>Escolha <strong>Adicionar à Tela de Início</strong>.</li>
             <li>Toque em <strong>Adicionar</strong>.</li>
+            <li>Abra o Agent Desk pelo ícone. Pode fechar o Safari.</li>
           </ol>
         }
         @if (etapa()) {

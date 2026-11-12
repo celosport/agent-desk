@@ -26,6 +26,9 @@ import { Logo } from '../../shared/ui/logo.component';
       @if (etapaInstalar()) {
         <app-instalar-app [etapa]="true" (continuar)="instalacaoFeita.set(true)" />
       } @else {
+      @if (instalarApp.avisoInstalado()) {
+        <app-instalar-app [etapa]="true" />
+      }
       <form [formGroup]="form" (ngSubmit)="cadastrar()" novalidate>
         <div class="ui-campo">
           <label for="nome">Nome</label>
@@ -61,7 +64,7 @@ export class CadastroPage {
     email: ['', [Validators.required, Validators.email]],
     senha: ['', [Validators.required, Validators.minLength(8)]],
   });
-  private readonly instalarApp = inject(InstalarApp);
+  protected readonly instalarApp = inject(InstalarApp);
   protected readonly instalacaoFeita = signal(false);
   // Primeiro "Instale o app", depois a conta — só no celular/tablet. Reage ao sinal (o evento do Chrome pode chegar
   // atrasado); sem suporte (computador) o cadastro abre direto no formulário. Nunca bloqueia o cadastro.
