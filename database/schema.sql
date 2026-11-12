@@ -17,6 +17,10 @@ CREATE TABLE IF NOT EXISTS usuarios (
 );
 -- E-mail único sem diferenciar maiúsculas
 CREATE UNIQUE INDEX IF NOT EXISTS ux_usuarios_email_lower ON usuarios (LOWER(email));
+-- Foto de perfil (já recortada pelo app, até 1 MB). Fica no banco: sobrevive a deploy sem volume/S3.
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS foto BYTEA;
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS foto_tipo VARCHAR(20);
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS foto_versao VARCHAR(32);
 
 -- 2. (removida) Tarefas era o módulo de exemplo do esqueleto; saiu na Fase 2. A tabela some dos bancos que ainda a têm.
 DROP TABLE IF EXISTS tarefas;

@@ -33,6 +33,14 @@ const USUARIOS = {
 
 type Quem = keyof typeof USUARIOS;
 
+/** Nome e foto editáveis pelo perfil (módulo Contas). A foto do mock é sempre a mesma imagem de 1 pixel. */
+const perfisMock: Record<Quem, { nome: string; email: string; fotoUrl?: string }> = {
+  usuario: { nome: USUARIOS.usuario.nome, email: USUARIOS.usuario.email },
+  admin: { nome: USUARIOS.admin.nome, email: USUARIOS.admin.email },
+};
+const FOTO_MOCK =
+  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+
 const agora = Date.now();
 
 // ---- Configuracoes: modelos (mesma carga inicial do schema.sql) e a configuração do usuário ----
@@ -647,16 +655,33 @@ function responder(req: HttpRequest<unknown>, url: URL): Observable<HttpResponse
   if (c === '/api/v1/auth/login' && req.method === 'POST') {
     const email = String(corpo['email'] ?? '').toLowerCase();
     if (!email || !corpo['senha']) return erro(400, 'Validacao', 'Dados inválidos.', { email: ['Informe e-mail e senha.'] });
-    return ok(sessao(email.includes('admin') ? 'admin' : 'usuario'));
+    const quem: Quem = email.includes('admin') ? 'admin' : 'usuario';
+    perfisMock[quem] = { nome: USUARIOS[quem].nome, email: USUARIOS[quem].email }; // login volta ao usuário de exemplo
+    return ok(sessao(quem));
   }
   if (c === '/api/v1/auth/cadastro' && req.method === 'POST') {
     const email = String(corpo['email'] ?? '').toLowerCase();
     if (email.includes('maria')) return erro(409, 'Auth.EmailEmUso', 'Este e-mail já tem cadastro.');
     const s = sessao('usuario');
-    return ok({ ...s, usuario: { ...s.usuario, nome: String(corpo['nome'] ?? ''), email } }, 201);
+    perfisMock.usuario = { nome: String(corpo['nome'] ?? ''), email }; // o perfil passa a ser o de quem acabou de se cadastrar
+    return ok({ ...s, usuario: { ...s.usuario, ...perfisMock.usuario } }, 201);
   }
 
   if (!autenticado(req)) return erro(401, 'Auth.NaoAutenticado', 'Entre novamente.');
+
+  // ---- Contas: perfil (nome e foto de quem está logado) ----
+  if (c === '/api/v1/conta/perfil' || c === '/api/v1/conta/foto') {
+    const quem: Quem = ehAdmin(req) ? 'admin' : 'usuario';
+    const atual = perfisMock[quem];
+    if (c === '/api/v1/conta/perfil' && req.method === 'PUT') {
+      const nome = String(corpo['nome'] ?? '').trim();
+      if (!nome) return invalido({ nome: ['Informe o nome.'] });
+      atual.nome = nome;
+    }
+    if (c === '/api/v1/conta/foto' && req.method === 'POST') atual.fotoUrl = FOTO_MOCK;
+    if (c === '/api/v1/conta/foto' && req.method === 'DELETE') atual.fotoUrl = undefined;
+    return ok({ ...USUARIOS[quem], nome: atual.nome, email: atual.email, fotoUrl: atual.fotoUrl });
+  }
 
   // ---- Automacoes ----
   if (c === '/api/v1/automacoes' && req.method === 'GET') return ok(ehAdmin(req) ? automacoes : automacoes.filter((a) => a.ativa));

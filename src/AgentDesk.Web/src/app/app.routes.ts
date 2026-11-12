@@ -50,6 +50,7 @@ export const routes: Routes = [
         title: 'Configurações | Agent Desk',
         loadComponent: () => import('./features/configuracoes/configuracoes.page').then((m) => m.ConfiguracoesPage),
       },
+      { path: 'perfil', title: 'Meu perfil | Agent Desk', loadComponent: () => import('./features/perfil/perfil.page').then((m) => m.PerfilPage) },
       { path: 'ajuda', title: 'Ajuda | Agent Desk', loadComponent: () => import('./features/ajuda/ajuda.page').then((m) => m.AjudaPage) },
       {
         path: 'automacoes',
