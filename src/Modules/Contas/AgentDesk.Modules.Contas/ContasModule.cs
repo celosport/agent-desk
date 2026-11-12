@@ -1,5 +1,6 @@
 using FluentValidation;
 using AgentDesk.Modules.Contas.Application.Auth;
+using AgentDesk.Modules.Contas.Application.Perfil;
 using AgentDesk.Modules.Contas.Domain;
 using AgentDesk.Modules.Contas.Infrastructure;
 using AgentDesk.SharedKernel;
@@ -24,6 +25,13 @@ public sealed class ContasModule : IModule
         services.AddScoped<IValidator<LoginCommand>, LoginValidator>();
         services.AddCommandHandler<CadastrarCommand, SessaoDto, CadastrarHandler>();
         services.AddCommandHandler<LoginCommand, SessaoDto, LoginHandler>();
+
+        services.AddScoped<IValidator<AtualizarNomeCommand>, AtualizarNomeValidator>();
+        services.AddQueryHandler<ObterPerfilQuery, UsuarioDto, ObterPerfilHandler>();
+        services.AddCommandHandler<AtualizarNomeCommand, UsuarioDto, AtualizarNomeHandler>();
+        services.AddCommandHandler<EnviarFotoCommand, UsuarioDto, EnviarFotoHandler>();
+        services.AddCommandHandler<RemoverFotoCommand, UsuarioDto, RemoverFotoHandler>();
+        services.AddQueryHandler<ObterFotoQuery, FotoDto, ObterFotoHandler>();
 
         return services;
     }

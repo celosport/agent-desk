@@ -48,11 +48,11 @@ internal sealed class Notificador(
     }
 
     /// <summary>Manda para todos os aparelhos do usuário e devolve em quantos chegou (usado também pelo botão de teste).</summary>
-    public async Task<int> EnviarAsync(IReadOnlyList<Dispositivo> dispositivos, string titulo, string corpo, string tag, CancellationToken cancellationToken)
+    public async Task<int> EnviarAsync(IReadOnlyList<Dispositivo> dispositivos, string titulo, string corpo, string tag, CancellationToken cancellationToken, string url = "/escritorio")
     {
         var chaves = await repositorio.ObterOuCriarChavesAsync(ChavesVapid.Gerar, cancellationToken);
         var assunto = configuracao["Notificacoes:Assunto"] is { Length: > 0 } a ? a : "mailto:admin@example.com";
-        var conteudo = Conteudo(titulo, corpo, tag);
+        var conteudo = Conteudo(titulo, corpo, tag, url);
 
         var entregues = 0;
         foreach (var dispositivo in dispositivos)
@@ -74,7 +74,7 @@ internal sealed class Notificador(
     /// Formato que o service worker do Angular entende (<c>{ notification: ... }</c>): ele mesmo mostra o alerta e, ao tocar, abre o
     /// Escritório. A tag faz um alerta novo do mesmo assunto trocar o anterior em vez de empilhar.
     /// </summary>
-    internal static string Conteudo(string titulo, string corpo, string tag) => JsonSerializer.Serialize(new
+    internal static string Conteudo(string titulo, string corpo, string tag, string url = "/escritorio") => JsonSerializer.Serialize(new
     {
         notification = new
         {
@@ -83,7 +83,7 @@ internal sealed class Notificador(
             icon = "/icons/icon-192x192.png",
             badge = "/icons/icon-192x192.png",
             tag,
-            data = new { onActionClick = new { @default = new { operation = "navigateLastFocusedOrOpen", url = "/escritorio" } } },
+            data = new { onActionClick = new { @default = new { operation = "navigateLastFocusedOrOpen", url } } },
         },
     });
 

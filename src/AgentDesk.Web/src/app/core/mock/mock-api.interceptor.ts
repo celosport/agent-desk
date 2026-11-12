@@ -5,6 +5,7 @@ import { Automacao, Execucao } from '../../features/automacoes/data-access/autom
 import { Chamada, StatusChamada } from '../../features/consumo/data-access/consumo.models';
 import { Dicas, DiaClaudeCode, LimitesAssinatura, EventoLinha, ItemClaudeCode, LinhaDoTempo, PaginaHistoricoSessoes, PainelClaudeCode, SessaoHistorico, UsoClaudeCode } from '../../features/consumo/data-access/claude-code.models';
 import { DispositivoAlerta, PreferenciasAlerta } from '../../features/configuracoes/data-access/alertas.models';
+import { Destinatario } from '../../features/configuracoes/data-access/avisos.models';
 import { AgenteEquipe } from '../../features/escritorio/data-access/equipe.models';
 
 /**
@@ -33,6 +34,14 @@ const USUARIOS = {
 
 type Quem = keyof typeof USUARIOS;
 
+/** Nome e foto editáveis pelo perfil (módulo Contas). A foto do mock é sempre a mesma imagem de 1 pixel. */
+const perfisMock: Record<Quem, { nome: string; email: string; fotoUrl?: string }> = {
+  usuario: { nome: USUARIOS.usuario.nome, email: USUARIOS.usuario.email },
+  admin: { nome: USUARIOS.admin.nome, email: USUARIOS.admin.email },
+};
+const FOTO_MOCK =
+  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+
 const agora = Date.now();
 
 // ---- Configuracoes: modelos (mesma carga inicial do schema.sql) e a configuração do usuário ----
@@ -56,6 +65,13 @@ let equipe: AgenteEquipe[] = [];
 /** Alertas no celular (módulo Notificacoes): aparelhos que aceitaram e o que avisar. Tudo ligado até o usuário desligar. */
 let aparelhosDeAlerta: DispositivoAlerta[] = [];
 let preferenciasDeAlerta: PreferenciasAlerta = { automacoes: true, sessoes: true, permissoes: true };
+
+/** Usuários que o ADMIN vê ao mandar um aviso push (módulo Notificacoes). */
+const destinatariosMock: Destinatario[] = [
+  { usuarioId: 'u0000000-0000-4000-8000-000000000001', nome: 'Maria Souza', email: 'maria@exemplo.com', aparelhos: 1 },
+  { usuarioId: 'u0000000-0000-4000-8000-000000000002', nome: 'João Lima', email: 'joao@exemplo.com', aparelhos: 0 },
+  { usuarioId: 'u0000000-0000-4000-8000-000000000003', nome: 'Ana Costa', email: 'ana@exemplo.com', aparelhos: 2 },
+];
 
 let automacoes: Automacao[] = [
   automacaoMock('a1e5c1a0-0000-4000-8000-000000000001', 'relatorio-executivo', 'Gerar Relatório Executivo',
@@ -647,16 +663,33 @@ function responder(req: HttpRequest<unknown>, url: URL): Observable<HttpResponse
   if (c === '/api/v1/auth/login' && req.method === 'POST') {
     const email = String(corpo['email'] ?? '').toLowerCase();
     if (!email || !corpo['senha']) return erro(400, 'Validacao', 'Dados inválidos.', { email: ['Informe e-mail e senha.'] });
-    return ok(sessao(email.includes('admin') ? 'admin' : 'usuario'));
+    const quem: Quem = email.includes('admin') ? 'admin' : 'usuario';
+    perfisMock[quem] = { nome: USUARIOS[quem].nome, email: USUARIOS[quem].email }; // login volta ao usuário de exemplo
+    return ok(sessao(quem));
   }
   if (c === '/api/v1/auth/cadastro' && req.method === 'POST') {
     const email = String(corpo['email'] ?? '').toLowerCase();
     if (email.includes('maria')) return erro(409, 'Auth.EmailEmUso', 'Este e-mail já tem cadastro.');
     const s = sessao('usuario');
-    return ok({ ...s, usuario: { ...s.usuario, nome: String(corpo['nome'] ?? ''), email } }, 201);
+    perfisMock.usuario = { nome: String(corpo['nome'] ?? ''), email }; // o perfil passa a ser o de quem acabou de se cadastrar
+    return ok({ ...s, usuario: { ...s.usuario, ...perfisMock.usuario } }, 201);
   }
 
   if (!autenticado(req)) return erro(401, 'Auth.NaoAutenticado', 'Entre novamente.');
+
+  // ---- Contas: perfil (nome e foto de quem está logado) ----
+  if (c === '/api/v1/conta/perfil' || c === '/api/v1/conta/foto') {
+    const quem: Quem = ehAdmin(req) ? 'admin' : 'usuario';
+    const atual = perfisMock[quem];
+    if (c === '/api/v1/conta/perfil' && req.method === 'PUT') {
+      const nome = String(corpo['nome'] ?? '').trim();
+      if (!nome) return invalido({ nome: ['Informe o nome.'] });
+      atual.nome = nome;
+    }
+    if (c === '/api/v1/conta/foto' && req.method === 'POST') atual.fotoUrl = FOTO_MOCK;
+    if (c === '/api/v1/conta/foto' && req.method === 'DELETE') atual.fotoUrl = undefined;
+    return ok({ ...USUARIOS[quem], nome: atual.nome, email: atual.email, fotoUrl: atual.fotoUrl });
+  }
 
   // ---- Automacoes ----
   if (c === '/api/v1/automacoes' && req.method === 'GET') return ok(ehAdmin(req) ? automacoes : automacoes.filter((a) => a.ativa));
@@ -867,6 +900,16 @@ function responder(req: HttpRequest<unknown>, url: URL): Observable<HttpResponse
     if (aparelhosDeAlerta.length === 0)
       return erro(409, 'Notificacoes.SemDispositivos', 'Nenhum aparelho está recebendo alertas. Ative os alertas neste aparelho primeiro.');
     return ok({ entregues: aparelhosDeAlerta.length });
+  }
+
+  if (c === '/api/v1/notificacoes/admin/destinatarios' && req.method === 'GET') return ok(destinatariosMock);
+  if (c === '/api/v1/notificacoes/admin/aviso' && req.method === 'POST') {
+    if (!String(corpo['titulo'] ?? '').trim() || !String(corpo['mensagem'] ?? '').trim())
+      return invalido({ titulo: ['Informe o título e a mensagem.'] });
+    const ids = corpo['usuarioIds'] as string[] | null;
+    const escolhidos = ids === null ? destinatariosMock : destinatariosMock.filter((d) => ids.includes(d.usuarioId));
+    const alcancados = escolhidos.filter((d) => d.aparelhos > 0).length;
+    return ok({ escolhidos: escolhidos.length, alcancados, semAparelho: escolhidos.length - alcancados, falhas: 0 });
   }
 
   // ---- Consumo ----

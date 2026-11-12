@@ -6,6 +6,8 @@ export interface UsuarioLogado {
   nome: string;
   email: string;
   perfil: Perfil;
+  /** Caminho relativo da API (com ?v=); use AuthStore.fotoSrc para a URL completa. Ausente = sem foto. */
+  fotoUrl?: string;
 }
 
 /** = SessaoDto do módulo Contas (POST /api/v1/auth/login e /cadastro). */

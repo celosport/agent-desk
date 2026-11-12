@@ -4,6 +4,7 @@ import { AuthStore } from '../../core/auth/auth.store';
 import { MoedaApp } from '../../core/moeda/moeda';
 import { MOEDAS, Moeda } from '../../shared/util/moeda-ativa';
 import { AlternarTema } from '../../shared/ui/alternar-tema.component';
+import { Avatar } from '../../shared/ui/avatar.component';
 import { Logo } from '../../shared/ui/logo.component';
 import { formatarData } from '../../shared/util/formatos';
 
@@ -16,7 +17,7 @@ interface ItemMenu {
 /** Moldura das telas logadas: topo com o menu (rolável no celular) e a área de conteúdo. */
 @Component({
   selector: 'app-shell',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, AlternarTema, Logo],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, AlternarTema, Avatar, Logo],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <header class="topo">
@@ -28,10 +29,13 @@ interface ItemMenu {
       </nav>
       <div class="acoes">
         @if (auth.usuario(); as u) {
-          <p class="usuario" aria-label="Usuário logado" [title]="u.email">
-            <strong>{{ u.nome }}</strong>
-            <small>{{ u.perfil === 'ADMIN' ? 'Administrador' : 'Usuário' }} · {{ u.email }}</small>
-          </p>
+          <a class="perfil" routerLink="/perfil" routerLinkActive="ativo" title="Meu perfil" [attr.aria-label]="'Meu perfil: ' + u.nome">
+            <app-avatar [nome]="u.nome" [src]="auth.fotoSrc()" />
+            <p class="usuario" aria-label="Usuário logado" [title]="u.email">
+              <strong>{{ u.nome }}</strong>
+              <small>{{ u.perfil === 'ADMIN' ? 'Administrador' : 'Usuário' }} · {{ u.email }}</small>
+            </p>
+          </a>
         }
         <select class="moeda ui-entrada" aria-label="Moeda dos valores" [value]="moeda.efetiva()" (change)="moeda.escolher($any($event.target).value)"
                 [title]="dicaMoeda()">
@@ -64,6 +68,11 @@ interface ItemMenu {
     }
     nav a.ativo { background: var(--ui-superficie-2); color: var(--ui-texto); box-shadow: inset 0 -2px 0 var(--ui-neon-1), var(--ui-brilho); }
     .acoes { display: flex; align-items: center; flex: none; gap: var(--ui-e2); }
+    .perfil {
+      display: flex; align-items: center; gap: var(--ui-e2); padding: var(--ui-e1) var(--ui-e2); min-width: 0;
+      border-radius: 999px; text-decoration: none; color: var(--ui-texto);
+    }
+    .perfil.ativo, .perfil:hover { background: var(--ui-superficie-2); }
     .moeda { width: auto; min-height: 0; padding: var(--ui-e1) var(--ui-e2); }
     .usuario { display: grid; margin: 0; line-height: 1.2; text-align: right; min-width: 0; }
     .usuario strong { font-size: var(--ui-t-sm); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 12rem; }
@@ -95,6 +104,7 @@ export class Shell {
 
   constructor() {
     void this.moeda.carregar();
+    void this.auth.carregarPerfil(); // nome e foto atualizados (podem ter mudado em outro aparelho)
   }
 
   protected readonly menu: ItemMenu[] = [

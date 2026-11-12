@@ -27,7 +27,11 @@ public sealed class NotificacoesModule : IModule
 
         services.AddScoped<IValidator<RegistrarDispositivoCommand>, RegistrarDispositivoValidator>();
 
+        services.AddScoped<IValidator<EnviarAvisoCommand>, EnviarAvisoValidator>();
+
         services.AddQueryHandler<ObterNotificacoesQuery, NotificacoesDto, ObterNotificacoesHandler>();
+        services.AddQueryHandler<ListarDestinatariosQuery, IReadOnlyList<DestinatarioDto>, ListarDestinatariosHandler>();
+        services.AddCommandHandler<EnviarAvisoCommand, EnvioAvisoDto, EnviarAvisoHandler>();
         services.AddCommandHandler<RegistrarDispositivoCommand, DispositivoDto, RegistrarDispositivoHandler>();
         services.AddCommandHandler<RemoverDispositivoCommand, bool, RemoverDispositivoHandler>();
         services.AddCommandHandler<SalvarPreferenciasCommand, PreferenciasAlertaDto, SalvarPreferenciasHandler>();

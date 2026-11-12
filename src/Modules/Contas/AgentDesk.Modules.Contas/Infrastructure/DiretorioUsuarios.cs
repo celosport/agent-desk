@@ -16,4 +16,12 @@ internal sealed class DiretorioUsuarios(IDbConnectionFactory connectionFactory) 
             sql, new { Ids = usuarioIds.Distinct().ToArray() }, cancellationToken: cancellationToken));
         return linhas.ToDictionary(l => l.UsuarioId, l => l.Nome);
     }
+
+    public async Task<IReadOnlyList<UsuarioResumo>> ListarAsync(CancellationToken cancellationToken)
+    {
+        const string sql = "SELECT usuario_id AS UsuarioId, nome AS Nome, email AS Email FROM usuarios ORDER BY nome, email;";
+        await using var connection = await connectionFactory.OpenConnectionAsync(cancellationToken);
+        var linhas = await connection.QueryAsync<UsuarioResumo>(new CommandDefinition(sql, cancellationToken: cancellationToken));
+        return linhas.ToList();
+    }
 }

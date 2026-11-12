@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { AtualizacaoApp } from './core/atualizacao/atualizacao-app';
+import { InstalarApp } from './core/nativo/instalar-app.service';
 import { TemaApp } from './core/tema/tema';
 import { Avisos } from './core/ui/avisos.service';
 
@@ -51,5 +52,6 @@ export class App {
 
   constructor() {
     inject(TemaApp); // aplica o tema escolhido (ou o do aparelho)
+    inject(InstalarApp); // ouve o beforeinstallprompt já na abertura, antes de chegar ao cadastro
   }
 }

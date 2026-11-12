@@ -4,12 +4,13 @@ import { Router, RouterLink } from '@angular/router';
 import { rotaInicial } from '../../core/auth/auth.guards';
 import { AuthStore } from '../../core/auth/auth.store';
 import { mensagemDeErro } from '../../core/http/problema';
+import { InstalarAppCartao } from '../../core/nativo/instalar-app.component';
 import { AlternarTema } from '../../shared/ui/alternar-tema.component';
 import { Logo } from '../../shared/ui/logo.component';
 
 @Component({
   selector: 'app-login',
-  imports: [ReactiveFormsModule, RouterLink, AlternarTema, Logo],
+  imports: [ReactiveFormsModule, RouterLink, AlternarTema, Logo, InstalarAppCartao],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './auth.page.scss',
   template: `
@@ -37,6 +38,8 @@ import { Logo } from '../../shared/ui/logo.component';
           {{ enviando() ? 'Entrando…' : 'Entrar' }}
         </button>
       </form>
+
+      <app-instalar-app />
 
       <p class="rodape">Ainda não tem conta? <a routerLink="/cadastro">Criar conta</a></p>
     </main>

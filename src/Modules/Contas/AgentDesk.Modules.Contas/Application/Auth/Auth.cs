@@ -8,7 +8,12 @@ using Microsoft.AspNetCore.Identity;
 namespace AgentDesk.Modules.Contas.Application.Auth;
 
 public sealed record SessaoDto(string AccessToken, string TokenType, DateTimeOffset ExpiraEm, UsuarioDto Usuario);
-public sealed record UsuarioDto(Guid UsuarioId, string Nome, string Email, PerfilUsuario Perfil);
+/// <summary>Quem está logado. <see cref="FotoUrl"/> é um caminho relativo da API (o <c>v</c> muda a cada troca de foto); nulo se não tem foto.</summary>
+public sealed record UsuarioDto(Guid UsuarioId, string Nome, string Email, PerfilUsuario Perfil, string? FotoUrl = null)
+{
+    internal static UsuarioDto De(Usuario u) => new(
+        u.UsuarioId, u.Nome, u.Email, u.Perfil, u.FotoVersao is { } v ? $"/api/v1/usuarios/{u.UsuarioId}/foto?v={v}" : null);
+}
 public sealed record CadastroRequestDto(string? Nome, string? Email, string? Senha);
 public sealed record LoginRequestDto(string? Email, string? Senha);
 
@@ -75,6 +80,6 @@ internal static class Sessao
     public static SessaoDto De(Usuario u, IGeradorToken tokens)
     {
         var token = tokens.Gerar(u.UsuarioId, u.Nome, u.Email, u.Perfil);
-        return new SessaoDto(token.AccessToken, "Bearer", token.ExpiraEm, new UsuarioDto(u.UsuarioId, u.Nome, u.Email, u.Perfil));
+        return new SessaoDto(token.AccessToken, "Bearer", token.ExpiraEm, UsuarioDto.De(u));
     }
 }
