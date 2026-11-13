@@ -126,6 +126,8 @@ export class AuthStore {
   }
 
   private definir(sessao: Sessao): void {
+    // Toda troca de sessão (login, Ver como, voltar ao admin) invalida respostas de perfil que ainda estavam a caminho
+    this.versaoUsuario++;
     this.sessao.set(sessao);
     try {
       localStorage.setItem(CHAVE_SESSAO, JSON.stringify(sessao));

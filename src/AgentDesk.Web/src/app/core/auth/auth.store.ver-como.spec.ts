@@ -75,4 +75,20 @@ describe('AuthStore — Ver como', () => {
     expect(auth.usuario()?.perfil).toBe('ADMIN');
     expect(localStorage.getItem(CHAVE_SESSAO_ADMIN)).toBeNull();
   });
+
+  it('perfil que chega atrasado do usuário visto não sobrescreve o admin ao sair do modo', async () => {
+    const auth = iniciar(admin);
+    const entrar = auth.verComo('u');
+    http.expectOne('/api/v1/auth/ver-como').flush(visto);
+    await entrar;
+    const busca = auth.carregarPerfil(); // a caminho, ainda como "Ana"
+    const pedido = http.expectOne('/api/v1/conta/perfil');
+
+    await auth.sairDoVerComo();
+    pedido.flush(visto.usuario); // chega só agora
+    await busca;
+
+    expect(auth.usuario()?.perfil).toBe('ADMIN');
+    expect(auth.usuario()?.nome).toBe('Admin');
+  });
 });
